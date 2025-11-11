@@ -1,0 +1,43 @@
+\input{preamble}
+
+\begin{document}
+
+\section{Уравнения для линзы}
+
+\begin{equation*}
+    \vec{I}_1(y)=\frac{(x_L, y)}{\sqrt{x_L^2(y)+y^2}},
+\end{equation*}
+
+\begin{equation*}
+    \vec{N}_1(y)=\frac{\left(-1,\frac{dx_L(y)}{dy}\right)}{\sqrt{1+\left(\frac{dx_L(y)}{dy}\right)^2}},
+\end{equation*}
+
+\begin{equation*}
+    \vec{I}_2(y)=\frac1n\vec{I}_1(y)+\left(\frac1n-\vec{I}_1(y)\vec{N}_1(y)-\sqrt{1-\frac{1}{n^2}\left(1-\left(\vec{I}_1(y)\vec{N}_1(y)\right)^2\right)}\right)\vec{N_1}(y)=:(\alpha,\beta),
+\end{equation*}
+
+\begin{equation*}
+    \cot{\theta}=\frac{\alpha}{\beta},
+\end{equation*}
+
+\begin{equation*}
+    y_1=x_L^{-1}\left(\frac{(a-y)\cot{\theta}+x_L(y)}{1+\cot{\theta}}\right),
+\end{equation*}
+
+Где $x_L^{-1}(x_L(y)):=y$,
+
+\begin{equation*}
+    \vec{N}_2(y)=\frac{\left(-1,-\frac{dx_L(y)}{dy}\right)}{\sqrt{1+\left(\frac{dx_L(y)}{dy}\right)^2}},
+\end{equation*}
+
+\begin{equation*}
+        \vec{I}_3(y_1)=n\vec{I}_2(y_1)+\left(n-\vec{I}_2(y_1)\vec{N}_2(y)-\sqrt{1-n^2\left(1-\left(\vec{I}_2(y_1)\vec{N}_2(y_1)\right)^2\right)}\right)\vec{N_2}(y_1)=(1,0),
+\end{equation*}
+
+\begin{equation*}
+    x_L(0)+\frac a2=f.
+\end{equation*}
+
+Тут задаются показатель преломления $n$ и фокусное расстояние $f$. Из этой системы уравнений нужно найти уравнение поверхности линзы $x_L(y)$. 
+
+\end{document}
