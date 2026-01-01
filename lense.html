@@ -4,9 +4,32 @@
 <meta charset="utf-8" />
 <title>Линза</title>
 <style>
-body { text-align:center; font-family:sans-serif; background:#f6f8fa; }
-canvas { border:1px solid #444; background:white; margin-top:10px; cursor: move; }
-.controls { margin-bottom:8px; }
+html, body {
+
+    padding: 10px;
+    height: 96%;
+    overflow: hidden;
+}
+
+body { 
+    text-align:center; 
+    font-family:sans-serif; 
+    background:white 
+}
+
+canvas { 
+    display: block;
+    border:0px solid #444; 
+    background:white; 
+    cursor: move;
+    box-sizing: border-box;
+}
+
+.controls { 
+    
+    margin-bottom:0; /* убираем лишний отступ, чтобы canvas плотно под контролами */
+}
+
 input[type=range]{ width:200px; }
 input[type=number]{ width:70px; }
 input[type=text]{ width:300px; }
@@ -19,199 +42,261 @@ button { padding: 5px 10px; cursor: pointer; }
 <body>
 
 <div class="controls">
-<label>n:</label>
-<input type="range" id="nLensRange" min="0" max="100" step="0.01" value="1.5" oninput="syncFromRange('nLens')">
+
+<label>Коэффициент преломления:</label>
+<input type="range" id="nLensRange" min="1" max="10" step="0.01" value="1.5" oninput="syncFromRange('nLens')">
 <input type="number" id="nLensInput" value="1.5" step="0.01" oninput="syncFromInput('nLens')">
-<span id="nLensVal">1.5</span>
-<br>
+<span id="nLensVal">1.5</span><br>
 
 <label>Угол пучка (°):</label>
 <input type="range" id="beamAngleRange" min="-90" max="90" step="0.1" value="0" oninput="syncFromRange('beamAngle')">
 <input type="number" id="beamAngleInput" value="0" step="0.1" oninput="syncFromInput('beamAngle')">
-<span id="beamAngleVal">0</span>
-<br>
+<span id="beamAngleVal">0</span><br>
 
 <label>Количество лучей:</label>
-<input type="range" id="rayCountRange" min="5" max="101" step="1" value="41" oninput="syncFromRange('rayCount')">
+<input type="range" id="rayCountRange" min="5" max="201" step="1" value="41" oninput="syncFromRange('rayCount')">
 <input type="number" id="rayCountInput" value="41" step="1" oninput="syncFromInput('rayCount')">
-<span id="rayCountVal">41</span>
-<br>
+<span id="rayCountVal">41</span><br>
 
 <div class="group">
-  <span class="group-title">Коэффициенты уравнения левой поверхности</span>
-  <label>x0:</label>
-  <input type="range" id="x0Range" min="-20" max="20" step="0.001" value="-5" oninput="syncFromRange('x0')">
-  <input type="number" id="x0Input" value="-5" step="0.001" oninput="syncFromInput('x0')">
-  <span id="x0Val">-5</span><br>
+<span class="group-title">Полином z(r)=z₀+a₂r²+a₄r⁴+a₆r⁶</span>
 
-  <label>a₂:</label>
-  <input type="range" id="a2Range" min="-0.1" max="0.1" step="1e-5" value="0.006667" oninput="syncFromRange('a2')">
-  <input type="number" id="a2Input" value="0.006667" step="1e-5" oninput="syncFromInput('a2')">
-  <span id="a2Val">0.006667</span><br>
+<label>z₀:</label>
+<input type="range" id="z0Range" min="-20" max="20" step="0.001" value="-5" oninput="syncFromRange('z0')">
+<input type="number" id="z0Input" value="-5" step="0.001" oninput="syncFromInput('z0')">
+<span id="z0Val">-5</span><br>
 
-  <label>a₄:</label>
-  <input type="range" id="a4Range" min="-0.001" max="0.001" step="1e-7" value="0" oninput="syncFromRange('a4')">
-  <input type="number" id="a4Input" value="0" step="1e-7" oninput="syncFromInput('a4')">
-  <span id="a4Val">0</span><br>
+<label>a₂:</label>
+<input type="range" id="a2Range" min="-0.1" max="0.1" step="1e-5" value="0.006457" oninput="syncFromRange('a2')">
+<input type="number" id="a2Input" value="0.006457" step="1e-5" oninput="syncFromInput('a2')">
+<span id="a2Val">0.006457</span><br>
 
-  <label>a₆:</label>
-  <input type="range" id="a6Range" min="-1e-5" max="1e-5" step="1e-10" value="0" oninput="syncFromRange('a6')">
-  <input type="number" id="a6Input" value="0" step="1e-10" oninput="syncFromInput('a6')">
-  <span id="a6Val">0</span><br>
+<label>a₄:</label>
+<input type="range" id="a4Range" min="-0.001" max="0.001" step="1e-7" value="-5e-7" oninput="syncFromRange('a4')">
+<input type="number" id="a4Input" value="-5e-7" step="1e-7" oninput="syncFromInput('a4')">
+<span id="a4Val">0</span><br>
+
+<label>a₆:</label>
+<input type="range" id="a6Range" min="-1e-5" max="1e-5" step="1e-10" value="0" oninput="syncFromRange('a6')">
+<input type="number" id="a6Input" value="0" step="1e-10" oninput="syncFromInput('a6')">
+<span id="a6Val">0</span><br>
 </div>
 
+<br>
+<label>
+<input type="checkbox" id="useFieldCheckbox" checked onchange="draw()">
+Использовать поле для уравнения
+</label><br>
+
+<label>z(r):</label>
+<input type="text" id="leftSurfaceEq" placeholder="-5 + 0.006457*r**2-5e-7*r**4" oninput="draw()">
+<br>
+
 <label>Масштаб:</label>
-<span id="scaleVal">10</span>
+<span id="scaleVal">7.00</span>
 <button onclick="resetView()">Сбросить вид</button>
 <br>
 
-<label>
-  <input type="checkbox" id="useFieldCheckbox" checked onchange="draw()">
-  Использовать поле для уравнения
-</label>
-<br>
-
-<label>Уравнение левой поверхности (по y):</label>
-<input type="text" id="leftSurfaceEq" placeholder="например: -5 + 0.006667*y*y" oninput="draw()">
-<span class="small">Если поле пустое или чекбокс выключен, используются ползунки</span>
-<br>
 </div>
 
-<canvas id="canvas" width="1500" height="435"></canvas>
+<canvas id="canvas"></canvas>
 
 <script>
-
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
-let scale = 10;
-const minScale = 0.5, maxScale = 100;
-let cx = 300, cy = canvas.height/2;
-let isDragging = false, startX, startY;
+const controls = document.querySelector('.controls');
 
-function toScreen(p){ return {sx: cx+p.x*scale, sy: cy-p.y*scale}; }
-function safeEval(funcStr,vName,v){ try{ return eval(funcStr.replace(new RegExp('\\b'+vName+'\\b','g'),'('+v+')')); }catch(e){return NaN;} }
-function deriv(funcStr,y,h=1e-4){ return (safeEval(funcStr,'y',y+h)-safeEval(funcStr,'y',y-h))/(2*h); }
-function norm(v){ const L=Math.hypot(v.x,v.y); return {x:v.x/L,y:v.y/L}; }
-function refract(I,N,eta){ const cosi=-(N.x*I.x+N.y*I.y); const k=1-eta*eta*(1-cosi*cosi); if(k<0) return null; return {x:eta*I.x+(eta*cosi-Math.sqrt(k))*N.x,y:eta*I.y+(eta*cosi-Math.sqrt(k))*N.y}; }
+let scale = 7;
+const minScale=2, maxScale=10000;
+cx=canvas.width/4; cy=canvas.height/2;
+scaleVal.textContent = scale.toFixed(2);
 
-function findIntersection(rayP, rayD, funcStr, tMax=1000, tStep=0.1){
-    function f_of_t(t){
-        const y = rayP.y + t*rayD.y;
-        const xsurf = safeEval(funcStr,'y',y);
-        if(!isFinite(xsurf)) return NaN;
-        return (rayP.x + t*rayD.x) - xsurf;
-    }
+let isDragging=false, sx0, sy0;
 
-    let t0 = 0, f0 = f_of_t(t0);
-    for(let t=tStep; t<=tMax; t+=tStep){
-        const f1 = f_of_t(t);
-        if(!isFinite(f1)){ t0 = t; f0 = f1; continue; }
-        if(isFinite(f0) && f0*f1 <= 0){
-            let a = t - tStep, b = t, fa = f_of_t(a), fb = f1;
-            for(let iter=0;iter<30;iter++){
-                const m = 0.5*(a+b), fm = f_of_t(m);
-                if(!isFinite(fm)){ a = m; fa = fm; continue; }
-                if(fa*fm <=0){ b = m; fb = fm; } else { a = m; fa = f_of_t(a); }
+/* ==== ФУНКЦИИ ДЛЯ CANVAS ==== */
+function toScreen(p){ return {sx:cx+p.z*scale, sy:cy-p.r*scale}; }
+function safeEval(expr,r){ try{return eval(expr.replace(/\br\b/g,'('+r+')'));}catch{return NaN;} }
+function deriv(expr,r,h=1e-4){ return (safeEval(expr,r+h)-safeEval(expr,r-h))/(2*h); }
+function norm(v){ const L=Math.hypot(v.z,v.r); return {z:v.z/L,r:v.r/L}; }
+function refract(I,N,eta){
+    const cosi=-(N.z*I.z+N.r*I.r);
+    const k=1-eta*eta*(1-cosi*cosi);
+    if(k<0) return null;
+    return {z:eta*I.z+(eta*cosi-Math.sqrt(k))*N.z,
+            r:eta*I.r+(eta*cosi-Math.sqrt(k))*N.r};
+}
+
+/* ==== ПЕРЕСЕЧЕНИЕ ==== */
+function findIntersection(P,D,eq){
+    function f(t){ return (P.z+t*D.z)-safeEval(eq,P.r+t*D.r); }
+    let f0=f(0);
+    for(let t=0.2;t<1000;t+=0.2){
+        const f1=f(t);
+        if(isFinite(f0)&&isFinite(f1)&&f0*f1<=0){
+            let a=t-0.2,b=t;
+            for(let i=0;i<30;i++){
+                const m=0.5*(a+b);
+                (f(a)*f(m)<=0)?b=m:a=m;
             }
-            const tHit = 0.5*(a+b);
-            return { t: tHit, point: { x: rayP.x + tHit*rayD.x, y: rayP.y + tHit*rayD.y } };
+            const th=0.5*(a+b);
+            return {z:P.z+th*D.z,r:P.r+th*D.r};
         }
-        t0 = t; f0 = f1;
+        f0=f1;
     }
     return null;
 }
 
-function drawAxes(){ ctx.strokeStyle='#ddd'; ctx.beginPath(); ctx.moveTo(0,cy); ctx.lineTo(canvas.width,cy); ctx.moveTo(cx,0); ctx.lineTo(cx,canvas.height); ctx.stroke(); }
-function sampleSurface(funcStr,yMin,yMax,step){ const pts=[]; for(let y=yMin;y<=yMax+1e-12;y+=step){ const x=safeEval(funcStr,'y',y); if(!isFinite(x)) continue; pts.push({x,y}); } return pts; }
+/* ==== ПОВЕРХНОСТИ + АПЕРТУРА ==== */
+function sampleLens(eqL, eqR){
+    const L=[], R=[];
+    let aperture = 0;
+    for(let r=0;; r+=0.2){
+        const zL = safeEval(eqL,r), zR = safeEval(eqR,r);
+        if(!isFinite(zL) || !isFinite(zR) || zL>zR) break;
+        aperture = r;
+        L.push({z:zL,r});
+        R.push({z:zR,r});
+    }
+    for(let r=-0.2;; r-=0.2){
+        const zL = safeEval(eqL,r), zR = safeEval(eqR,r);
+        if(!isFinite(zL) || !isFinite(zR) || zL>zR) break;
+        L.unshift({z:zL,r});
+        R.unshift({z:zR,r});
+    }
+    return {L, R, aperture};
+}
 
+/* ==== РИСОВАНИЕ ==== */
+let cachedLens = null;
 function draw(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
-    drawAxes();
 
-    const nLens=parseFloat(document.getElementById('nLensRange').value);
-    const beamAngle=parseFloat(document.getElementById('beamAngleRange').value)*Math.PI/180;
-    const rayCount=parseInt(document.getElementById('rayCountRange').value);
+    const n=parseFloat(nLensRange.value);
+    const angle=parseFloat(beamAngleRange.value)*Math.PI/180;
+    const rays=parseInt(rayCountRange.value);
 
-    const useField = document.getElementById('useFieldCheckbox').checked;
-    let leftEq = useField ? document.getElementById('leftSurfaceEq').value.trim() : '';
-    if(!leftEq){
-        const x0=parseFloat(document.getElementById('x0Range').value);
-        const a2=parseFloat(document.getElementById('a2Range').value);
-        const a4=parseFloat(document.getElementById('a4Range').value);
-        const a6=parseFloat(document.getElementById('a6Range').value);
-        leftEq=`${x0}+(${a2})*y*y+(${a4})*y**4+(${a6})*y**6`;
+    let eq=useFieldCheckbox.checked?leftSurfaceEq.value.trim():''; 
+    if(!eq){
+        eq=`${z0Range.value}+(${a2Range.value})*r*r+(${a4Range.value})*r**4+(${a6Range.value})*r**6`;
     }
+    const eqR=`(0-(${eq}))`;
 
-const rightEq = `(0 - (${leftEq}))`;
+    if(!cachedLens || cachedLens.eqL !== eq || cachedLens.eqR !== eqR){
+        cachedLens = { ...sampleLens(eq, eqR), eqL:eq, eqR:eqR };
+    }
+    const {L,R,aperture} = cachedLens;
 
-    const yMax=15;
-    const leftPts=sampleSurface(leftEq,-yMax,yMax,0.2);
-    const rightPts=sampleSurface(rightEq,-yMax,yMax,0.2);
+    const grad = ctx.createLinearGradient(cx,0,cx+100,0);
+    grad.addColorStop(0,'rgba(150,180,255,0.2)');
+    grad.addColorStop(1,'rgba(100,130,255,0.15)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    L.forEach((p,i)=>{const s=toScreen(p); i?ctx.lineTo(s.sx,s.sy):ctx.moveTo(s.sx,s.sy);});
+    for(let i=R.length-1;i>=0;i--){const s=toScreen(R[i]); ctx.lineTo(s.sx,s.sy);}
+    ctx.closePath(); ctx.fill();
 
-    // поверхность
-    ctx.lineWidth=2; ctx.strokeStyle='blue';
-    if(leftPts.length){ctx.beginPath(); leftPts.forEach((p,i)=>{const s=toScreen(p); i===0?ctx.moveTo(s.sx,s.sy):ctx.lineTo(s.sx,s.sy);}); ctx.stroke();}
-    if(rightPts.length){ctx.beginPath(); rightPts.forEach((p,i)=>{const s=toScreen(p); i===0?ctx.moveTo(s.sx,s.sy):ctx.lineTo(s.sx,s.sy);}); ctx.stroke();}
+    ctx.strokeStyle='blue'; ctx.lineWidth=2;
+    ctx.beginPath(); L.forEach((p,i)=>{const s=toScreen(p); i?ctx.lineTo(s.sx,s.sy):ctx.moveTo(s.sx,s.sy);}); ctx.stroke();
+    ctx.beginPath(); R.forEach((p,i)=>{const s=toScreen(p); i?ctx.lineTo(s.sx,s.sy):ctx.moveTo(s.sx,s.sy);}); ctx.stroke();
 
-    if(leftPts.length&&rightPts.length){ ctx.fillStyle='rgba(150,180,255,0.12)'; ctx.beginPath(); ctx.moveTo(toScreen(leftPts[0]).sx,toScreen(leftPts[0]).sy);
-        leftPts.forEach(p=>{ const s=toScreen(p); ctx.lineTo(s.sx,s.sy);});
-        for(let i=rightPts.length-1;i>=0;i--){ const s=toScreen(rightPts[i]); ctx.lineTo(s.sx,s.sy);}
-        ctx.closePath(); ctx.fill(); }
+    const dir={z:Math.cos(angle),r:Math.sin(angle)};
+    const perp={z:-dir.r,r:dir.z};
 
-    // пучок лучей
-    const rays=[]; const dir={x:Math.cos(beamAngle),y:Math.sin(beamAngle)};
-    const nPerp={x:-dir.y,y:dir.x};
-    const pivot={x:0,y:0};
-    for(let i=0;i<rayCount;i++){ const y0=-yMax+(2*yMax)*(i/(rayCount-1)); const start={x:pivot.x-80*dir.x+y0*nPerp.x,y:pivot.y-80*dir.y+y0*nPerp.y}; rays.push({p:start,d:dir}); }
+    for(let i=0;i<rays;i++){
+        const r0=-aperture+2*aperture*i/(rays-1);
+        let P={z:-80*dir.z+r0*perp.z,r:-80*dir.r+r0*perp.r};
+        let D=norm(dir);
 
-    for(let ray of rays){
-        let currentP={...ray.p}, currentD=norm(ray.d);
-        const hitLeft=findIntersection(currentP,currentD,leftEq,1000,0.5);
-        if(!hitLeft) continue; 
-        const pin=hitLeft.point; ctx.strokeStyle='red'; ctx.lineWidth=1.2; ctx.beginPath(); const sp=toScreen(currentP),sip=toScreen(pin); ctx.moveTo(sp.sx,sp.sy); ctx.lineTo(sip.sx,sip.sy); ctx.stroke();
+        const h1=findIntersection(P,D,eq);
+        if(!h1) continue;
 
-        const dfdy=deriv(leftEq,pin.y); let N=norm({x:-1,y:dfdy}); if((N.x*currentD.x+N.y*currentD.y)>0) N={x:-N.x,y:-N.y};
-        const I=norm(currentD); 
-        const Tinside=refract(I,N,1.0/nLens);
-        if(!Tinside) continue; 
-        let insideD=norm(Tinside);
-        let insideP={x:pin.x+insideD.x*1e-6,y:pin.y+insideD.y*1e-6};
+        ctx.strokeStyle='red';
+        ctx.beginPath(); ctx.moveTo(...Object.values(toScreen(P))); ctx.lineTo(...Object.values(toScreen(h1))); ctx.stroke();
 
-        const hitRight=findIntersection(insideP,insideD,rightEq,1000,0.5);
-        if(!hitRight) continue; 
-        const pexit=hitRight.point; ctx.strokeStyle='orange'; ctx.beginPath(); const sIn=toScreen(pin), sOut=toScreen(pexit); ctx.moveTo(sIn.sx,sIn.sy); ctx.lineTo(sOut.sx,sOut.sy); ctx.stroke();
+        let N=norm({z:-1,r:deriv(eq,h1.r)});
+        if(N.z*D.z+N.r*D.r>0) N={z:-N.z,r:-N.r};
 
-        const dfdyR=deriv(rightEq,pexit.y); let NR=norm({x:-1,y:dfdyR}); if((NR.x*insideD.x+NR.y*insideD.y)>0) NR={x:-NR.x,y:-NR.y};
-        const Tout=refract(insideD,NR,nLens/1.0);
-        if(!Tout) continue; 
-        const finalDir=norm(Tout);
-        ctx.strokeStyle='green'; ctx.beginPath(); const sExit=toScreen(pexit),pAfter={x:pexit.x+finalDir.x*300,y:pexit.y+finalDir.y*300}, sAfter=toScreen(pAfter); ctx.moveTo(sExit.sx,sExit.sy); ctx.lineTo(sAfter.sx,sAfter.sy); ctx.stroke();
+        const T1=refract(D,N,1/n); if(!T1) continue;
+        const h2=findIntersection({z:h1.z+1e-6*T1.z,r:h1.r+1e-6*T1.r},T1,eqR);
+        if(!h2) continue;
+
+        ctx.strokeStyle='orange';
+        ctx.beginPath(); ctx.moveTo(...Object.values(toScreen(h1))); ctx.lineTo(...Object.values(toScreen(h2))); ctx.stroke();
+
+        let N2=norm({z:-1,r:deriv(eqR,h2.r)});
+        if(N2.z*T1.z+N2.r*T1.r>0) N2={z:-N2.z,r:-N2.r};
+
+        const T2=refract(T1,N2,n); if(!T2) continue;
+
+        ctx.strokeStyle='green';
+        ctx.beginPath();
+        ctx.moveTo(...Object.values(toScreen(h2)));
+        ctx.lineTo(...Object.values(toScreen({z:h2.z+3000*T2.z,r:h2.r+3000*T2.r})));
+        ctx.stroke();
     }
 }
 
-function syncFromRange(name){ const val=document.getElementById(name+'Range').value; document.getElementById(name+'Input').value=val; document.getElementById(name+'Val')&&(document.getElementById(name+'Val').textContent=val); draw();}
-function syncFromInput(name){ const val=document.getElementById(name+'Input').value; document.getElementById(name+'Range').value=val; document.getElementById(name+'Val')&&(document.getElementById(name+'Val').textContent=val); draw();}
-function resetView(){ scale=10; cx=300; cy=canvas.height/2; document.getElementById('scaleVal').textContent=scale.toFixed(2); draw(); }
+/* ==== UI ==== */
+function syncFromRange(n){
+    window[n+'Input'].value=window[n+'Range'].value;
+    window[n+'Val'].textContent=window[n+'Range'].value;
+    draw();
+}
+function syncFromInput(n){
+    window[n+'Range'].value=window[n+'Input'].value;
+    window[n+'Val'].textContent=window[n+'Input'].value;
+    draw();
+}
+function resetView(){
+    scale=7; cx=canvas.width/4; cy=canvas.height/2;
+    scaleVal.textContent = scale.toFixed(2);
+    draw();
+}
 
-canvas.addEventListener('mousedown', e=>{isDragging=true; startX=e.clientX; startY=e.clientY;});
-canvas.addEventListener('mousemove', e=>{if(isDragging){const dx=e.clientX-startX, dy=e.clientY-startY; cx+=dx; cy+=dy; startX=e.clientX; startY=e.clientY; draw();}});
-canvas.addEventListener('mouseup', ()=>{isDragging=false;});
-canvas.addEventListener('mouseleave', ()=>{isDragging=false;});
-canvas.addEventListener('wheel', e=>{ e.preventDefault();
-    const mouseX=e.clientX-canvas.getBoundingClientRect().left;
-    const mouseY=e.clientY-canvas.getBoundingClientRect().top;
-    const worldXBefore=(mouseX-cx)/scale;
-    const worldYBefore=-(mouseY-cy)/scale;
-    const zoomFactor=e.deltaY<0?1.05:0.95;
-    const newScale=Math.min(maxScale,Math.max(minScale,scale*zoomFactor));
-    cx=mouseX-worldXBefore*newScale;
-    cy=mouseY+worldYBefore*newScale;
-    scale=newScale;
-    document.getElementById('scaleVal').textContent=scale.toFixed(2);
+/* ==== МЫШЬ + ЗУМ ==== */
+canvas.addEventListener('mousedown',e=>{isDragging=true;sx0=e.clientX;sy0=e.clientY;});
+canvas.addEventListener('mousemove',e=>{
+    if(isDragging){
+        cx+=e.clientX-sx0;
+        cy+=e.clientY-sy0;
+        sx0=e.clientX; sy0=e.clientY;
+        draw();
+    }
+});
+canvas.addEventListener('mouseup',()=>isDragging=false);
+canvas.addEventListener('mouseleave',()=>isDragging=false);
+
+canvas.addEventListener('wheel', e=>{
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.05 : 0.95;
+    const mx = e.offsetX;
+    const my = e.offsetY;
+    const x0 = (mx - cx)/scale;
+    const y0 = (my - cy)/scale;
+
+    scale = Math.min(maxScale, Math.max(minScale, scale*factor));
+    cx = mx - x0*scale;
+    cy = my - y0*scale;
+    scaleVal.textContent = scale.toFixed(2);
     draw();
 });
 
-draw();
+/* ==== АВТОМАТИЧЕСКИЙ РАЗМЕР CANVAS ==== */
+function resizeCanvas(){
+    const rect = controls.getBoundingClientRect();
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight - rect.bottom;
+
+    // установка начальной позиции камеры как по умолчанию
+    cx = canvas.width / 4; // смещение влево, как в resetView
+    cy = canvas.height / 2;
+
+    draw();
+}
+
+window.addEventListener('load', resizeCanvas);
+window.addEventListener('resize', resizeCanvas);
+
 </script>
 </body>
 </html>
