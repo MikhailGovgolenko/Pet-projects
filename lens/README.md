@@ -1,6 +1,6 @@
 <h1 align="center">Симметричная линза без сферической аберрации</h1>
 
-<p align="center"> https://mikhailgovgolenko.github.io/Lense/ </p>
+<p align="center"> https://mikhailgovgolenko.github.io/Pet-projects/lens </p>
 
 
 <p align="center">
