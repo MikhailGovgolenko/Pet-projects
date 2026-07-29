@@ -1,0 +1,1938 @@
+<!doctype html>
+<html lang="ru">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>3D Electromagnetic Wave Simulator</title>
+        <style>
+            :root {
+                --bg: #07070a;
+                --text: #ffffff;
+                --text-sec: rgba(255, 255, 255, 0.55);
+                --accent: #00d4ff;
+                --glass-bg: rgba(255, 255, 255, 0.035);
+                --glass-border: rgba(255, 255, 255, 0.22);
+                --glass-shadow:
+                    0 8px 32px rgba(0, 0, 0, 0.25),
+                    inset 0 0.5px 0 rgba(255, 255, 255, 0.15);
+                --dropdown-bg: rgba(25, 25, 35, 0.94);
+                --dropdown-hover: rgba(255, 255, 255, 0.08);
+                --input-bg: rgba(255, 255, 255, 0.05);
+            }
+
+            @media (prefers-color-scheme: light) {
+                :root {
+                    --bg: #f4f6fa;
+                    --text: #0b0b12;
+                    --text-sec: rgba(0, 0, 0, 0.45);
+                    --accent: #0077b6;
+                    --glass-bg: rgba(255, 255, 255, 0.42);
+                    --glass-border: rgba(255, 255, 255, 0.55);
+                    --glass-shadow:
+                        0 8px 32px rgba(0, 0, 0, 0.06),
+                        inset 0 0.5px 0 rgba(255, 255, 255, 0.6);
+                    --dropdown-bg: rgba(255, 255, 255, 0.96);
+                    --dropdown-hover: rgba(0, 0, 0, 0.06);
+                    --input-bg: rgba(0, 0, 0, 0.04);
+                }
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
+            body {
+                margin: 0;
+                overflow: hidden;
+                background: var(--bg);
+                color: var(--text);
+                font-family:
+                    -apple-system, BlinkMacSystemFont, "SF Pro Display",
+                    "Segoe UI", Roboto, sans-serif;
+                transition: background 0.4s ease;
+            }
+
+            #canvas-container {
+                position: fixed;
+                inset: 0;
+                z-index: 0;
+            }
+
+            .glass {
+                background: var(--glass-bg);
+                backdrop-filter: blur(60px) saturate(240%);
+                -webkit-backdrop-filter: blur(60px) saturate(240%);
+                border: 1px solid var(--glass-border);
+                box-shadow: var(--glass-shadow);
+                border-radius: 24px;
+                transition:
+                    background 0.4s,
+                    border-color 0.4s,
+                    box-shadow 0.4s;
+            }
+
+            #controls {
+                position: absolute;
+                left: 20px;
+                top: 20px;
+                width: 380px;
+                padding: 20px;
+                z-index: 10;
+                overflow: visible;
+                transition:
+                    transform 0.45s cubic-bezier(0.32, 0.72, 0, 1),
+                    opacity 0.35s ease;
+            }
+
+            #controls.collapsed {
+                transform: translateX(calc(-100% - 40px));
+                opacity: 0;
+                pointer-events: none;
+            }
+
+            .panel-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 14px;
+            }
+
+            h2 {
+                margin: 0;
+                font-size: 17px;
+                font-weight: 700;
+                letter-spacing: -0.3px;
+            }
+
+            .panel-toggle {
+                width: 28px;
+                height: 28px;
+                border-radius: 50%;
+                background: var(--input-bg);
+                border: 1px solid var(--glass-border);
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
+                transition:
+                    background 0.2s,
+                    transform 0.2s;
+            }
+            .panel-toggle:hover {
+                background: rgba(128, 128, 128, 0.15);
+                transform: scale(1.08);
+            }
+            .panel-toggle:active {
+                transform: scale(0.95);
+            }
+
+            .panel-toggle span {
+                display: block;
+                width: 6px;
+                height: 6px;
+                border-left: 2px solid currentColor;
+                border-bottom: 2px solid currentColor;
+                transform: rotate(45deg);
+                margin-left: 2px;
+                opacity: 0.8;
+            }
+
+            #expandBtn {
+                position: fixed;
+                left: 20px;
+                top: 20px;
+                width: 44px;
+                height: 44px;
+                border-radius: 50%;
+                display: none;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                z-index: 20;
+                transition: transform 0.2s;
+            }
+            #expandBtn:hover {
+                transform: scale(1.08);
+            }
+            #expandBtn:active {
+                transform: scale(0.95);
+            }
+
+            #expandBtn span {
+                display: block;
+                width: 7px;
+                height: 7px;
+                border-right: 2px solid currentColor;
+                border-top: 2px solid currentColor;
+                transform: rotate(45deg);
+                margin-right: 2px;
+                opacity: 0.8;
+            }
+
+            .section {
+                margin-bottom: 12px;
+                padding-bottom: 8px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            }
+            @media (prefers-color-scheme: light) {
+                .section {
+                    border-bottom-color: rgba(0, 0, 0, 0.05);
+                }
+            }
+            .section:last-child {
+                border-bottom: none;
+                margin-bottom: 0;
+                padding-bottom: 0;
+            }
+
+            label {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin: 7px 0;
+                font-size: 13px;
+                font-weight: 500;
+                gap: 10px;
+            }
+
+            label .label-text {
+                flex-shrink: 0;
+                color: var(--text-sec);
+            }
+
+            .input-wrap {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                flex: 1;
+                justify-content: flex-end;
+            }
+
+            input[type="range"] {
+                -webkit-appearance: none;
+                width: 150px;
+                height: 3px;
+                background: rgba(255, 255, 255, 0.12);
+                border-radius: 2px;
+                outline: none;
+                cursor: pointer;
+            }
+            @media (prefers-color-scheme: light) {
+                input[type="range"] {
+                    background: rgba(0, 0, 0, 0.08);
+                }
+            }
+
+            input[type="range"]::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                width: 18px;
+                height: 18px;
+                border-radius: 50%;
+                background: #fff;
+                box-shadow:
+                    0 2px 10px rgba(0, 0, 0, 0.2),
+                    0 0 0 1px rgba(0, 0, 0, 0.04);
+                cursor: pointer;
+                transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+            }
+            input[type="range"]::-webkit-slider-thumb:hover {
+                transform: scale(1.15);
+            }
+            input[type="range"]::-webkit-slider-thumb:active {
+                transform: scale(0.95);
+            }
+
+            .val {
+                display: inline-block;
+                width: 42px;
+                text-align: right;
+                font-family: "SF Mono", SFMono-Regular, monospace;
+                font-size: 12px;
+                color: var(--accent);
+                font-weight: 700;
+                letter-spacing: 0.3px;
+            }
+
+            /* Custom select — Apple style */
+            .custom-select {
+                position: relative;
+                width: 100%;
+                font-size: 13px;
+                font-weight: 500;
+                z-index: 50;
+            }
+
+            .select-trigger {
+                padding: 9px 14px;
+                border-radius: 14px;
+                background: var(--input-bg);
+                border: 1px solid var(--glass-border);
+                cursor: pointer;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                transition: background 0.2s;
+                font-size: 13px;
+            }
+
+            .select-trigger::after {
+                content: "";
+                width: 6px;
+                height: 6px;
+                border-right: 2px solid currentColor;
+                border-bottom: 2px solid currentColor;
+                transform: rotate(45deg);
+                transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+                opacity: 0.55;
+                margin-right: 2px;
+            }
+
+            .custom-select.open .select-trigger::after {
+                transform: rotate(-135deg);
+                margin-top: 2px;
+            }
+
+            .select-options {
+                position: absolute;
+                top: calc(100% + 6px);
+                left: 0;
+                right: 0;
+                background: var(--dropdown-bg);
+                backdrop-filter: blur(40px) saturate(220%);
+                -webkit-backdrop-filter: blur(40px) saturate(220%);
+                border: 1px solid var(--glass-border);
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+                border-radius: 18px;
+                z-index: 100;
+                opacity: 0;
+                transform: translateY(-8px) scale(0.96);
+                pointer-events: none;
+                transition:
+                    opacity 0.2s ease,
+                    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+                overflow: hidden;
+                padding: 6px 0;
+                max-height: 280px;
+                overflow-y: auto;
+                overscroll-behavior: contain;
+                scrollbar-width: thin;
+                scrollbar-color: rgba(128, 128, 128, 0.25) transparent;
+            }
+
+            .select-options::-webkit-scrollbar {
+                width: 5px;
+            }
+            .select-options::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            .select-options::-webkit-scrollbar-thumb {
+                background: rgba(128, 128, 128, 0.25);
+                border-radius: 10px;
+            }
+            .select-options::-webkit-scrollbar-thumb:hover {
+                background: rgba(128, 128, 128, 0.4);
+            }
+
+            .custom-select.open .select-options {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+                pointer-events: auto;
+            }
+
+            .select-options div {
+                padding: 10px 16px;
+                cursor: pointer;
+                transition: background 0.1s ease;
+                font-size: 13px;
+                color: var(--text);
+                margin: 0 6px;
+                border-radius: 10px;
+            }
+
+            .select-options div:hover {
+                background: var(--dropdown-hover);
+            }
+
+            .select-options div.selected {
+                color: var(--accent);
+                font-weight: 700;
+                background: var(--dropdown-hover);
+            }
+
+            .toggle-row {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin: 5px 0;
+                font-size: 13px;
+                font-weight: 500;
+            }
+
+            .switch {
+                position: relative;
+                width: 38px;
+                height: 20px;
+            }
+
+            .switch input {
+                opacity: 0;
+                width: 0;
+                height: 0;
+            }
+
+            .slider {
+                position: absolute;
+                cursor: pointer;
+                inset: 0;
+                background: rgba(255, 255, 255, 0.15);
+                border-radius: 20px;
+                transition: 0.25s;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            }
+            @media (prefers-color-scheme: light) {
+                .slider {
+                    background: rgba(0, 0, 0, 0.1);
+                    border-color: rgba(0, 0, 0, 0.12);
+                }
+            }
+
+            .slider::before {
+                position: absolute;
+                content: "";
+                height: 14px;
+                width: 14px;
+                left: 2px;
+                bottom: 2px;
+                background: white;
+                border-radius: 50%;
+                transition: 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+                box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+            }
+
+            input:checked + .slider {
+                background: linear-gradient(135deg, #00d4ff, #0077b6);
+                border-color: transparent;
+            }
+
+            input:checked + .slider::before {
+                transform: translateX(18px);
+            }
+
+            #legend {
+                position: absolute;
+                right: 20px;
+                top: 20px;
+                padding: 14px 18px;
+                z-index: 10;
+                font-size: 12.5px;
+                font-weight: 500;
+            }
+
+            #legend h4 {
+                margin: 0 0 10px 0;
+                font-size: 14px;
+                font-weight: 700;
+                opacity: 0.9;
+            }
+
+            .legend-item {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                margin: 7px 0;
+            }
+
+            .dot {
+                width: 11px;
+                height: 11px;
+                border-radius: 50%;
+                flex-shrink: 0;
+                box-shadow: 0 0 6px currentColor;
+            }
+
+            #info {
+                position: absolute;
+                right: 20px;
+                bottom: 20px;
+                width: 300px;
+                padding: 16px;
+                z-index: 10;
+                font-size: 12.5px;
+                line-height: 1.5;
+            }
+
+            #info h4 {
+                margin: 0 0 8px 0;
+                font-size: 11px;
+                color: var(--accent);
+                text-transform: uppercase;
+                letter-spacing: 0.8px;
+                font-weight: 700;
+            }
+
+            #info .formula {
+                font-family: "Times New Roman", Times, serif;
+                font-style: italic;
+                font-size: 14px;
+                margin: 6px 0;
+                opacity: 0.95;
+            }
+
+            #info .desc {
+                color: var(--text-sec);
+                margin-top: 6px;
+                font-size: 12px;
+                line-height: 1.4;
+            }
+
+            #wave-badge {
+                position: absolute;
+                top: 24px;
+                left: 50%;
+                transform: translateX(-50%);
+                padding: 10px 26px;
+                border-radius: 100px;
+                font-size: 13.5px;
+                font-weight: 700;
+                letter-spacing: 0.2px;
+                z-index: 10;
+                pointer-events: none;
+                white-space: nowrap;
+            }
+
+            @media (max-width: 960px) {
+                #controls {
+                    width: 340px;
+                }
+                #info {
+                    width: 240px;
+                }
+            }
+            @media (max-width: 720px) {
+                #info,
+                #legend {
+                    display: none;
+                }
+            }
+        </style>
+    </head>
+
+    <body>
+        <div id="canvas-container"></div>
+
+        <div id="wave-badge" class="glass">
+            Плоская волна · Линейная поляризация
+        </div>
+
+        <div id="expandBtn" class="glass" title="Развернуть панель">
+            <span></span>
+        </div>
+
+        <div id="controls" class="glass">
+            <div class="panel-header">
+                <h2>Электромагнитная волна</h2>
+                <div
+                    class="panel-toggle"
+                    id="panelToggle"
+                    title="Свернуть панель"
+                >
+                    <span></span>
+                </div>
+            </div>
+
+            <div class="section">
+                <label style="display: block; margin-bottom: 4px">
+                    <span
+                        class="label-text"
+                        style="margin-bottom: 4px; display: block"
+                        >Пресет</span
+                    >
+                    <div class="custom-select" id="presetSelect">
+                        <div class="select-trigger" data-value="linear">
+                            Линейная поляризация
+                        </div>
+                        <div class="select-options">
+                            <div data-value="linear" class="selected">
+                                Линейная поляризация
+                            </div>
+                            <div data-value="circularR">
+                                Круговая поляризация (R)
+                            </div>
+                            <div data-value="circularL">
+                                Круговая поляризация (L)
+                            </div>
+                            <div data-value="elliptic">
+                                Эллиптическая поляризация
+                            </div>
+                            <div data-value="standing">Стоячая волна</div>
+                            <div data-value="interference">
+                                Интерференция 2D
+                            </div>
+                            <div data-value="spherical">Сферическая волна</div>
+                            <div data-value="plane_spherical">
+                                Рассеяние плоская+сферическая
+                            </div>
+                            <div data-value="reflection">
+                                Отражение от плоскости
+                            </div>
+                        </div>
+                    </div>
+                </label>
+            </div>
+
+            <div class="section">
+                <label>
+                    <span class="label-text">Волновое число k</span>
+                    <div class="input-wrap">
+                        <input
+                            id="k"
+                            type="range"
+                            min="0.5"
+                            max="5"
+                            step="0.1"
+                            value="2"
+                        />
+                        <span class="val" id="kv">2.0</span>
+                    </div>
+                </label>
+                <label>
+                    <span class="label-text">Угловая частота ω</span>
+                    <div class="input-wrap">
+                        <input
+                            id="omega"
+                            type="range"
+                            min="0.5"
+                            max="8"
+                            step="0.1"
+                            value="3"
+                        />
+                        <span class="val" id="omegav">3.0</span>
+                    </div>
+                </label>
+                <label>
+                    <span class="label-text">Амплитуда E₀</span>
+                    <div class="input-wrap">
+                        <input
+                            id="amp"
+                            type="range"
+                            min="0.2"
+                            max="3"
+                            step="0.1"
+                            value="1"
+                        />
+                        <span class="val" id="ampv">1.0</span>
+                    </div>
+                </label>
+                <label id="angleLabel" style="display: none">
+                    <span class="label-text">Угол падения θ</span>
+                    <div class="input-wrap">
+                        <input
+                            id="angle"
+                            type="range"
+                            min="5"
+                            max="85"
+                            step="1"
+                            value="45"
+                        />
+                        <span class="val" id="angleV">45°</span>
+                    </div>
+                </label>
+            </div>
+
+            <div class="section">
+                <div class="toggle-row">
+                    <span>Гауссов пучок</span>
+                    <label class="switch">
+                        <input id="beamMode" type="checkbox" />
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <label>
+                    <span class="label-text">Радиус пучка w</span>
+                    <div class="input-wrap">
+                        <input
+                            id="beamWidth"
+                            type="range"
+                            min="0.6"
+                            max="5"
+                            step="0.1"
+                            value="1.5"
+                        />
+                        <span class="val" id="beamWidthV">1.5</span>
+                    </div>
+                </label>
+            </div>
+
+            <div class="section">
+                <div class="toggle-row">
+                    <span>Векторное поле</span>
+                    <label class="switch"
+                        ><input id="showField" type="checkbox" checked /><span
+                            class="slider"
+                        ></span
+                    ></label>
+                </div>
+                <div class="toggle-row">
+                    <span>Фронт волны</span>
+                    <label class="switch"
+                        ><input id="showFront" type="checkbox" checked /><span
+                            class="slider"
+                        ></span
+                    ></label>
+                </div>
+                <div class="toggle-row">
+                    <span>Линии E и B</span>
+                    <label class="switch"
+                        ><input id="showLines" type="checkbox" checked /><span
+                            class="slider"
+                        ></span
+                    ></label>
+                </div>
+                <div class="toggle-row">
+                    <span>Стрелки на волне</span>
+                    <label class="switch"
+                        ><input
+                            id="showWaveArrows"
+                            type="checkbox"
+                            checked /><span class="slider"></span
+                    ></label>
+                </div>
+                <div class="toggle-row">
+                    <span>Вектор k</span>
+                    <label class="switch"
+                        ><input id="showK" type="checkbox" checked /><span
+                            class="slider"
+                        ></span
+                    ></label>
+                </div>
+                <div class="toggle-row">
+                    <span>Огибающая пучка</span>
+                    <label class="switch"
+                        ><input
+                            id="showEnvelope"
+                            type="checkbox"
+                            checked /><span class="slider"></span
+                    ></label>
+                </div>
+            </div>
+        </div>
+
+        <div id="legend" class="glass">
+            <h4>Обозначения</h4>
+            <div class="legend-item">
+                <span
+                    class="dot"
+                    style="background: #00d4ff; color: #00d4ff"
+                ></span
+                >E — электрическое поле
+            </div>
+            <div class="legend-item">
+                <span
+                    class="dot"
+                    style="background: #ff3366; color: #ff3366"
+                ></span
+                >B — магнитное поле
+            </div>
+            <div class="legend-item">
+                <span
+                    class="dot"
+                    style="background: #ffd700; color: #ffd700"
+                ></span
+                >k — волновой вектор
+            </div>
+            <div class="legend-item">
+                <span
+                    class="dot"
+                    style="background: #00ff88; color: #00ff88"
+                ></span
+                >1/e огибающая
+            </div>
+        </div>
+
+        <div id="info" class="glass">
+            <h4>Физика процесса</h4>
+            <div id="info-content">
+                <div class="formula">E = E₀ cos(kz − ωt) x̂</div>
+                <div class="formula">B = k̂ × E</div>
+                <div class="desc">
+                    Бегущая плоская волна. Векторы E, B и k образуют правую
+                    тройку.
+                </div>
+            </div>
+        </div>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+        <script>
+            // ==========================
+            // Сцена
+            // ==========================
+            const container = document.getElementById("canvas-container");
+            const scene = new THREE.Scene();
+
+            let currentIsLight = window.matchMedia(
+                "(prefers-color-scheme: light)",
+            ).matches;
+            scene.background = new THREE.Color(
+                currentIsLight ? 0xf4f6fa : 0x07070a,
+            );
+
+            const camera = new THREE.PerspectiveCamera(
+                45,
+                innerWidth / innerHeight,
+                0.1,
+                1000,
+            );
+            camera.position.set(10, 8, 10);
+
+            const renderer = new THREE.WebGLRenderer({
+                antialias: true,
+                alpha: true,
+            });
+            renderer.setSize(innerWidth, innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            const controls = new THREE.OrbitControls(
+                camera,
+                renderer.domElement,
+            );
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.minDistance = 3;
+            controls.maxDistance = 50;
+
+            let gridHelper = null;
+            function buildGrid() {
+                if (gridHelper) scene.remove(gridHelper);
+                const gridColor = currentIsLight ? 0xd0d4dc : 0x2a2a35;
+                const gridSub = currentIsLight ? 0xe8ebf0 : 0x15151c;
+                gridHelper = new THREE.GridHelper(20, 20, gridColor, gridSub);
+                scene.add(gridHelper);
+            }
+            buildGrid();
+            scene.add(new THREE.AxesHelper(2.5));
+
+            // ==========================
+            // Параметры
+            // ==========================
+            const params = {
+                k: 2,
+                omega: 3,
+                amp: 1,
+                preset: "linear",
+                beamMode: false,
+                beamWidth: 1.5,
+                angle: 45,
+            };
+
+            let waves = [];
+            function V(x, y, z) {
+                return new THREE.Vector3(x, y, z);
+            }
+
+            // ==========================
+            // Пресеты
+            // ==========================
+            const badgeNames = {
+                linear: "Плоская волна · Линейная поляризация",
+                circularR: "Плоская волна · Круговая поляризация (R)",
+                circularL: "Плоская волна · Круговая поляризация (L)",
+                elliptic: "Плоская волна · Эллиптическая поляризация",
+                standing: "Стоячая волна",
+                interference: "Интерференция плоских волн",
+                spherical: "Сферическая волна",
+                plane_spherical: "Рассеяние: плоская + сферическая",
+                reflection: "Отражение от плоскости",
+            };
+
+            function loadPreset() {
+                const type = params.preset;
+                waves = [];
+
+                const kz = V(0, 0, params.k);
+                const th = (params.angle * Math.PI) / 180;
+                const sinT = Math.sin(th);
+                const cosT = Math.cos(th);
+
+                if (type === "linear") {
+                    waves.push({
+                        A: V(1, 0, 0),
+                        K: kz.clone(),
+                        omega: params.omega,
+                        phase: 0,
+                        desc: "Бегущая плоская волна с линейной поляризацией. Векторы E, B и k образуют правую тройку.",
+                        formulas: ["E = E₀ cos(kz − ωt) x̂", "B = k̂ × E"],
+                    });
+                } else if (type === "circularR") {
+                    waves.push({
+                        A: V(1, 0, 0),
+                        K: kz.clone(),
+                        omega: params.omega,
+                        phase: 0,
+                    });
+                    waves.push({
+                        A: V(0, 1, 0),
+                        K: kz.clone(),
+                        omega: params.omega,
+                        phase: -Math.PI / 2,
+                    });
+                    updateInfo(
+                        "Правая круговая поляризация (R). Конец вектора E описывает круг по часовой стрелке при взгляде навстречу волне.",
+                        ["E = E₀[cos(kz−ωt) x̂ + sin(kz−ωt) ŷ]", "B = k̂ × E"],
+                    );
+                } else if (type === "circularL") {
+                    waves.push({
+                        A: V(1, 0, 0),
+                        K: kz.clone(),
+                        omega: params.omega,
+                        phase: 0,
+                    });
+                    waves.push({
+                        A: V(0, 1, 0),
+                        K: kz.clone(),
+                        omega: params.omega,
+                        phase: Math.PI / 2,
+                    });
+                    updateInfo(
+                        "Левая круговая поляризация (L). Конец вектора E описывает круг против часовой стрелки при взгляде навстречу волне.",
+                        ["E = E₀[cos(kz−ωt) x̂ − sin(kz−ωt) ŷ]", "B = k̂ × E"],
+                    );
+                } else if (type === "elliptic") {
+                    waves.push({
+                        A: V(2, 0, 0),
+                        K: kz.clone(),
+                        omega: params.omega,
+                        phase: 0,
+                    });
+                    waves.push({
+                        A: V(0, 1, 0),
+                        K: kz.clone(),
+                        omega: params.omega,
+                        phase: -Math.PI / 2,
+                    });
+                    updateInfo(
+                        "Эллиптическая поляризация. Амплитуды по осям x и y различны, конец вектора E описывает эллипс.",
+                        ["Eₓ = 2E₀ cos(kz−ωt)", "Eᵧ = E₀ sin(kz−ωt)"],
+                    );
+                } else if (type === "standing") {
+                    waves.push({
+                        A: V(1, 0, 0),
+                        K: kz.clone(),
+                        omega: params.omega,
+                        phase: 0,
+                    });
+                    waves.push({
+                        A: V(1, 0, 0),
+                        K: V(0, 0, -params.k),
+                        omega: params.omega,
+                        phase: 0,
+                    });
+                    updateInfo(
+                        "Стоячая волна. Узлы E совпадают с пучностями B. Поля сдвинуты по фазе на π/2 в пространстве и времени.",
+                        [
+                            "E = 2E₀ cos(kz) cos(ωt) x̂",
+                            "B = (2E₀/c) sin(kz) sin(ωt) ŷ",
+                        ],
+                    );
+                } else if (type === "interference") {
+                    waves.push({
+                        A: V(1, 0, 0),
+                        K: kz.clone(),
+                        omega: params.omega,
+                        phase: 0,
+                    });
+                    waves.push({
+                        A: V(1, 0, 0),
+                        K: V(params.k * 0.5, 0, params.k * 0.866),
+                        omega: params.omega,
+                        phase: 0,
+                    });
+                    updateInfo(
+                        "Интерференция двух плоских волн с углом 60° между волновыми векторами. Образуется пространственно-временная картина биений.",
+                        ["E = E₁ + E₂", "k₁ · k₂ = |k|² cos 60°"],
+                    );
+                } else if (type === "spherical") {
+                    updateInfo(
+                        "Сферическая волна от точечного источника. Поля затухают как 1/r. E ⊥ r, B ⊥ r, E ⊥ B.",
+                        ["E = E₀ (sin(kr−ωt)/r) θ̂", "B = E₀ (sin(kr−ωt)/r) φ̂"],
+                    );
+                } else if (type === "plane_spherical") {
+                    updateInfo(
+                        "Суперпозиция плоской волны и сферической (модель рассеяния). Векторное поле показывает интерференцию падающей и рассеянной волн.",
+                        ["E = E_plane + E_sphere", "B = B_plane + B_sphere"],
+                    );
+                } else if (type === "reflection") {
+                    // Падающая: k_inc = k(sinθ, 0, -cosθ), E_inc = E0 ŷ (s-поляризация)
+                    // Отражённая: k_ref = k(sinθ, 0, cosθ), E_ref = -E0 ŷ (идеальный проводник, фаза π)
+                    const kMag = params.k;
+                    waves.push({
+                        A: V(0, 1, 0),
+                        K: V(kMag * sinT, 0, -kMag * cosT),
+                        omega: params.omega,
+                        phase: 0,
+                    });
+                    waves.push({
+                        A: V(0, -1, 0),
+                        K: V(kMag * sinT, 0, kMag * cosT),
+                        omega: params.omega,
+                        phase: 0,
+                    });
+                    updateInfo(
+                        `Отражение s-поляризованной волны от идеальной плоской поверхности под углом ${params.angle}°. В первой среде падающая и отражённая волны интерферируют, образуя стоячую структуру вдоль нормали и бегущую волну вдоль поверхности.`,
+                        [
+                            "E_inc = E₀ e^{i(ωt−kᵢ·r)} ŷ",
+                            "E_ref = −E₀ e^{i(ωt−kᵣ·r)} ŷ",
+                            "E = −2E₀ sin(kz cosθ) sin(ωt−kx sinθ) ŷ",
+                        ],
+                    );
+                }
+
+                if (type === "linear")
+                    updateInfo(waves[0].desc, waves[0].formulas);
+
+                document.getElementById("wave-badge").textContent =
+                    badgeNames[type] || "Волна";
+
+                // Показываем/скрываем угол падения
+                const angleLabel = document.getElementById("angleLabel");
+                if (angleLabel)
+                    angleLabel.style.display =
+                        type === "reflection" ? "flex" : "none";
+
+                rebuildSceneObjects();
+            }
+
+            function updateInfo(desc, formulas) {
+                const el = document.getElementById("info-content");
+                el.innerHTML =
+                    formulas
+                        .map((f) => `<div class="formula">${f}</div>`)
+                        .join("") + `<div class="desc">${desc}</div>`;
+            }
+
+            // ==========================
+            // Вычисление полей
+            // ==========================
+            function getPlaneFields(r, t) {
+                let E = V(0, 0, 0),
+                    B = V(0, 0, 0);
+                waves.forEach((w) => {
+                    const kDir = w.K.clone().normalize();
+                    const phase = w.K.dot(r) - w.omega * t + w.phase;
+                    const cosPhi = Math.cos(phase);
+
+                    let envelope = 1;
+                    if (params.beamMode && params.preset !== "reflection") {
+                        const rParallel = kDir
+                            .clone()
+                            .multiplyScalar(r.dot(kDir));
+                        const rPerp = new THREE.Vector3().subVectors(
+                            r,
+                            rParallel,
+                        );
+                        const rho = rPerp.length();
+                        const w0 = Math.max(params.beamWidth, 0.3);
+                        envelope = Math.exp(-(rho * rho) / (w0 * w0));
+                    }
+                    // Для отражения: огибающая не применяется (плоская волна заполняет всё пространство)
+                    if (params.preset === "reflection" && r.z > 0.05)
+                        envelope = 0; // затухание за границей? Нет, отражение — волна в полупространстве z<0.
+                    // Но waves описывают поле везде. Для визуализации оставим везде, но добавим плоскость.
+
+                    const Ei = w.A.clone().multiplyScalar(
+                        params.amp * cosPhi * envelope,
+                    );
+                    E.add(Ei);
+                    const Bi = new THREE.Vector3().crossVectors(kDir, Ei);
+                    B.add(Bi);
+                });
+                return { E, B };
+            }
+
+            function getSphericalFields(r, t) {
+                const rLen = r.length();
+                if (rLen < 0.2) return { E: V(0, 0, 0), B: V(0, 0, 0) };
+
+                const eR = r.clone().normalize();
+                const cosTheta = eR.z;
+                const sinTheta = Math.sqrt(
+                    Math.max(0, 1 - cosTheta * cosTheta),
+                );
+                const phi = Math.atan2(eR.y, eR.x);
+
+                const eTheta = V(
+                    Math.cos(phi) * cosTheta,
+                    Math.sin(phi) * cosTheta,
+                    -sinTheta,
+                ).normalize();
+                const ePhi = V(-Math.sin(phi), Math.cos(phi), 0).normalize();
+
+                const phase = params.k * rLen - params.omega * t;
+                const amp = (params.amp * Math.sin(phase)) / rLen;
+
+                return {
+                    E: eTheta.clone().multiplyScalar(amp),
+                    B: ePhi.clone().multiplyScalar(amp),
+                };
+            }
+
+            function getFields(r, t) {
+                if (params.preset === "spherical")
+                    return getSphericalFields(r, t);
+                if (params.preset === "plane_spherical") {
+                    const sph = getSphericalFields(r, t);
+                    const phase = params.k * r.z - params.omega * t;
+                    const kDir = V(0, 0, 1);
+                    const Eplane = V(1, 0, 0).multiplyScalar(
+                        params.amp * Math.cos(phase),
+                    );
+                    const Bplane = new THREE.Vector3().crossVectors(
+                        kDir,
+                        Eplane,
+                    );
+                    return { E: sph.E.add(Eplane), B: sph.B.add(Bplane) };
+                }
+                return getPlaneFields(r, t);
+            }
+
+            // ==========================
+            // Векторное поле
+            // ==========================
+            const fieldArrows = [];
+            const fieldSize = 4;
+            const fieldStep = 1.2;
+
+            for (let x = -fieldSize; x <= fieldSize; x += fieldStep) {
+                for (let y = -fieldSize; y <= fieldSize; y += fieldStep) {
+                    for (let z = -fieldSize; z <= fieldSize; z += fieldStep) {
+                        const pos = V(x, y, z);
+                        const eArr = new THREE.ArrowHelper(
+                            V(1, 0, 0),
+                            pos,
+                            0.1,
+                            0x00d4ff,
+                            0.12,
+                            0.06,
+                        );
+                        const bArr = new THREE.ArrowHelper(
+                            V(1, 0, 0),
+                            pos,
+                            0.1,
+                            0xff3366,
+                            0.12,
+                            0.06,
+                        );
+                        scene.add(eArr);
+                        scene.add(bArr);
+                        fieldArrows.push({ pos, E: eArr, B: bArr });
+                    }
+                }
+            }
+
+            // ==========================
+            // Линии волн
+            // ==========================
+            const N = 300;
+            const L = 10;
+
+            function createLine(color) {
+                const geo = new THREE.BufferGeometry();
+                geo.setAttribute(
+                    "position",
+                    new THREE.BufferAttribute(new Float32Array(N * 3), 3),
+                );
+                return new THREE.Line(
+                    geo,
+                    new THREE.LineBasicMaterial({
+                        color,
+                        transparent: true,
+                        opacity: 0.9,
+                    }),
+                );
+            }
+
+            const lineE = createLine(0x00d4ff);
+            const lineB = createLine(0xff3366);
+            scene.add(lineE);
+            scene.add(lineB);
+
+            // Сферические лучи
+            const sphericalLineSets = [];
+            const sphericalDirs = [
+                V(1, 0, 0),
+                V(0, 1, 0),
+                V(0, 0, 1),
+                V(-1, 0, 0),
+                V(0, -1, 0),
+                V(0, 0, -1),
+                V(1, 1, 0).normalize(),
+                V(1, -1, 0).normalize(),
+                V(-1, 1, 0).normalize(),
+                V(-1, -1, 0).normalize(),
+                V(1, 0, 1).normalize(),
+                V(1, 0, -1).normalize(),
+                V(0, 1, 1).normalize(),
+                V(0, 1, -1).normalize(),
+            ];
+
+            function buildSphericalLines() {
+                sphericalLineSets.forEach((ls) => {
+                    scene.remove(ls.lineE);
+                    scene.remove(ls.lineB);
+                });
+                sphericalLineSets.length = 0;
+                sphericalDirs.forEach((dir) => {
+                    const le = createLine(0x00d4ff);
+                    const lb = createLine(0xff3366);
+                    scene.add(le);
+                    scene.add(lb);
+                    sphericalLineSets.push({
+                        lineE: le,
+                        lineB: lb,
+                        geoE: le.geometry,
+                        geoB: lb.geometry,
+                        dir,
+                    });
+                });
+            }
+            buildSphericalLines();
+
+            // ==========================
+            // Стрелки на волне
+            // ==========================
+            let waveArrows = [];
+
+            function clearWaveArrows() {
+                waveArrows.forEach((wa) => {
+                    scene.remove(wa.eArrow);
+                    scene.remove(wa.bArrow);
+                });
+                waveArrows = [];
+            }
+
+            function buildWaveArrows() {
+                clearWaveArrows();
+                if (!document.getElementById("showWaveArrows").checked) return;
+
+                if (params.preset === "spherical") {
+                    sphericalDirs.slice(0, 8).forEach((dir) => {
+                        for (let i = 1; i <= 4; i++) {
+                            const r = 0.8 + i * 1.4;
+                            const base = dir.clone().multiplyScalar(r);
+                            const eArr = new THREE.ArrowHelper(
+                                V(1, 0, 0),
+                                base,
+                                0.35,
+                                0x00d4ff,
+                                0.18,
+                                0.1,
+                            );
+                            const bArr = new THREE.ArrowHelper(
+                                V(1, 0, 0),
+                                base,
+                                0.35,
+                                0xff3366,
+                                0.18,
+                                0.1,
+                            );
+                            scene.add(eArr);
+                            scene.add(bArr);
+                            waveArrows.push({
+                                eArrow: eArr,
+                                bArrow: bArr,
+                                basePos: base.clone(),
+                            });
+                        }
+                    });
+                } else if (params.preset === "reflection") {
+                    // Вдоль падающего луча
+                    const th = (params.angle * Math.PI) / 180;
+                    const kDir = V(Math.sin(th), 0, -Math.cos(th));
+                    for (let i = 0; i < 12; i++) {
+                        const s = -4 + (i * 8) / 11;
+                        const base = kDir
+                            .clone()
+                            .multiplyScalar(s)
+                            .add(V(0, 0, -0.5)); // смещаем, чтобы не упирались в 0
+                        const eArr = new THREE.ArrowHelper(
+                            V(1, 0, 0),
+                            base,
+                            0.4,
+                            0x00d4ff,
+                            0.2,
+                            0.12,
+                        );
+                        const bArr = new THREE.ArrowHelper(
+                            V(1, 0, 0),
+                            base,
+                            0.4,
+                            0xff3366,
+                            0.2,
+                            0.12,
+                        );
+                        scene.add(eArr);
+                        scene.add(bArr);
+                        waveArrows.push({
+                            eArrow: eArr,
+                            bArrow: bArr,
+                            basePos: base.clone(),
+                        });
+                    }
+                } else if (params.preset !== "plane_spherical") {
+                    const kDir =
+                        waves.length > 0
+                            ? waves[0].K.clone().normalize()
+                            : V(0, 0, 1);
+                    for (let i = 0; i < 12; i++) {
+                        const s = -L / 2 + (i * L) / 11;
+                        const base = kDir.clone().multiplyScalar(s);
+                        const eArr = new THREE.ArrowHelper(
+                            V(1, 0, 0),
+                            base,
+                            0.4,
+                            0x00d4ff,
+                            0.2,
+                            0.12,
+                        );
+                        const bArr = new THREE.ArrowHelper(
+                            V(1, 0, 0),
+                            base,
+                            0.4,
+                            0xff3366,
+                            0.2,
+                            0.12,
+                        );
+                        scene.add(eArr);
+                        scene.add(bArr);
+                        waveArrows.push({
+                            eArrow: eArr,
+                            bArrow: bArr,
+                            basePos: base.clone(),
+                        });
+                    }
+                }
+            }
+
+            // ==========================
+            // Стрелка k
+            // ==========================
+            const kArrow = new THREE.ArrowHelper(
+                V(0, 0, 1),
+                V(0, 0, 0),
+                2.8,
+                0xffd700,
+                0.5,
+                0.3,
+            );
+            scene.add(kArrow);
+
+            // ==========================
+            // Огибающая пучка (кольца)
+            // ==========================
+            let envelopeRings = [];
+
+            function clearEnvelope() {
+                envelopeRings.forEach((r) => scene.remove(r));
+                envelopeRings = [];
+            }
+
+            function buildEnvelope() {
+                clearEnvelope();
+                if (
+                    !params.beamMode ||
+                    params.preset === "spherical" ||
+                    params.preset === "plane_spherical" ||
+                    params.preset === "reflection"
+                )
+                    return;
+                if (waves.length === 0) return;
+                if (!document.getElementById("showEnvelope").checked) return;
+
+                const kDir = waves[0].K.clone().normalize();
+                const count = 7;
+                for (let i = 0; i < count; i++) {
+                    const s = -L / 2 + (i * L) / (count - 1);
+                    const center = kDir.clone().multiplyScalar(s);
+                    const ring = new THREE.Mesh(
+                        new THREE.RingGeometry(
+                            params.beamWidth * 0.92,
+                            params.beamWidth,
+                            48,
+                        ),
+                        new THREE.MeshBasicMaterial({
+                            color: 0x00ff88,
+                            transparent: true,
+                            opacity: 0.25,
+                            side: THREE.DoubleSide,
+                            depthWrite: false,
+                        }),
+                    );
+                    ring.position.copy(center);
+                    ring.lookAt(center.clone().add(kDir));
+                    scene.add(ring);
+                    envelopeRings.push(ring);
+                }
+            }
+
+            // ==========================
+            // Плоскость отражения
+            // ==========================
+            let reflectorPlane = null;
+
+            function clearReflector() {
+                if (reflectorPlane) {
+                    scene.remove(reflectorPlane);
+                    reflectorPlane = null;
+                }
+            }
+
+            function buildReflector() {
+                clearReflector();
+                if (params.preset !== "reflection") return;
+                const geo = new THREE.PlaneGeometry(24, 24);
+                const mat = new THREE.MeshBasicMaterial({
+                    color: currentIsLight ? 0xffffff : 0x444455,
+                    transparent: true,
+                    opacity: 0.12,
+                    side: THREE.DoubleSide,
+                    depthWrite: false,
+                });
+                reflectorPlane = new THREE.Mesh(geo, mat);
+                reflectorPlane.position.set(0, 0, 0);
+                scene.add(reflectorPlane);
+            }
+
+            // ==========================
+            // Фронты волн (циклические, контрастный цвет)
+            // ==========================
+            let frontObjects = [];
+
+            function getFrontColor() {
+                return currentIsLight ? 0x0055aa : 0x88ccff;
+            }
+
+            function clearFronts() {
+                frontObjects.forEach((f) => scene.remove(f.mesh));
+                frontObjects = [];
+            }
+
+            function buildFronts() {
+                clearFronts();
+                if (!document.getElementById("showFront").checked) return;
+
+                const type = params.preset;
+                const col = getFrontColor();
+                const matBase = {
+                    transparent: true,
+                    opacity: 0.16,
+                    side: THREE.DoubleSide,
+                    depthWrite: false,
+                };
+
+                if (type === "spherical") {
+                    const mesh = new THREE.Mesh(
+                        new THREE.SphereGeometry(1, 64, 64),
+                        new THREE.MeshBasicMaterial({ color: col, ...matBase }),
+                    );
+                    scene.add(mesh);
+                    frontObjects.push({
+                        mesh,
+                        type: "sphere",
+                        v: params.omega / params.k,
+                        maxR: 10,
+                    });
+                } else if (type === "standing") {
+                    // Нет бегущего фронта
+                } else if (type === "interference") {
+                    waves.forEach((w, i) => {
+                        const c =
+                            i === 0
+                                ? col
+                                : currentIsLight
+                                  ? 0xaa0055
+                                  : 0xff88cc;
+                        const mesh = new THREE.Mesh(
+                            new THREE.PlaneGeometry(16, 16),
+                            new THREE.MeshBasicMaterial({
+                                color: c,
+                                ...matBase,
+                            }),
+                        );
+                        scene.add(mesh);
+                        const v = w.omega / w.K.length();
+                        frontObjects.push({
+                            mesh,
+                            type: "plane",
+                            kDir: w.K.clone().normalize(),
+                            v,
+                            cycle: 20,
+                            offset: i * 6.66,
+                        });
+                    });
+                } else if (type === "plane_spherical") {
+                    const meshP = new THREE.Mesh(
+                        new THREE.PlaneGeometry(16, 16),
+                        new THREE.MeshBasicMaterial({ color: col, ...matBase }),
+                    );
+                    scene.add(meshP);
+                    frontObjects.push({
+                        mesh: meshP,
+                        type: "plane",
+                        kDir: V(0, 0, 1),
+                        v: params.omega / params.k,
+                        cycle: 20,
+                        offset: 0,
+                    });
+                    const meshS = new THREE.Mesh(
+                        new THREE.SphereGeometry(1, 64, 64),
+                        new THREE.MeshBasicMaterial({
+                            color: currentIsLight ? 0xaa6600 : 0xffcc88,
+                            ...matBase,
+                        }),
+                    );
+                    scene.add(meshS);
+                    frontObjects.push({
+                        mesh: meshS,
+                        type: "sphere",
+                        v: params.omega / params.k,
+                        maxR: 8,
+                    });
+                } else if (type === "reflection") {
+                    // Падающий фронт
+                    const th = (params.angle * Math.PI) / 180;
+                    const kInc = V(Math.sin(th), 0, -Math.cos(th));
+                    const meshI = new THREE.Mesh(
+                        new THREE.PlaneGeometry(16, 16),
+                        new THREE.MeshBasicMaterial({ color: col, ...matBase }),
+                    );
+                    scene.add(meshI);
+                    frontObjects.push({
+                        mesh: meshI,
+                        type: "plane",
+                        kDir: kInc,
+                        v: params.omega / params.k,
+                        cycle: 20,
+                        offset: 0,
+                    });
+                    // Отражённый фронт
+                    const kRef = V(Math.sin(th), 0, Math.cos(th));
+                    const meshR = new THREE.Mesh(
+                        new THREE.PlaneGeometry(16, 16),
+                        new THREE.MeshBasicMaterial({
+                            color: currentIsLight ? 0xaa5500 : 0xffaa66,
+                            ...matBase,
+                        }),
+                    );
+                    scene.add(meshR);
+                    frontObjects.push({
+                        mesh: meshR,
+                        type: "plane",
+                        kDir: kRef,
+                        v: params.omega / params.k,
+                        cycle: 20,
+                        offset: 0,
+                    });
+                } else {
+                    const kDir =
+                        waves.length > 0
+                            ? waves[0].K.clone().normalize()
+                            : V(0, 0, 1);
+                    const v =
+                        waves.length > 0
+                            ? waves[0].omega / waves[0].K.length()
+                            : params.omega / params.k;
+                    const geom = params.beamMode
+                        ? new THREE.CircleGeometry(params.beamWidth * 2.2, 64)
+                        : new THREE.PlaneGeometry(16, 16);
+                    const mesh = new THREE.Mesh(
+                        geom,
+                        new THREE.MeshBasicMaterial({ color: col, ...matBase }),
+                    );
+                    scene.add(mesh);
+                    frontObjects.push({
+                        mesh,
+                        type: "plane",
+                        kDir,
+                        v,
+                        cycle: 20,
+                        offset: 0,
+                    });
+                }
+            }
+
+            // ==========================
+            // Узлы стоячей волны
+            // ==========================
+            let standingNodes = [];
+
+            function clearStandingNodes() {
+                standingNodes.forEach((n) => scene.remove(n));
+                standingNodes = [];
+            }
+
+            function buildStandingNodes() {
+                clearStandingNodes();
+                if (params.preset !== "standing") return;
+
+                const k = params.k;
+                const mat = new THREE.MeshBasicMaterial({
+                    color: 0x00d4ff,
+                    transparent: true,
+                    opacity: 0.35,
+                });
+                const geo = new THREE.RingGeometry(0.08, 0.18, 32);
+
+                for (let n = -4; n <= 4; n++) {
+                    const z = (Math.PI / 2 + n * Math.PI) / k;
+                    if (Math.abs(z) > 6) continue;
+                    const mesh = new THREE.Mesh(geo, mat);
+                    mesh.position.set(0, 0, z);
+                    mesh.rotation.x = Math.PI / 2;
+                    scene.add(mesh);
+                    standingNodes.push(mesh);
+                }
+            }
+
+            // ==========================
+            // Источник сферической волны
+            // ==========================
+            let sourcePoint = null;
+
+            function clearSource() {
+                if (sourcePoint) {
+                    scene.remove(sourcePoint);
+                    sourcePoint = null;
+                }
+            }
+
+            function buildSource() {
+                clearSource();
+                if (
+                    params.preset !== "spherical" &&
+                    params.preset !== "plane_spherical"
+                )
+                    return;
+                const geo = new THREE.SphereGeometry(0.15, 32, 32);
+                const mat = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
+                sourcePoint = new THREE.Mesh(geo, mat);
+                scene.add(sourcePoint);
+            }
+
+            // ==========================
+            // Пересборка объектов
+            // ==========================
+            function rebuildSceneObjects() {
+                buildWaveArrows();
+                buildEnvelope();
+                buildFronts();
+                buildStandingNodes();
+                buildSource();
+                buildReflector();
+            }
+
+            // ==========================
+            // Анимация
+            // ==========================
+            const clock = new THREE.Clock();
+
+            function animate() {
+                requestAnimationFrame(animate);
+
+                const t = clock.getElapsedTime();
+                const showField = document.getElementById("showField").checked;
+                const showLines = document.getElementById("showLines").checked;
+                const showK = document.getElementById("showK").checked;
+                const showWaveArr =
+                    document.getElementById("showWaveArrows").checked;
+                const isSpherical = params.preset === "spherical";
+
+                let avgK = V(0, 0, 0);
+                waves.forEach((w) => avgK.add(w.K));
+                if (waves.length > 0) avgK.normalize();
+                else avgK.set(0, 0, 1);
+
+                kArrow.visible =
+                    showK &&
+                    !isSpherical &&
+                    waves.length > 0 &&
+                    params.preset !== "reflection";
+                if (kArrow.visible) {
+                    kArrow.setDirection(avgK);
+                    kArrow.setLength(2.8);
+                }
+
+                fieldArrows.forEach((p) => {
+                    const fields = getFields(p.pos, t);
+                    const eLen = fields.E.length();
+                    const bLen = fields.B.length();
+                    p.E.visible = showField;
+                    p.B.visible = showField;
+                    if (eLen > 0.001) {
+                        p.E.setDirection(fields.E.normalize());
+                        p.E.setLength(
+                            Math.min(Math.max(eLen * 0.3, 0.05), 1.2),
+                        );
+                    }
+                    if (bLen > 0.001) {
+                        p.B.setDirection(fields.B.normalize());
+                        p.B.setLength(
+                            Math.min(Math.max(bLen * 0.3, 0.05), 1.2),
+                        );
+                    }
+                });
+
+                if (showLines) {
+                    if (isSpherical) {
+                        lineE.visible = false;
+                        lineB.visible = false;
+                        sphericalLineSets.forEach((ls) => {
+                            ls.lineE.visible = true;
+                            ls.lineB.visible = true;
+                            for (let i = 0; i < N; i++) {
+                                const r = 0.3 + (i * 7) / N;
+                                const pos = ls.dir.clone().multiplyScalar(r);
+                                const fields = getFields(pos, t);
+                                const pE = pos.clone().add(fields.E);
+                                const pB = pos.clone().add(fields.B);
+                                ls.geoE.attributes.position.setXYZ(
+                                    i,
+                                    pE.x,
+                                    pE.y,
+                                    pE.z,
+                                );
+                                ls.geoB.attributes.position.setXYZ(
+                                    i,
+                                    pB.x,
+                                    pB.y,
+                                    pB.z,
+                                );
+                            }
+                            ls.geoE.attributes.position.needsUpdate = true;
+                            ls.geoB.attributes.position.needsUpdate = true;
+                        });
+                    } else if (params.preset === "reflection") {
+                        sphericalLineSets.forEach((ls) => {
+                            ls.lineE.visible = false;
+                            ls.lineB.visible = false;
+                        });
+                        lineE.visible = true;
+                        lineB.visible = true;
+                        const th = (params.angle * Math.PI) / 180;
+                        const kDir = V(Math.sin(th), 0, -Math.cos(th));
+                        for (let i = 0; i < N; i++) {
+                            const s = -4 + (i * 8) / N;
+                            const r = kDir
+                                .clone()
+                                .multiplyScalar(s)
+                                .add(V(0, 0, -0.5));
+                            const fields = getFields(r, t);
+                            const pE = r.clone().add(fields.E);
+                            const pB = r.clone().add(fields.B);
+                            lineE.geometry.attributes.position.setXYZ(
+                                i,
+                                pE.x,
+                                pE.y,
+                                pE.z,
+                            );
+                            lineB.geometry.attributes.position.setXYZ(
+                                i,
+                                pB.x,
+                                pB.y,
+                                pB.z,
+                            );
+                        }
+                        lineE.geometry.attributes.position.needsUpdate = true;
+                        lineB.geometry.attributes.position.needsUpdate = true;
+                    } else {
+                        sphericalLineSets.forEach((ls) => {
+                            ls.lineE.visible = false;
+                            ls.lineB.visible = false;
+                        });
+                        lineE.visible = true;
+                        lineB.visible = true;
+                        const kDir =
+                            waves.length > 0
+                                ? waves[0].K.clone().normalize()
+                                : V(0, 0, 1);
+                        for (let i = 0; i < N; i++) {
+                            const s = -L / 2 + (i * L) / N;
+                            const r = kDir.clone().multiplyScalar(s);
+                            const fields = getFields(r, t);
+                            const pE = r.clone().add(fields.E);
+                            const pB = r.clone().add(fields.B);
+                            lineE.geometry.attributes.position.setXYZ(
+                                i,
+                                pE.x,
+                                pE.y,
+                                pE.z,
+                            );
+                            lineB.geometry.attributes.position.setXYZ(
+                                i,
+                                pB.x,
+                                pB.y,
+                                pB.z,
+                            );
+                        }
+                        lineE.geometry.attributes.position.needsUpdate = true;
+                        lineB.geometry.attributes.position.needsUpdate = true;
+                    }
+                } else {
+                    lineE.visible = false;
+                    lineB.visible = false;
+                    sphericalLineSets.forEach((ls) => {
+                        ls.lineE.visible = false;
+                        ls.lineB.visible = false;
+                    });
+                }
+
+                waveArrows.forEach((wa) => {
+                    const fields = getFields(wa.basePos, t);
+                    const eLen = fields.E.length();
+                    const bLen = fields.B.length();
+                    wa.eArrow.visible = showWaveArr;
+                    wa.bArrow.visible = showWaveArr;
+                    if (eLen > 0.01) {
+                        wa.eArrow.setDirection(fields.E.normalize());
+                        wa.eArrow.setLength(Math.min(eLen * 0.8, 1.5));
+                    } else wa.eArrow.setLength(0.01);
+                    if (bLen > 0.01) {
+                        wa.bArrow.setDirection(fields.B.normalize());
+                        wa.bArrow.setLength(Math.min(bLen * 0.8, 1.5));
+                    } else wa.bArrow.setLength(0.01);
+                });
+
+                frontObjects.forEach((fo) => {
+                    if (fo.type === "plane") {
+                        const dist =
+                            ((fo.v * t + fo.offset) % fo.cycle) - fo.cycle / 2;
+                        fo.mesh.position.copy(
+                            fo.kDir.clone().multiplyScalar(dist),
+                        );
+                        fo.mesh.lookAt(fo.mesh.position.clone().add(fo.kDir));
+                        fo.mesh.visible = true;
+                        fo.mesh.material.opacity = 0.16;
+                    } else if (fo.type === "sphere") {
+                        const r = (fo.v * t) % fo.maxR;
+                        fo.mesh.scale.set(r, r, r);
+                        fo.mesh.visible = r > 0.1;
+                        fo.mesh.material.opacity = 0.16;
+                    }
+                });
+
+                controls.update();
+                renderer.render(scene, camera);
+            }
+
+            animate();
+
+            // ==========================
+            // Кастомный селект
+            // ==========================
+            const presetSelect = document.getElementById("presetSelect");
+            const selectTrigger = presetSelect.querySelector(".select-trigger");
+            const selectOptions = presetSelect.querySelector(".select-options");
+
+            selectTrigger.addEventListener("click", (e) => {
+                e.stopPropagation();
+                presetSelect.classList.toggle("open");
+            });
+
+            selectOptions.querySelectorAll("div").forEach((opt) => {
+                opt.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    const val = opt.dataset.value;
+                    const txt = opt.textContent;
+                    params.preset = val;
+                    selectTrigger.textContent = txt;
+                    selectTrigger.dataset.value = val;
+                    selectOptions
+                        .querySelectorAll("div")
+                        .forEach((d) => d.classList.remove("selected"));
+                    opt.classList.add("selected");
+                    presetSelect.classList.remove("open");
+                    loadPreset();
+                });
+            });
+
+            document.addEventListener("click", () => {
+                presetSelect.classList.remove("open");
+            });
+
+            // ==========================
+            // Сворачивание панели
+            // ==========================
+            const controlsEl = document.getElementById("controls");
+            const expandBtn = document.getElementById("expandBtn");
+
+            document
+                .getElementById("panelToggle")
+                .addEventListener("click", () => {
+                    controlsEl.classList.add("collapsed");
+                    expandBtn.style.display = "flex";
+                });
+
+            expandBtn.addEventListener("click", () => {
+                controlsEl.classList.remove("collapsed");
+                expandBtn.style.display = "none";
+            });
+
+            // ==========================
+            // Интерфейс
+            // ==========================
+            function bindRange(id, param, out, fixed = 1, suffix = "") {
+                const input = document.getElementById(id);
+                const output = document.getElementById(out);
+                input.oninput = function () {
+                    params[param] = Number(this.value);
+                    output.textContent =
+                        Number(this.value).toFixed(fixed) + suffix;
+                    if (param !== "beamWidth" && param !== "angle")
+                        loadPreset();
+                    else buildEnvelope();
+                };
+            }
+
+            bindRange("k", "k", "kv");
+            bindRange("omega", "omega", "omegav");
+            bindRange("amp", "amp", "ampv");
+            bindRange("beamWidth", "beamWidth", "beamWidthV");
+            bindRange("angle", "angle", "angleV", 0, "°");
+
+            document.getElementById("beamMode").onchange = function () {
+                params.beamMode = this.checked;
+                rebuildSceneObjects();
+            };
+
+            document.getElementById("showWaveArrows").onchange =
+                buildWaveArrows;
+            document.getElementById("showEnvelope").onchange = function () {
+                envelopeRings.forEach((r) => (r.visible = this.checked));
+            };
+            document.getElementById("showFront").onchange = buildFronts;
+
+            // Тема
+            const mql = window.matchMedia("(prefers-color-scheme: light)");
+
+            function applyTheme(light) {
+                currentIsLight = light;
+                scene.background = new THREE.Color(light ? 0xf4f6fa : 0x07070a);
+                buildGrid();
+                rebuildSceneObjects();
+            }
+
+            mql.addEventListener("change", (e) => applyTheme(e.matches));
+            applyTheme(mql.matches);
+
+            window.onresize = () => {
+                camera.aspect = innerWidth / innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(innerWidth, innerHeight);
+            };
+
+            loadPreset();
+        </script>
+    </body>
+</html>
