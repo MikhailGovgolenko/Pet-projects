@@ -1,302 +1,939 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
-<head>
-<meta charset="utf-8" />
-<title>Линза</title>
-<style>
-html, body {
-
-    padding: 10px;
-    height: 96%;
-    overflow: hidden;
-}
-
-body { 
-    text-align:center; 
-    font-family:sans-serif; 
-    background:white 
-}
-
-canvas { 
-    display: block;
-    border:0px solid #444; 
-    background:white; 
-    cursor: move;
-    box-sizing: border-box;
-}
-
-.controls { 
-    
-    margin-bottom:0; /* убираем лишний отступ, чтобы canvas плотно под контролами */
-}
-
-input[type=range]{ width:200px; }
-input[type=number]{ width:70px; }
-input[type=text]{ width:300px; }
-button { padding: 5px 10px; cursor: pointer; }
-.small { font-size:0.9em; color:#444; }
-.group { border:1px solid #ccc; padding:8px; margin-bottom:8px; display:inline-block; text-align:left; background:#f9f9f9; }
-.group-title { font-weight:bold; margin-bottom:4px; display:block; }
-</style>
-</head>
-<body>
-
-<div class="controls">
-
-<label>Коэффициент преломления:</label>
-<input type="range" id="nLensRange" min="1" max="10" step="0.01" value="1.5" oninput="syncFromRange('nLens')">
-<input type="number" id="nLensInput" value="1.5" step="0.01" oninput="syncFromInput('nLens')">
-<span id="nLensVal">1.5</span><br>
-
-<label>Угол пучка (°):</label>
-<input type="range" id="beamAngleRange" min="-90" max="90" step="0.1" value="0" oninput="syncFromRange('beamAngle')">
-<input type="number" id="beamAngleInput" value="0" step="0.1" oninput="syncFromInput('beamAngle')">
-<span id="beamAngleVal">0</span><br>
-
-<label>Количество лучей:</label>
-<input type="range" id="rayCountRange" min="5" max="201" step="1" value="41" oninput="syncFromRange('rayCount')">
-<input type="number" id="rayCountInput" value="41" step="1" oninput="syncFromInput('rayCount')">
-<span id="rayCountVal">41</span><br>
-
-<div class="group">
-<span class="group-title">Полином z(r)=z₀+a₂r²+a₄r⁴+a₆r⁶</span>
-
-<label>z₀:</label>
-<input type="range" id="z0Range" min="-20" max="20" step="0.001" value="-5" oninput="syncFromRange('z0')">
-<input type="number" id="z0Input" value="-5" step="0.001" oninput="syncFromInput('z0')">
-<span id="z0Val">-5</span><br>
-
-<label>a₂:</label>
-<input type="range" id="a2Range" min="-0.1" max="0.1" step="1e-5" value="0.006457" oninput="syncFromRange('a2')">
-<input type="number" id="a2Input" value="0.006457" step="1e-5" oninput="syncFromInput('a2')">
-<span id="a2Val">0.006457</span><br>
-
-<label>a₄:</label>
-<input type="range" id="a4Range" min="-0.001" max="0.001" step="1e-7" value="-5e-7" oninput="syncFromRange('a4')">
-<input type="number" id="a4Input" value="-5e-7" step="1e-7" oninput="syncFromInput('a4')">
-<span id="a4Val">0</span><br>
-
-<label>a₆:</label>
-<input type="range" id="a6Range" min="-1e-5" max="1e-5" step="1e-10" value="0" oninput="syncFromRange('a6')">
-<input type="number" id="a6Input" value="0" step="1e-10" oninput="syncFromInput('a6')">
-<span id="a6Val">0</span><br>
-</div>
-
-<br>
-<label>
-<input type="checkbox" id="useFieldCheckbox" checked onchange="draw()">
-Использовать поле для уравнения
-</label><br>
-
-<label>z(r):</label>
-<input type="text" id="leftSurfaceEq" placeholder="-5 + 0.006457*r**2-5e-7*r**4" oninput="draw()">
-<br>
-
-<label>Масштаб:</label>
-<span id="scaleVal">7.00</span>
-<button onclick="resetView()">Сбросить вид</button>
-<br>
-
-</div>
-
-<canvas id="canvas"></canvas>
-
-<script>
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
-const controls = document.querySelector('.controls');
-
-let scale = 7;
-const minScale=2, maxScale=10000;
-cx=canvas.width/4; cy=canvas.height/2;
-scaleVal.textContent = scale.toFixed(2);
-
-let isDragging=false, sx0, sy0;
-
-/* ==== ФУНКЦИИ ДЛЯ CANVAS ==== */
-function toScreen(p){ return {sx:cx+p.z*scale, sy:cy-p.r*scale}; }
-function safeEval(expr,r){ try{return eval(expr.replace(/\br\b/g,'('+r+')'));}catch{return NaN;} }
-function deriv(expr,r,h=1e-4){ return (safeEval(expr,r+h)-safeEval(expr,r-h))/(2*h); }
-function norm(v){ const L=Math.hypot(v.z,v.r); return {z:v.z/L,r:v.r/L}; }
-function refract(I,N,eta){
-    const cosi=-(N.z*I.z+N.r*I.r);
-    const k=1-eta*eta*(1-cosi*cosi);
-    if(k<0) return null;
-    return {z:eta*I.z+(eta*cosi-Math.sqrt(k))*N.z,
-            r:eta*I.r+(eta*cosi-Math.sqrt(k))*N.r};
-}
-
-/* ==== ПЕРЕСЕЧЕНИЕ ==== */
-function findIntersection(P,D,eq){
-    function f(t){ return (P.z+t*D.z)-safeEval(eq,P.r+t*D.r); }
-    let f0=f(0);
-    for(let t=0.2;t<1000;t+=0.2){
-        const f1=f(t);
-        if(isFinite(f0)&&isFinite(f1)&&f0*f1<=0){
-            let a=t-0.2,b=t;
-            for(let i=0;i<30;i++){
-                const m=0.5*(a+b);
-                (f(a)*f(m)<=0)?b=m:a=m;
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Симметричная линза</title>
+        <style>
+            :root {
+                --bg: #07070a;
+                --text: #ffffff;
+                --text-sec: rgba(255, 255, 255, 0.55);
+                --accent: #00d4ff;
+                --glass-bg: rgba(255, 255, 255, 0.035);
+                --glass-border: rgba(255, 255, 255, 0.18);
+                --glass-shadow:
+                    0 8px 32px rgba(0, 0, 0, 0.25),
+                    inset 0 0.5px 0 rgba(255, 255, 255, 0.12);
+                --input-bg: rgba(255, 255, 255, 0.05);
             }
-            const th=0.5*(a+b);
-            return {z:P.z+th*D.z,r:P.r+th*D.r};
-        }
-        f0=f1;
-    }
-    return null;
-}
 
-/* ==== ПОВЕРХНОСТИ + АПЕРТУРА ==== */
-function sampleLens(eqL, eqR){
-    const L=[], R=[];
-    let aperture = 0;
-    for(let r=0;; r+=0.2){
-        const zL = safeEval(eqL,r), zR = safeEval(eqR,r);
-        if(!isFinite(zL) || !isFinite(zR) || zL>zR) break;
-        aperture = r;
-        L.push({z:zL,r});
-        R.push({z:zR,r});
-    }
-    for(let r=-0.2;; r-=0.2){
-        const zL = safeEval(eqL,r), zR = safeEval(eqR,r);
-        if(!isFinite(zL) || !isFinite(zR) || zL>zR) break;
-        L.unshift({z:zL,r});
-        R.unshift({z:zR,r});
-    }
-    return {L, R, aperture};
-}
+            @media (prefers-color-scheme: light) {
+                :root {
+                    --bg: #f4f6fa;
+                    --text: #0b0b12;
+                    --text-sec: rgba(0, 0, 0, 0.45);
+                    --accent: #0077b6;
+                    --glass-bg: rgba(255, 255, 255, 0.5);
+                    --glass-border: rgba(255, 255, 255, 0.55);
+                    --glass-shadow:
+                        0 8px 32px rgba(0, 0, 0, 0.06),
+                        inset 0 0.5px 0 rgba(255, 255, 255, 0.6);
+                    --input-bg: rgba(0, 0, 0, 0.04);
+                }
+            }
 
-/* ==== РИСОВАНИЕ ==== */
-let cachedLens = null;
-function draw(){
-    ctx.clearRect(0,0,canvas.width,canvas.height);
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
 
-    const n=parseFloat(nLensRange.value);
-    const angle=parseFloat(beamAngleRange.value)*Math.PI/180;
-    const rays=parseInt(rayCountRange.value);
+            html,
+            body {
+                overflow: hidden;
+                height: 100%;
+                background: var(--bg);
+                color: var(--text);
+                font-family:
+                    -apple-system, BlinkMacSystemFont, "SF Pro Display",
+                    "Segoe UI", Roboto, sans-serif;
+                transition: background 0.4s ease;
+            }
 
-    let eq=useFieldCheckbox.checked?leftSurfaceEq.value.trim():''; 
-    if(!eq){
-        eq=`${z0Range.value}+(${a2Range.value})*r*r+(${a4Range.value})*r**4+(${a6Range.value})*r**6`;
-    }
-    const eqR=`(0-(${eq}))`;
+            #canvas-container {
+                position: fixed;
+                inset: 0;
+                z-index: 0;
+            }
 
-    if(!cachedLens || cachedLens.eqL !== eq || cachedLens.eqR !== eqR){
-        cachedLens = { ...sampleLens(eq, eqR), eqL:eq, eqR:eqR };
-    }
-    const {L,R,aperture} = cachedLens;
+            canvas {
+                display: block;
+                width: 100%;
+                height: 100%;
+                cursor: move;
+            }
 
-    const grad = ctx.createLinearGradient(cx,0,cx+100,0);
-    grad.addColorStop(0,'rgba(150,180,255,0.2)');
-    grad.addColorStop(1,'rgba(100,130,255,0.15)');
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    L.forEach((p,i)=>{const s=toScreen(p); i?ctx.lineTo(s.sx,s.sy):ctx.moveTo(s.sx,s.sy);});
-    for(let i=R.length-1;i>=0;i--){const s=toScreen(R[i]); ctx.lineTo(s.sx,s.sy);}
-    ctx.closePath(); ctx.fill();
+            .glass {
+                background: var(--glass-bg);
+                backdrop-filter: blur(60px) saturate(240%);
+                -webkit-backdrop-filter: blur(60px) saturate(240%);
+                border: 1px solid var(--glass-border);
+                box-shadow: var(--glass-shadow);
+                border-radius: 24px;
+                transition:
+                    background 0.4s,
+                    border-color 0.4s,
+                    box-shadow 0.4s;
+            }
 
-    ctx.strokeStyle='blue'; ctx.lineWidth=2;
-    ctx.beginPath(); L.forEach((p,i)=>{const s=toScreen(p); i?ctx.lineTo(s.sx,s.sy):ctx.moveTo(s.sx,s.sy);}); ctx.stroke();
-    ctx.beginPath(); R.forEach((p,i)=>{const s=toScreen(p); i?ctx.lineTo(s.sx,s.sy):ctx.moveTo(s.sx,s.sy);}); ctx.stroke();
+            #controls {
+                position: absolute;
+                left: 16px;
+                top: 16px;
+                width: 340px;
+                padding: 16px;
+                z-index: 10;
+                overflow: visible;
+                transition:
+                    transform 0.45s cubic-bezier(0.32, 0.72, 0, 1),
+                    opacity 0.35s ease;
+            }
 
-    const dir={z:Math.cos(angle),r:Math.sin(angle)};
-    const perp={z:-dir.r,r:dir.z};
+            #controls.collapsed {
+                transform: translateX(calc(-100% - 40px));
+                opacity: 0;
+                pointer-events: none;
+            }
 
-    for(let i=0;i<rays;i++){
-        const r0=-aperture+2*aperture*i/(rays-1);
-        let P={z:-80*dir.z+r0*perp.z,r:-80*dir.r+r0*perp.r};
-        let D=norm(dir);
+            .panel-header {
+                display: flex;
+                justify-content: flex-end;
+                margin-bottom: 10px;
+            }
 
-        const h1=findIntersection(P,D,eq);
-        if(!h1) continue;
+            .panel-toggle {
+                width: 26px;
+                height: 26px;
+                border-radius: 50%;
+                background: var(--input-bg);
+                border: 1px solid var(--glass-border);
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition:
+                    background 0.2s,
+                    transform 0.2s;
+            }
+            .panel-toggle:hover {
+                background: rgba(128, 128, 128, 0.15);
+                transform: scale(1.08);
+            }
+            .panel-toggle:active {
+                transform: scale(0.95);
+            }
 
-        ctx.strokeStyle='red';
-        ctx.beginPath(); ctx.moveTo(...Object.values(toScreen(P))); ctx.lineTo(...Object.values(toScreen(h1))); ctx.stroke();
+            .panel-toggle span {
+                display: block;
+                width: 5px;
+                height: 5px;
+                border-left: 2px solid currentColor;
+                border-bottom: 2px solid currentColor;
+                transform: rotate(45deg);
+                margin-left: 2px;
+                opacity: 0.8;
+            }
 
-        let N=norm({z:-1,r:deriv(eq,h1.r)});
-        if(N.z*D.z+N.r*D.r>0) N={z:-N.z,r:-N.r};
+            #expandBtn {
+                position: fixed;
+                left: 20px;
+                top: 20px;
+                width: 44px;
+                height: 44px;
+                border-radius: 50%;
+                display: none;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                z-index: 20;
+                transition: transform 0.2s;
+            }
+            #expandBtn:hover {
+                transform: scale(1.08);
+            }
+            #expandBtn:active {
+                transform: scale(0.95);
+            }
 
-        const T1=refract(D,N,1/n); if(!T1) continue;
-        const h2=findIntersection({z:h1.z+1e-6*T1.z,r:h1.r+1e-6*T1.r},T1,eqR);
-        if(!h2) continue;
+            #expandBtn span {
+                display: block;
+                width: 7px;
+                height: 7px;
+                border-right: 2px solid currentColor;
+                border-top: 2px solid currentColor;
+                transform: rotate(45deg);
+                margin-right: 2px;
+                opacity: 0.8;
+            }
 
-        ctx.strokeStyle='orange';
-        ctx.beginPath(); ctx.moveTo(...Object.values(toScreen(h1))); ctx.lineTo(...Object.values(toScreen(h2))); ctx.stroke();
+            .section {
+                margin-bottom: 8px;
+                padding-bottom: 6px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            }
+            @media (prefers-color-scheme: light) {
+                .section {
+                    border-bottom-color: rgba(0, 0, 0, 0.05);
+                }
+            }
+            .section:last-child {
+                border-bottom: none;
+                margin-bottom: 0;
+                padding-bottom: 0;
+            }
 
-        let N2=norm({z:-1,r:deriv(eqR,h2.r)});
-        if(N2.z*T1.z+N2.r*T1.r>0) N2={z:-N2.z,r:-N2.r};
+            label {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin: 5px 0;
+                font-size: 12.5px;
+                font-weight: 500;
+                gap: 8px;
+            }
 
-        const T2=refract(T1,N2,n); if(!T2) continue;
+            label .label-text {
+                flex-shrink: 0;
+                color: var(--text-sec);
+            }
 
-        ctx.strokeStyle='green';
-        ctx.beginPath();
-        ctx.moveTo(...Object.values(toScreen(h2)));
-        ctx.lineTo(...Object.values(toScreen({z:h2.z+3000*T2.z,r:h2.r+3000*T2.r})));
-        ctx.stroke();
-    }
-}
+            .input-wrap {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                flex: 1;
+                justify-content: flex-end;
+            }
 
-/* ==== UI ==== */
-function syncFromRange(n){
-    window[n+'Input'].value=window[n+'Range'].value;
-    window[n+'Val'].textContent=window[n+'Range'].value;
-    draw();
-}
-function syncFromInput(n){
-    window[n+'Range'].value=window[n+'Input'].value;
-    window[n+'Val'].textContent=window[n+'Input'].value;
-    draw();
-}
-function resetView(){
-    scale=7; cx=canvas.width/4; cy=canvas.height/2;
-    scaleVal.textContent = scale.toFixed(2);
-    draw();
-}
+            input[type="range"] {
+                -webkit-appearance: none;
+                width: 100px;
+                height: 3px;
+                background: rgba(255, 255, 255, 0.12);
+                border-radius: 2px;
+                outline: none;
+                cursor: pointer;
+            }
+            @media (prefers-color-scheme: light) {
+                input[type="range"] {
+                    background: rgba(0, 0, 0, 0.08);
+                }
+            }
 
-/* ==== МЫШЬ + ЗУМ ==== */
-canvas.addEventListener('mousedown',e=>{isDragging=true;sx0=e.clientX;sy0=e.clientY;});
-canvas.addEventListener('mousemove',e=>{
-    if(isDragging){
-        cx+=e.clientX-sx0;
-        cy+=e.clientY-sy0;
-        sx0=e.clientX; sy0=e.clientY;
-        draw();
-    }
-});
-canvas.addEventListener('mouseup',()=>isDragging=false);
-canvas.addEventListener('mouseleave',()=>isDragging=false);
+            input[type="range"]::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                width: 15px;
+                height: 15px;
+                border-radius: 50%;
+                background: #fff;
+                box-shadow:
+                    0 2px 6px rgba(0, 0, 0, 0.2),
+                    0 0 0 1px rgba(0, 0, 0, 0.04);
+                cursor: pointer;
+                transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+            }
+            input[type="range"]::-webkit-slider-thumb:hover {
+                transform: scale(1.15);
+            }
+            input[type="range"]::-webkit-slider-thumb:active {
+                transform: scale(0.95);
+            }
 
-canvas.addEventListener('wheel', e=>{
-    e.preventDefault();
-    const factor = e.deltaY < 0 ? 1.05 : 0.95;
-    const mx = e.offsetX;
-    const my = e.offsetY;
-    const x0 = (mx - cx)/scale;
-    const y0 = (my - cy)/scale;
+            input[type="number"],
+            input[type="text"] {
+                background: var(--input-bg);
+                border: 1px solid var(--glass-border);
+                border-radius: 10px;
+                padding: 5px 6px;
+                color: inherit;
+                font-size: 11.5px;
+                font-family: "SF Mono", monospace;
+                outline: none;
+                width: 58px;
+                text-align: center;
+            }
+            input[type="text"] {
+                width: 100%;
+                text-align: left;
+                margin-top: 3px;
+                font-family: inherit;
+                font-size: 12px;
+            }
 
-    scale = Math.min(maxScale, Math.max(minScale, scale*factor));
-    cx = mx - x0*scale;
-    cy = my - y0*scale;
-    scaleVal.textContent = scale.toFixed(2);
-    draw();
-});
+            .val {
+                display: inline-block;
+                width: 42px;
+                text-align: right;
+                font-family: "SF Mono", monospace;
+                font-size: 11px;
+                color: var(--accent);
+                font-weight: 700;
+            }
 
-/* ==== АВТОМАТИЧЕСКИЙ РАЗМЕР CANVAS ==== */
-function resizeCanvas(){
-    const rect = controls.getBoundingClientRect();
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight - rect.bottom;
+            .glass-group {
+                background: var(--input-bg);
+                border: 1px solid var(--glass-border);
+                border-radius: 14px;
+                padding: 10px;
+                margin: 6px 0;
+            }
 
-    // установка начальной позиции камеры как по умолчанию
-    cx = canvas.width / 4; // смещение влево, как в resetView
-    cy = canvas.height / 2;
+            .glass-group .group-title {
+                font-size: 10px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.6px;
+                color: var(--text-sec);
+                margin-bottom: 6px;
+                display: block;
+            }
 
-    draw();
-}
+            .toggle-row {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin: 6px 0;
+                font-size: 12.5px;
+                font-weight: 500;
+            }
 
-window.addEventListener('load', resizeCanvas);
-window.addEventListener('resize', resizeCanvas);
+            .switch {
+                position: relative;
+                width: 36px;
+                height: 18px;
+            }
 
-</script>
-</body>
+            .switch input {
+                opacity: 0;
+                width: 0;
+                height: 0;
+            }
+
+            .slider {
+                position: absolute;
+                cursor: pointer;
+                inset: 0;
+                background: rgba(255, 255, 255, 0.15);
+                border-radius: 18px;
+                transition: 0.25s;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            }
+            @media (prefers-color-scheme: light) {
+                .slider {
+                    background: rgba(0, 0, 0, 0.1);
+                    border-color: rgba(0, 0, 0, 0.12);
+                }
+            }
+
+            .slider::before {
+                position: absolute;
+                content: "";
+                height: 12px;
+                width: 12px;
+                left: 2px;
+                bottom: 2px;
+                background: white;
+                border-radius: 50%;
+                transition: 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+            }
+
+            input:checked + .slider {
+                background: linear-gradient(135deg, #00d4ff, #0077b6);
+                border-color: transparent;
+            }
+
+            input:checked + .slider::before {
+                transform: translateX(18px);
+            }
+
+            button {
+                width: 100%;
+                margin-top: 4px;
+                padding: 8px;
+                border: none;
+                border-radius: 12px;
+                background: linear-gradient(
+                    135deg,
+                    rgba(0, 212, 255, 0.85),
+                    rgba(0, 119, 182, 0.85)
+                );
+                color: #fff;
+                font-size: 12px;
+                font-weight: 700;
+                cursor: pointer;
+                transition: opacity 0.2s;
+                letter-spacing: 0.2px;
+            }
+
+            button:hover {
+                opacity: 0.85;
+            }
+            button:active {
+                opacity: 0.7;
+            }
+
+            @media (max-width: 720px) {
+                #controls {
+                    width: 280px;
+                }
+            }
+        </style>
+    </head>
+
+    <body>
+        <div id="canvas-container">
+            <canvas id="canvas"></canvas>
+        </div>
+
+        <div id="expandBtn" class="glass" title="Развернуть панель">
+            <span></span>
+        </div>
+
+        <div id="controls" class="glass">
+            <div class="panel-header">
+                <div
+                    class="panel-toggle"
+                    id="panelToggle"
+                    title="Свернуть панель"
+                >
+                    <span></span>
+                </div>
+            </div>
+
+            <div class="section">
+                <label>
+                    <span class="label-text">Преломление n</span>
+                    <div class="input-wrap">
+                        <input
+                            id="nLensRange"
+                            type="range"
+                            min="1"
+                            max="10"
+                            step="0.01"
+                            value="1.5"
+                            oninput="syncFromRange('nLens')"
+                        />
+                        <input
+                            id="nLensInput"
+                            type="number"
+                            value="1.5"
+                            step="0.01"
+                            oninput="syncFromInput('nLens')"
+                        />
+                        <span class="val" id="nLensVal">1.5</span>
+                    </div>
+                </label>
+                <label>
+                    <span class="label-text">Угол пучка (°)</span>
+                    <div class="input-wrap">
+                        <input
+                            id="beamAngleRange"
+                            type="range"
+                            min="-90"
+                            max="90"
+                            step="0.1"
+                            value="0"
+                            oninput="syncFromRange('beamAngle')"
+                        />
+                        <input
+                            id="beamAngleInput"
+                            type="number"
+                            value="0"
+                            step="0.1"
+                            oninput="syncFromInput('beamAngle')"
+                        />
+                        <span class="val" id="beamAngleVal">0</span>
+                    </div>
+                </label>
+                <label>
+                    <span class="label-text">Количество лучей</span>
+                    <div class="input-wrap">
+                        <input
+                            id="rayCountRange"
+                            type="range"
+                            min="5"
+                            max="201"
+                            step="1"
+                            value="41"
+                            oninput="syncFromRange('rayCount')"
+                        />
+                        <input
+                            id="rayCountInput"
+                            type="number"
+                            value="41"
+                            step="1"
+                            oninput="syncFromInput('rayCount')"
+                        />
+                        <span class="val" id="rayCountVal">41</span>
+                    </div>
+                </label>
+            </div>
+
+            <div class="section">
+                <div class="glass-group">
+                    <span class="group-title"
+                        >Полином z(r)=z₀+a₂r²+a₄r⁴+a₆r⁶</span
+                    >
+                    <label>
+                        <span class="label-text">z₀</span>
+                        <div class="input-wrap">
+                            <input
+                                id="z0Range"
+                                type="range"
+                                min="-20"
+                                max="20"
+                                step="0.001"
+                                value="-5"
+                                oninput="syncFromRange('z0')"
+                            />
+                            <input
+                                id="z0Input"
+                                type="number"
+                                value="-5"
+                                step="0.001"
+                                oninput="syncFromInput('z0')"
+                            />
+                            <span class="val" id="z0Val">-5</span>
+                        </div>
+                    </label>
+                    <label>
+                        <span class="label-text">a₂</span>
+                        <div class="input-wrap">
+                            <input
+                                id="a2Range"
+                                type="range"
+                                min="-0.1"
+                                max="0.1"
+                                step="1e-5"
+                                value="0.006457"
+                                oninput="syncFromRange('a2')"
+                            />
+                            <input
+                                id="a2Input"
+                                type="number"
+                                value="0.006457"
+                                step="1e-5"
+                                oninput="syncFromInput('a2')"
+                            />
+                            <span class="val" id="a2Val">0.006</span>
+                        </div>
+                    </label>
+                    <label>
+                        <span class="label-text">a₄</span>
+                        <div class="input-wrap">
+                            <input
+                                id="a4Range"
+                                type="range"
+                                min="-0.001"
+                                max="0.001"
+                                step="1e-7"
+                                value="-5e-7"
+                                oninput="syncFromRange('a4')"
+                            />
+                            <input
+                                id="a4Input"
+                                type="number"
+                                value="-5e-7"
+                                step="1e-7"
+                                oninput="syncFromInput('a4')"
+                            />
+                            <span class="val" id="a4Val">0</span>
+                        </div>
+                    </label>
+                    <label>
+                        <span class="label-text">a₆</span>
+                        <div class="input-wrap">
+                            <input
+                                id="a6Range"
+                                type="range"
+                                min="-1e-5"
+                                max="1e-5"
+                                step="1e-10"
+                                value="0"
+                                oninput="syncFromRange('a6')"
+                            />
+                            <input
+                                id="a6Input"
+                                type="number"
+                                value="0"
+                                step="1e-10"
+                                oninput="syncFromInput('a6')"
+                            />
+                            <span class="val" id="a6Val">0</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="toggle-row">
+                    <span>Использовать поле для уравнения</span>
+                    <label class="switch">
+                        <input
+                            type="checkbox"
+                            id="useFieldCheckbox"
+                            checked
+                            onchange="requestDraw()"
+                        />
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <label
+                    style="
+                        flex-direction: column;
+                        align-items: flex-start;
+                        gap: 3px;
+                    "
+                >
+                    <span class="label-text">z(r)</span>
+                    <input
+                        type="text"
+                        id="leftSurfaceEq"
+                        placeholder="-5 + 0.006457*r**2-5e-7*r**4"
+                        oninput="requestDraw()"
+                    />
+                </label>
+            </div>
+
+            <div class="section">
+                <label>
+                    <span class="label-text">Масштаб</span>
+                    <div class="input-wrap">
+                        <span class="val" id="scaleVal" style="width: auto"
+                            >7.00</span
+                        >
+                    </div>
+                </label>
+                <button onclick="resetView()">Сбросить вид</button>
+            </div>
+        </div>
+
+        <script>
+            const canvas = document.getElementById("canvas");
+            const ctx = canvas.getContext("2d");
+
+            let scale = 7;
+            const minScale = 2,
+                maxScale = 10000;
+            let cx, cy;
+
+            let isDragging = false,
+                sx0,
+                sy0;
+            let redrawRequested = false;
+
+            /* ==== ОПТИМИЗИРОВАННАЯ ОТРИСОВКА ==== */
+            function requestDraw() {
+                if (redrawRequested) return;
+                redrawRequested = true;
+                requestAnimationFrame(() => {
+                    redrawRequested = false;
+                    draw();
+                });
+            }
+
+            /* ==== ФУНКЦИИ ДЛЯ CANVAS ==== */
+            function toScreen(p) {
+                return { sx: cx + p.z * scale, sy: cy - p.r * scale };
+            }
+            function safeEval(expr, r) {
+                try {
+                    return eval(expr.replace(/\br\b/g, "(" + r + ")"));
+                } catch {
+                    return NaN;
+                }
+            }
+            function deriv(expr, r, h = 1e-4) {
+                return (
+                    (safeEval(expr, r + h) - safeEval(expr, r - h)) / (2 * h)
+                );
+            }
+            function norm(v) {
+                const L = Math.hypot(v.z, v.r);
+                return { z: v.z / L, r: v.r / L };
+            }
+            function refract(I, N, eta) {
+                const cosi = -(N.z * I.z + N.r * I.r);
+                const k = 1 - eta * eta * (1 - cosi * cosi);
+                if (k < 0) return null;
+                return {
+                    z: eta * I.z + (eta * cosi - Math.sqrt(k)) * N.z,
+                    r: eta * I.r + (eta * cosi - Math.sqrt(k)) * N.r,
+                };
+            }
+
+            /* ==== ПЕРЕСЕЧЕНИЕ ==== */
+            function findIntersection(P, D, eq) {
+                function f(t) {
+                    return P.z + t * D.z - safeEval(eq, P.r + t * D.r);
+                }
+                let f0 = f(0);
+                for (let t = 0.2; t < 1000; t += 0.2) {
+                    const f1 = f(t);
+                    if (isFinite(f0) && isFinite(f1) && f0 * f1 <= 0) {
+                        let a = t - 0.2,
+                            b = t;
+                        for (let i = 0; i < 30; i++) {
+                            const m = 0.5 * (a + b);
+                            f(a) * f(m) <= 0 ? (b = m) : (a = m);
+                        }
+                        const th = 0.5 * (a + b);
+                        return { z: P.z + th * D.z, r: P.r + th * D.r };
+                    }
+                    f0 = f1;
+                }
+                return null;
+            }
+
+            /* ==== ПОВЕРХНОСТИ + АПЕРТУРА ==== */
+            function sampleLens(eqL, eqR) {
+                const L = [],
+                    R = [];
+                let aperture = 0;
+                for (let r = 0; ; r += 0.2) {
+                    const zL = safeEval(eqL, r),
+                        zR = safeEval(eqR, r);
+                    if (!isFinite(zL) || !isFinite(zR) || zL > zR) break;
+                    aperture = r;
+                    L.push({ z: zL, r });
+                    R.push({ z: zR, r });
+                }
+                for (let r = -0.2; ; r -= 0.2) {
+                    const zL = safeEval(eqL, r),
+                        zR = safeEval(eqR, r);
+                    if (!isFinite(zL) || !isFinite(zR) || zL > zR) break;
+                    L.unshift({ z: zL, r });
+                    R.unshift({ z: zR, r });
+                }
+                return { L, R, aperture };
+            }
+
+            /* ==== РИСОВАНИЕ ==== */
+            let cachedLens = null;
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                const n = parseFloat(
+                    document.getElementById("nLensRange").value,
+                );
+                const angle =
+                    (parseFloat(
+                        document.getElementById("beamAngleRange").value,
+                    ) *
+                        Math.PI) /
+                    180;
+                const rays = parseInt(
+                    document.getElementById("rayCountRange").value,
+                );
+
+                let eq = document.getElementById("useFieldCheckbox").checked
+                    ? document.getElementById("leftSurfaceEq").value.trim()
+                    : "";
+                if (!eq) {
+                    eq = `${document.getElementById("z0Range").value}+(${document.getElementById("a2Range").value})*r*r+(${document.getElementById("a4Range").value})*r**4+(${document.getElementById("a6Range").value})*r**6`;
+                }
+                const eqR = `(0-(${eq}))`;
+
+                if (
+                    !cachedLens ||
+                    cachedLens.eqL !== eq ||
+                    cachedLens.eqR !== eqR
+                ) {
+                    cachedLens = { ...sampleLens(eq, eqR), eqL: eq, eqR: eqR };
+                }
+                const { L, R, aperture } = cachedLens;
+
+                const grad = ctx.createLinearGradient(cx, 0, cx + 100, 0);
+                grad.addColorStop(0, "rgba(150,180,255,0.2)");
+                grad.addColorStop(1, "rgba(100,130,255,0.15)");
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                L.forEach((p, i) => {
+                    const s = toScreen(p);
+                    i ? ctx.lineTo(s.sx, s.sy) : ctx.moveTo(s.sx, s.sy);
+                });
+                for (let i = R.length - 1; i >= 0; i--) {
+                    const s = toScreen(R[i]);
+                    ctx.lineTo(s.sx, s.sy);
+                }
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.strokeStyle = "blue";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                L.forEach((p, i) => {
+                    const s = toScreen(p);
+                    i ? ctx.lineTo(s.sx, s.sy) : ctx.moveTo(s.sx, s.sy);
+                });
+                ctx.stroke();
+                ctx.beginPath();
+                R.forEach((p, i) => {
+                    const s = toScreen(p);
+                    i ? ctx.lineTo(s.sx, s.sy) : ctx.moveTo(s.sx, s.sy);
+                });
+                ctx.stroke();
+
+                const dir = { z: Math.cos(angle), r: Math.sin(angle) };
+                const perp = { z: -dir.r, r: dir.z };
+
+                for (let i = 0; i < rays; i++) {
+                    const r0 = -aperture + (2 * aperture * i) / (rays - 1);
+                    let P = {
+                        z: -80 * dir.z + r0 * perp.z,
+                        r: -80 * dir.r + r0 * perp.r,
+                    };
+                    let D = norm(dir);
+
+                    const h1 = findIntersection(P, D, eq);
+                    if (!h1) continue;
+
+                    ctx.strokeStyle = "red";
+                    ctx.beginPath();
+                    const sP = toScreen(P),
+                        sH1 = toScreen(h1);
+                    ctx.moveTo(sP.sx, sP.sy);
+                    ctx.lineTo(sH1.sx, sH1.sy);
+                    ctx.stroke();
+
+                    let N = norm({ z: -1, r: deriv(eq, h1.r) });
+                    if (N.z * D.z + N.r * D.r > 0) N = { z: -N.z, r: -N.r };
+
+                    const T1 = refract(D, N, 1 / n);
+                    if (!T1) continue;
+                    const h2 = findIntersection(
+                        { z: h1.z + 1e-6 * T1.z, r: h1.r + 1e-6 * T1.r },
+                        T1,
+                        eqR,
+                    );
+                    if (!h2) continue;
+
+                    ctx.strokeStyle = "orange";
+                    ctx.beginPath();
+                    const sH2 = toScreen(h2);
+                    ctx.moveTo(sH1.sx, sH1.sy);
+                    ctx.lineTo(sH2.sx, sH2.sy);
+                    ctx.stroke();
+
+                    let N2 = norm({ z: -1, r: deriv(eqR, h2.r) });
+                    if (N2.z * T1.z + N2.r * T1.r > 0)
+                        N2 = { z: -N2.z, r: -N2.r };
+
+                    const T2 = refract(T1, N2, n);
+                    if (!T2) continue;
+
+                    ctx.strokeStyle = "green";
+                    ctx.beginPath();
+                    ctx.moveTo(sH2.sx, sH2.sy);
+                    const end = {
+                        z: h2.z + 3000 * T2.z,
+                        r: h2.r + 3000 * T2.r,
+                    };
+                    const sEnd = toScreen(end);
+                    ctx.lineTo(sEnd.sx, sEnd.sy);
+                    ctx.stroke();
+                }
+            }
+
+            /* ==== UI ==== */
+            function syncFromRange(n) {
+                const val = document.getElementById(n + "Range").value;
+                document.getElementById(n + "Input").value = val;
+                let display = parseFloat(val);
+                if (n === "a2") display = display.toFixed(3);
+                else if (n === "a4" || n === "a6")
+                    display = display.toExponential(1);
+                else display = display.toFixed(1).replace(/\.0$/, "");
+                document.getElementById(n + "Val").textContent = display;
+                requestDraw();
+            }
+            function syncFromInput(n) {
+                const val = document.getElementById(n + "Input").value;
+                document.getElementById(n + "Range").value = val;
+                let display = parseFloat(val);
+                if (n === "a2") display = display.toFixed(3);
+                else if (n === "a4" || n === "a6")
+                    display = display.toExponential(1);
+                else display = display.toFixed(1).replace(/\.0$/, "");
+                document.getElementById(n + "Val").textContent = display;
+                requestDraw();
+            }
+            function resetView() {
+                scale = 7;
+                cx = canvas.width / 4;
+                cy = canvas.height / 2;
+                document.getElementById("scaleVal").textContent =
+                    scale.toFixed(2);
+                requestDraw();
+            }
+
+            /* ==== МЫШЬ + ЗУМ ==== */
+            canvas.addEventListener("mousedown", (e) => {
+                isDragging = true;
+                sx0 = e.clientX;
+                sy0 = e.clientY;
+            });
+            canvas.addEventListener("mousemove", (e) => {
+                if (isDragging) {
+                    cx += e.clientX - sx0;
+                    cy += e.clientY - sy0;
+                    sx0 = e.clientX;
+                    sy0 = e.clientY;
+                    requestDraw();
+                }
+            });
+            canvas.addEventListener("mouseup", () => (isDragging = false));
+            canvas.addEventListener("mouseleave", () => (isDragging = false));
+
+            canvas.addEventListener("wheel", (e) => {
+                e.preventDefault();
+                const factor = e.deltaY < 0 ? 1.05 : 0.95;
+                const mx = e.offsetX;
+                const my = e.offsetY;
+                const x0 = (mx - cx) / scale;
+                const y0 = (my - cy) / scale;
+
+                scale = Math.min(maxScale, Math.max(minScale, scale * factor));
+                cx = mx - x0 * scale;
+                cy = my - y0 * scale;
+                document.getElementById("scaleVal").textContent =
+                    scale.toFixed(2);
+                requestDraw();
+            });
+
+            /* ==== АВТОМАТИЧЕСКИЙ РАЗМЕР CANVAS ==== */
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                cx = canvas.width / 4;
+                cy = canvas.height / 2;
+                requestDraw();
+            }
+
+            window.addEventListener("load", resizeCanvas);
+            window.addEventListener("resize", resizeCanvas);
+
+            /* ==== СВОРАЧИВАНИЕ ПАНЕЛИ ==== */
+            const controlsEl = document.getElementById("controls");
+            const expandBtn = document.getElementById("expandBtn");
+
+            document
+                .getElementById("panelToggle")
+                .addEventListener("click", () => {
+                    controlsEl.classList.add("collapsed");
+                    expandBtn.style.display = "flex";
+                });
+
+            expandBtn.addEventListener("click", () => {
+                controlsEl.classList.remove("collapsed");
+                expandBtn.style.display = "none";
+            });
+
+            /* ==== АВТОТЕМА ==== */
+            const mql = window.matchMedia("(prefers-color-scheme: light)");
+            mql.addEventListener("change", requestDraw);
+        </script>
+    </body>
 </html>

@@ -19,4 +19,4 @@ $$
 
 $$M(r)=t-z\left(\frac{r_i\big|_{r_a=r}}{z_i\big|_{r_a=r}}\left(M(r)-z(r)\right)+r\right).$$
 
-С помощью cайта [index.html](https://mikhailgovgolenko.github.io/Lense/) можно смоделировать различные поверхности симметричной линзы.
+С помощью [cайта](https://mikhailgovgolenko.github.io/Pet-projects/lens) можно смоделировать различные поверхности симметричной линзы.
