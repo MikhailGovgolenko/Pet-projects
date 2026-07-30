@@ -1,1153 +1,1421 @@
 <!doctype html>
 <html lang="ru">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Линза — 2D / 3D</title>
-    <style>
-        :root {
-            --bg: #07070a;
-            --text: #ffffff;
-            --text-sec: rgba(255, 255, 255, 0.55);
-            --accent: #00d4ff;
-            --glass-bg: rgba(255, 255, 255, 0.035);
-            --glass-border: rgba(255, 255, 255, 0.18);
-            --glass-shadow:
-                0 8px 32px rgba(0, 0, 0, 0.25),
-                inset 0 0.5px 0 rgba(255, 255, 255, 0.12);
-            --input-bg: rgba(255, 255, 255, 0.05);
-        }
-
-        @media (prefers-color-scheme: light) {
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Линза — 2D / 3D</title>
+        <style>
             :root {
-                --bg: #f4f6fa;
-                --text: #0b0b12;
-                --text-sec: rgba(0, 0, 0, 0.45);
-                --accent: #0077b6;
-                --glass-bg: rgba(255, 255, 255, 0.5);
-                --glass-border: rgba(255, 255, 255, 0.55);
+                --bg: #07070a;
+                --text: #ffffff;
+                --text-sec: rgba(255, 255, 255, 0.55);
+                --accent: #00d4ff;
+                --glass-bg: rgba(255, 255, 255, 0.035);
+                --glass-border: rgba(255, 255, 255, 0.18);
                 --glass-shadow:
-                    0 8px 32px rgba(0, 0, 0, 0.06),
-                    inset 0 0.5px 0 rgba(255, 255, 255, 0.6);
-                --input-bg: rgba(0, 0, 0, 0.04);
+                    0 8px 32px rgba(0, 0, 0, 0.25),
+                    inset 0 0.5px 0 rgba(255, 255, 255, 0.12);
+                --input-bg: rgba(255, 255, 255, 0.05);
             }
-        }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        html, body {
-            overflow: hidden;
-            height: 100%;
-            background: var(--bg);
-            color: var(--text);
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
-                "Segoe UI", Roboto, sans-serif;
-            transition: background 0.4s ease;
-        }
-
-        #canvas-container {
-            position: fixed;
-            inset: 0;
-            z-index: 0;
-        }
-
-        #canvas-container canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-        }
-
-        #canvas {
-            cursor: move;
-        }
-
-        .glass {
-            background: var(--glass-bg);
-            backdrop-filter: blur(60px) saturate(240%);
-            -webkit-backdrop-filter: blur(60px) saturate(240%);
-            border: 1px solid var(--glass-border);
-            box-shadow: var(--glass-shadow);
-            border-radius: 24px;
-            transition:
-                background 0.4s,
-                border-color 0.4s,
-                box-shadow 0.4s;
-        }
-
-        #controls {
-            position: absolute;
-            left: 16px;
-            top: 16px;
-            width: 320px;
-            padding: 14px;
-            z-index: 10;
-            max-height: calc(100vh - 32px);
-            overflow-y: auto;
-            overflow-x: hidden;
-            transition:
-                transform 0.45s cubic-bezier(0.32, 0.72, 0, 1),
-                opacity 0.35s ease;
-        }
-
-        #controls.collapsed {
-            transform: translateX(calc(-100% - 40px));
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        #controls::-webkit-scrollbar {
-            width: 3px;
-        }
-        #controls::-webkit-scrollbar-thumb {
-            background: var(--glass-border);
-            border-radius: 3px;
-        }
-
-        .panel-header {
-            display: flex;
-            justify-content: flex-end;
-            margin-bottom: 8px;
-        }
-
-        .panel-toggle {
-            width: 26px;
-            height: 26px;
-            border-radius: 50%;
-            background: var(--input-bg);
-            border: 1px solid var(--glass-border);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background 0.2s, transform 0.2s;
-        }
-        .panel-toggle:hover {
-            background: rgba(128, 128, 128, 0.15);
-            transform: scale(1.08);
-        }
-        .panel-toggle:active {
-            transform: scale(0.95);
-        }
-        .panel-toggle span {
-            display: block;
-            width: 5px;
-            height: 5px;
-            border-left: 2px solid currentColor;
-            border-bottom: 2px solid currentColor;
-            transform: rotate(45deg);
-            margin-left: 2px;
-            opacity: 0.8;
-        }
-
-        #expandBtn {
-            position: fixed;
-            left: 20px;
-            top: 20px;
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            z-index: 20;
-            transition: transform 0.2s;
-        }
-        #expandBtn:hover {
-            transform: scale(1.08);
-        }
-        #expandBtn:active {
-            transform: scale(0.95);
-        }
-        #expandBtn span {
-            display: block;
-            width: 7px;
-            height: 7px;
-            border-right: 2px solid currentColor;
-            border-top: 2px solid currentColor;
-            transform: rotate(45deg);
-            margin-right: 2px;
-            opacity: 0.8;
-        }
-
-        .section {
-            margin-bottom: 6px;
-            padding-bottom: 4px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-        }
-        @media (prefers-color-scheme: light) {
-            .section {
-                border-bottom-color: rgba(0, 0, 0, 0.05);
+            @media (prefers-color-scheme: light) {
+                :root {
+                    --bg: #f4f6fa;
+                    --text: #0b0b12;
+                    --text-sec: rgba(0, 0, 0, 0.45);
+                    --accent: #0077b6;
+                    --glass-bg: rgba(255, 255, 255, 0.5);
+                    --glass-border: rgba(255, 255, 255, 0.55);
+                    --glass-shadow:
+                        0 8px 32px rgba(0, 0, 0, 0.06),
+                        inset 0 0.5px 0 rgba(255, 255, 255, 0.6);
+                    --input-bg: rgba(0, 0, 0, 0.04);
+                }
             }
-        }
-        .section:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-            padding-bottom: 0;
-        }
 
-        label {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin: 4px 0;
-            font-size: 12px;
-            font-weight: 500;
-            gap: 6px;
-        }
-
-        label .label-text {
-            flex-shrink: 0;
-            color: var(--text-sec);
-            white-space: nowrap;
-        }
-
-        .input-wrap {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            flex: 1;
-            justify-content: flex-end;
-            min-width: 0;
-        }
-
-        input[type="range"] {
-            -webkit-appearance: none;
-            flex: 1;
-            min-width: 40px;
-            max-width: 90px;
-            height: 3px;
-            background: rgba(255, 255, 255, 0.12);
-            border-radius: 2px;
-            outline: none;
-            cursor: pointer;
-        }
-        @media (prefers-color-scheme: light) {
-            input[type="range"] {
-                background: rgba(0, 0, 0, 0.08);
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
             }
-        }
 
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            background: #fff;
-            box-shadow:
-                0 2px 6px rgba(0, 0, 0, 0.2),
-                0 0 0 1px rgba(0, 0, 0, 0.04);
-            cursor: pointer;
-            transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-        input[type="range"]::-webkit-slider-thumb:hover {
-            transform: scale(1.15);
-        }
-        input[type="range"]::-webkit-slider-thumb:active {
-            transform: scale(0.95);
-        }
-
-        input[type="number"],
-        input[type="text"] {
-            background: var(--input-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: 10px;
-            padding: 4px 5px;
-            color: inherit;
-            font-size: 11px;
-            font-family: "SF Mono", monospace;
-            outline: none;
-            width: 52px;
-            text-align: center;
-            flex-shrink: 0;
-        }
-        input[type="text"] {
-            width: 100%;
-            text-align: left;
-            margin-top: 2px;
-            font-family: inherit;
-            font-size: 11.5px;
-        }
-
-        .val {
-            display: inline-block;
-            width: 36px;
-            text-align: right;
-            font-family: "SF Mono", monospace;
-            font-size: 10.5px;
-            color: var(--accent);
-            font-weight: 700;
-            flex-shrink: 0;
-        }
-
-        .glass-group {
-            background: var(--input-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: 14px;
-            padding: 8px;
-            margin: 4px 0;
-        }
-
-        .glass-group .group-title {
-            font-size: 9.5px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--text-sec);
-            margin-bottom: 4px;
-            display: block;
-        }
-
-        .toggle-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin: 5px 0;
-            font-size: 12px;
-            font-weight: 500;
-        }
-
-        .switch {
-            position: relative;
-            width: 34px;
-            height: 17px;
-            flex-shrink: 0;
-        }
-
-        .switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            inset: 0;
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: 17px;
-            transition: 0.25s;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        @media (prefers-color-scheme: light) {
-            .slider {
-                background: rgba(0, 0, 0, 0.1);
-                border-color: rgba(0, 0, 0, 0.12);
+            html,
+            body {
+                overflow: hidden;
+                height: 100%;
+                background: var(--bg);
+                color: var(--text);
+                font-family:
+                    -apple-system, BlinkMacSystemFont, "SF Pro Display",
+                    "Segoe UI", Roboto, sans-serif;
+                transition: background 0.4s ease;
             }
-        }
 
-        .slider::before {
-            position: absolute;
-            content: "";
-            height: 11px;
-            width: 11px;
-            left: 2px;
-            bottom: 2px;
-            background: white;
-            border-radius: 50%;
-            transition: 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-        }
+            #canvas-container {
+                position: fixed;
+                inset: 0;
+                z-index: 0;
+            }
 
-        input:checked + .slider {
-            background: linear-gradient(135deg, #00d4ff, #0077b6);
-            border-color: transparent;
-        }
+            #canvas-container canvas {
+                display: block;
+                width: 100%;
+                height: 100%;
+            }
 
-        input:checked + .slider::before {
-            transform: translateX(17px);
-        }
+            #canvas {
+                cursor: move;
+            }
 
-        button {
-            width: 100%;
-            margin-top: 4px;
-            padding: 7px;
-            border: none;
-            border-radius: 12px;
-            background: linear-gradient(
-                135deg,
-                rgba(0, 212, 255, 0.85),
-                rgba(0, 119, 182, 0.85)
-            );
-            color: #fff;
-            font-size: 11.5px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: opacity 0.2s;
-            letter-spacing: 0.2px;
-        }
+            .glass {
+                background: var(--glass-bg);
+                backdrop-filter: blur(60px) saturate(240%);
+                -webkit-backdrop-filter: blur(60px) saturate(240%);
+                border: 1px solid var(--glass-border);
+                box-shadow: var(--glass-shadow);
+                border-radius: 24px;
+                transition:
+                    background 0.4s,
+                    border-color 0.4s,
+                    box-shadow 0.4s;
+            }
 
-        button:hover {
-            opacity: 0.85;
-        }
-        button:active {
-            opacity: 0.7;
-        }
-
-        @media (max-width: 720px) {
             #controls {
-                width: 270px;
-                padding: 12px;
+                position: absolute;
+                left: 16px;
+                top: 16px;
+                width: 320px;
+                padding: 14px;
+                z-index: 10;
+                max-height: calc(100vh - 32px);
+                overflow-y: auto;
+                overflow-x: hidden;
+                transition:
+                    transform 0.45s cubic-bezier(0.32, 0.72, 0, 1),
+                    opacity 0.35s ease;
             }
-        }
-    </style>
-</head>
 
-<body>
-    <div id="canvas-container">
-        <canvas id="canvas"></canvas>
-    </div>
-
-    <div id="expandBtn" class="glass" title="Развернуть панель">
-        <span></span>
-    </div>
-
-    <div id="controls" class="glass">
-        <div class="panel-header">
-            <div class="panel-toggle" id="panelToggle" title="Свернуть панель">
-                <span></span>
-            </div>
-        </div>
-
-        <div class="section">
-            <div class="toggle-row">
-                <span>3D-вид</span>
-                <label class="switch">
-                    <input type="checkbox" id="modeToggle" />
-                    <span class="slider"></span>
-                </label>
-            </div>
-        </div>
-
-        <div class="section">
-            <label>
-                <span class="label-text">Преломление n</span>
-                <div class="input-wrap">
-                    <input id="nLensRange" type="range" min="1" max="10" step="0.01" value="1.5" />
-                    <input id="nLensInput" type="number" value="1.5" step="0.01" />
-                    <span class="val" id="nLensVal">1.5</span>
-                </div>
-            </label>
-            <label>
-                <span class="label-text">Угол пучка (°)</span>
-                <div class="input-wrap">
-                    <input id="beamAngleRange" type="range" min="-90" max="90" step="0.1" value="0" />
-                    <input id="beamAngleInput" type="number" value="0" step="0.1" />
-                    <span class="val" id="beamAngleVal">0</span>
-                </div>
-            </label>
-            <label>
-                <span class="label-text">Кол-во лучей</span>
-                <div class="input-wrap">
-                    <input id="rayCountRange" type="range" min="3" max="201" step="1" value="41" />
-                    <input id="rayCountInput" type="number" value="41" step="1" />
-                    <span class="val" id="rayCountVal">41</span>
-                </div>
-            </label>
-        </div>
-
-        <div class="section">
-            <div class="glass-group">
-                <span class="group-title">Полином z(r)=z₀+a₂r²+a₄r⁴+a₆r⁶</span>
-                <label>
-                    <span class="label-text">z₀</span>
-                    <div class="input-wrap">
-                        <input id="z0Range" type="range" min="-20" max="20" step="0.001" value="-5" />
-                        <input id="z0Input" type="number" value="-5" step="0.001" />
-                        <span class="val" id="z0Val">-5</span>
-                    </div>
-                </label>
-                <label>
-                    <span class="label-text">a₂</span>
-                    <div class="input-wrap">
-                        <input id="a2Range" type="range" min="-0.1" max="0.1" step="1e-5" value="0.006457" />
-                        <input id="a2Input" type="number" value="0.006457" step="1e-5" />
-                        <span class="val" id="a2Val">0.006</span>
-                    </div>
-                </label>
-                <label>
-                    <span class="label-text">a₄</span>
-                    <div class="input-wrap">
-                        <input id="a4Range" type="range" min="-0.001" max="0.001" step="1e-7" value="-5e-7" />
-                        <input id="a4Input" type="number" value="-5e-7" step="1e-7" />
-                        <span class="val" id="a4Val">0</span>
-                    </div>
-                </label>
-                <label>
-                    <span class="label-text">a₆</span>
-                    <div class="input-wrap">
-                        <input id="a6Range" type="range" min="-1e-5" max="1e-5" step="1e-10" value="0" />
-                        <input id="a6Input" type="number" value="0" step="1e-10" />
-                        <span class="val" id="a6Val">0</span>
-                    </div>
-                </label>
-            </div>
-        </div>
-
-        <div class="section">
-            <div class="toggle-row">
-                <span>Использовать поле для уравнения</span>
-                <label class="switch">
-                    <input type="checkbox" id="useFieldCheckbox" checked />
-                    <span class="slider"></span>
-                </label>
-            </div>
-            <label style="flex-direction:column;align-items:flex-start;gap:2px">
-                <span class="label-text">z(r)</span>
-                <input type="text" id="leftSurfaceEq" placeholder="-5 + 0.006457*r**2-5e-7*r**4" />
-            </label>
-        </div>
-
-        <div class="section">
-            <label>
-                <span class="label-text">Масштаб</span>
-                <div class="input-wrap">
-                    <span class="val" id="scaleVal" style="width:auto;flex-shrink:0">7.00</span>
-                </div>
-            </label>
-            <button id="resetViewBtn">Сбросить вид</button>
-        </div>
-    </div>
-
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
-        }
-    }
-    </script>
-
-    <script type="module">
-        import * as THREE from "three";
-        import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-
-        const canvas2d = document.getElementById("canvas");
-        const ctx = canvas2d.getContext("2d");
-        const container = document.getElementById("canvas-container");
-        const controlsEl = document.getElementById("controls");
-        const expandBtn = document.getElementById("expandBtn");
-
-        const minScale = 2;
-        const maxScale = 10000;
-        const DEG = Math.PI / 180;
-
-        let state = {
-            scale: 7,
-            cx: 0,
-            cy: 0,
-            isDragging: false,
-            dragButton: -1,
-            dragStartX: 0,
-            dragStartY: 0,
-            mode: "2d",
-            dirty: true,
-            threeReady: false,
-        };
-
-        let lensCache = { key: "" };
-
-        function requestDraw() {
-            if (state.mode === "3d") {
-                state.dirty = true;
-                return;
+            #controls.collapsed {
+                transform: translateX(calc(-100% - 40px));
+                opacity: 0;
+                pointer-events: none;
             }
-            if (state.redrawPending) return;
-            state.redrawPending = true;
-            requestAnimationFrame(function() {
-                state.redrawPending = false;
-                draw2D();
-            });
-        }
 
-        function safeEval(expr, r) {
-            try {
-                return eval(expr.replace(/\br\b/g, "(" + r + ")"));
-            } catch {
-                return NaN;
+            #controls::-webkit-scrollbar {
+                width: 3px;
             }
-        }
-
-        function deriv(expr, r, h) {
-            h = h || 1e-4;
-            return (safeEval(expr, r + h) - safeEval(expr, r - h)) / (2 * h);
-        }
-
-        function normVec(v) {
-            var L = Math.hypot(v.z, v.r);
-            return { z: v.z / L, r: v.r / L };
-        }
-
-        function refract3d(I, N, eta) {
-            var cosi = -(N.z * I.z + N.r * I.r);
-            var k = 1 - eta * eta * (1 - cosi * cosi);
-            if (k < 0) return null;
-            return {
-                z: eta * I.z + (eta * cosi - Math.sqrt(k)) * N.z,
-                r: eta * I.r + (eta * cosi - Math.sqrt(k)) * N.r,
-            };
-        }
-
-        function getParams() {
-            var useField = document.getElementById("useFieldCheckbox").checked;
-            var eq = useField ? document.getElementById("leftSurfaceEq").value.trim() : "";
-            if (!eq) {
-                var z0 = document.getElementById("z0Range").value;
-                var a2 = document.getElementById("a2Range").value;
-                var a4 = document.getElementById("a4Range").value;
-                var a6 = document.getElementById("a6Range").value;
-                eq = z0 + "+(" + a2 + ")*r*r+(" + a4 + ")*r**4+(" + a6 + ")*r**6";
+            #controls::-webkit-scrollbar-thumb {
+                background: var(--glass-border);
+                border-radius: 3px;
             }
-            var eqR = "(0-(" + eq + "))";
-            return {
-                n: parseFloat(document.getElementById("nLensRange").value),
-                angle: parseFloat(document.getElementById("beamAngleRange").value) * DEG,
-                rayCount: parseInt(document.getElementById("rayCountRange").value),
-                eq: eq,
-                eqR: eqR,
-            };
-        }
 
-        function sampleLens(eqL, eqR) {
-            var L = [];
-            var R = [];
-            var aperture = 0;
-            for (var r = 0; ; r += 0.2) {
-                var zL = safeEval(eqL, r);
-                var zR = safeEval(eqR, r);
-                if (!isFinite(zL) || !isFinite(zR) || zL > zR) break;
-                aperture = r;
-                L.push({ z: zL, r: r });
-                R.push({ z: zR, r: r });
+            .panel-header {
+                display: flex;
+                justify-content: flex-end;
+                margin-bottom: 8px;
             }
-            for (var r = -0.2; ; r -= 0.2) {
-                var zL = safeEval(eqL, r);
-                var zR = safeEval(eqR, r);
-                if (!isFinite(zL) || !isFinite(zR) || zL > zR) break;
-                L.unshift({ z: zL, r: r });
-                R.unshift({ z: zR, r: r });
-            }
-            return { L: L, R: R, aperture: aperture };
-        }
 
-        function findIntersection(P, D, eq) {
-            function f(t) {
-                return P.z + t * D.z - safeEval(eq, P.r + t * D.r);
+            .panel-toggle {
+                width: 26px;
+                height: 26px;
+                border-radius: 50%;
+                background: var(--input-bg);
+                border: 1px solid var(--glass-border);
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition:
+                    background 0.2s,
+                    transform 0.2s;
             }
-            var f0 = f(0);
-            for (var t = 0.2; t < 1000; t += 0.2) {
-                var f1 = f(t);
-                if (isFinite(f0) && isFinite(f1) && f0 * f1 <= 0) {
-                    var a = t - 0.2;
-                    var b = t;
-                    for (var i = 0; i < 30; i++) {
-                        var m = 0.5 * (a + b);
-                        if (f(a) * f(m) <= 0) b = m;
-                        else a = m;
-                    }
-                    var th = 0.5 * (a + b);
-                    return { z: P.z + th * D.z, r: P.r + th * D.r };
+            .panel-toggle:hover {
+                background: rgba(128, 128, 128, 0.15);
+                transform: scale(1.08);
+            }
+            .panel-toggle:active {
+                transform: scale(0.95);
+            }
+            .panel-toggle span {
+                display: block;
+                width: 5px;
+                height: 5px;
+                border-left: 2px solid currentColor;
+                border-bottom: 2px solid currentColor;
+                transform: rotate(45deg);
+                margin-left: 2px;
+                opacity: 0.8;
+            }
+
+            #expandBtn {
+                position: fixed;
+                left: 20px;
+                top: 20px;
+                width: 44px;
+                height: 44px;
+                border-radius: 50%;
+                display: none;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                z-index: 20;
+                transition: transform 0.2s;
+            }
+            #expandBtn:hover {
+                transform: scale(1.08);
+            }
+            #expandBtn:active {
+                transform: scale(0.95);
+            }
+            #expandBtn span {
+                display: block;
+                width: 7px;
+                height: 7px;
+                border-right: 2px solid currentColor;
+                border-top: 2px solid currentColor;
+                transform: rotate(45deg);
+                margin-right: 2px;
+                opacity: 0.8;
+            }
+
+            .section {
+                margin-bottom: 6px;
+                padding-bottom: 4px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            }
+            @media (prefers-color-scheme: light) {
+                .section {
+                    border-bottom-color: rgba(0, 0, 0, 0.05);
                 }
-                f0 = f1;
             }
-            return null;
-        }
-
-        function traceRays(eq, eqR, aperture, angle, n, count) {
-            var rays = [];
-            var dir = { z: Math.cos(angle), r: Math.sin(angle) };
-            var perp = { z: -dir.r, r: dir.z };
-            for (var i = 0; i < count; i++) {
-                var r0 = -aperture + (2 * aperture * i) / (count - 1);
-                var P = {
-                    z: -80 * dir.z + r0 * perp.z,
-                    r: -80 * dir.r + r0 * perp.r,
-                };
-                var D = normVec(dir);
-                var h1 = findIntersection(P, D, eq);
-                if (!h1) continue;
-                var N = normVec({ z: -1, r: deriv(eq, h1.r) });
-                if (N.z * D.z + N.r * D.r > 0) N = { z: -N.z, r: -N.r };
-                var T1 = refract3d(D, N, 1 / n);
-                if (!T1) continue;
-                var h2 = findIntersection(
-                    { z: h1.z + 1e-6 * T1.z, r: h1.r + 1e-6 * T1.r },
-                    T1, eqR
-                );
-                if (!h2) continue;
-                var N2 = normVec({ z: -1, r: deriv(eqR, h2.r) });
-                if (N2.z * T1.z + N2.r * T1.r > 0) N2 = { z: -N2.z, r: -N2.r };
-                var T2 = refract3d(T1, N2, n);
-                if (!T2) continue;
-                var end = { z: h2.z + 3000 * T2.z, r: h2.r + 3000 * T2.r };
-                rays.push({ P: P, h1: h1, T1: T1, h2: h2, T2: T2, end: end, disabled: false });
-            }
-            return rays;
-        }
-
-        function toScreen(p, cx, cy, scale) {
-            cx = cx || state.cx;
-            cy = cy || state.cy;
-            scale = scale || state.scale;
-            return { sx: cx + p.z * scale, sy: cy - p.r * scale };
-        }
-
-        function draw2D() {
-            ctx.clearRect(0, 0, canvas2d.width, canvas2d.height);
-            var params = getParams();
-            var key = params.eq + "|" + params.eqR;
-            if (lensCache.key !== key) {
-                lensCache = { key: key, data: sampleLens(params.eq, params.eqR) };
-            }
-            var lens = lensCache.data;
-            var rays = traceRays(params.eq, params.eqR, lens.aperture, params.angle, params.n, params.rayCount);
-            var cx = state.cx;
-            var cy = state.cy;
-            var scale = state.scale;
-
-            var grad = ctx.createLinearGradient(cx, 0, cx + 100, 0);
-            grad.addColorStop(0, "rgba(150,180,255,0.2)");
-            grad.addColorStop(1, "rgba(100,130,255,0.15)");
-            ctx.fillStyle = grad;
-            ctx.beginPath();
-            lens.L.forEach(function(p, i) {
-                var s = toScreen(p, cx, cy, scale);
-                if (i === 0) ctx.moveTo(s.sx, s.sy);
-                else ctx.lineTo(s.sx, s.sy);
-            });
-            for (var i = lens.R.length - 1; i >= 0; i--) {
-                var s = toScreen(lens.R[i], cx, cy, scale);
-                ctx.lineTo(s.sx, s.sy);
-            }
-            ctx.closePath();
-            ctx.fill();
-
-            ctx.strokeStyle = "rgba(0,180,255,0.6)";
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            lens.L.forEach(function(p, i) {
-                var s = toScreen(p, cx, cy, scale);
-                if (i === 0) ctx.moveTo(s.sx, s.sy);
-                else ctx.lineTo(s.sx, s.sy);
-            });
-            ctx.stroke();
-            ctx.beginPath();
-            lens.R.forEach(function(p, i) {
-                var s = toScreen(p, cx, cy, scale);
-                if (i === 0) ctx.moveTo(s.sx, s.sy);
-                else ctx.lineTo(s.sx, s.sy);
-            });
-            ctx.stroke();
-
-            for (var i = 0; i < rays.length; i++) {
-                var r = rays[i];
-                if (r.disabled) continue;
-                var sP = toScreen(r.P, cx, cy, scale);
-                var sH1 = toScreen(r.h1, cx, cy, scale);
-                var sH2 = toScreen(r.h2, cx, cy, scale);
-                var sEnd = toScreen(r.end, cx, cy, scale);
-
-                ctx.strokeStyle = "rgba(255,60,60,0.9)";
-                ctx.lineWidth = 1.5;
-                ctx.beginPath();
-                ctx.moveTo(sP.sx, sP.sy);
-                ctx.lineTo(sH1.sx, sH1.sy);
-                ctx.stroke();
-
-                ctx.strokeStyle = "rgba(255,180,50,0.9)";
-                ctx.beginPath();
-                ctx.moveTo(sH1.sx, sH1.sy);
-                ctx.lineTo(sH2.sx, sH2.sy);
-                ctx.stroke();
-
-                ctx.strokeStyle = "rgba(50,255,100,0.9)";
-                ctx.beginPath();
-                ctx.moveTo(sH2.sx, sH2.sy);
-                ctx.lineTo(sEnd.sx, sEnd.sy);
-                ctx.stroke();
-            }
-        }
-
-        function resizeCanvas() {
-            canvas2d.width = window.innerWidth;
-            canvas2d.height = window.innerHeight;
-            state.cx = state.mode === "3d" ? canvas2d.width / 2 : canvas2d.width / 4;
-            state.cy = canvas2d.height / 2;
-            if (state.mode === "2d") requestDraw();
-        }
-
-        window.addEventListener("load", resizeCanvas);
-        window.addEventListener("resize", resizeCanvas);
-
-        // ==============================
-        // Three.js 3D Engine
-        // ==============================
-
-        let scene3d, camera3d, renderer3d, controls3d;
-        let lensGroup, rayGroup;
-        let animId = null;
-        let currentIsLight = false;
-
-        function isLight() {
-            return window.matchMedia("(prefers-color-scheme: light)").matches;
-        }
-
-        function initThree() {
-            scene3d = new THREE.Scene();
-            currentIsLight = isLight();
-            scene3d.background = new THREE.Color(currentIsLight ? 0xf4f6fa : 0x07070a);
-
-            camera3d = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 500);
-            camera3d.position.set(55, 32, 55);
-            camera3d.lookAt(0, 0, 0);
-
-            renderer3d = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-            renderer3d.setSize(innerWidth, innerHeight);
-            renderer3d.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            renderer3d.domElement.style.display = "none";
-            renderer3d.domElement.style.cursor = "grab";
-            container.appendChild(renderer3d.domElement);
-
-            controls3d = new OrbitControls(camera3d, renderer3d.domElement);
-            controls3d.enableDamping = true;
-            controls3d.dampingFactor = 0.08;
-            controls3d.minDistance = 5;
-            controls3d.maxDistance = 150;
-            controls3d.target.set(0, 0, 0);
-
-            var ambLight = new THREE.AmbientLight(0x404060, 1.0);
-            scene3d.add(ambLight);
-            var dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
-            dirLight.position.set(15, 30, 15);
-            scene3d.add(dirLight);
-            var backLight = new THREE.DirectionalLight(0x4488ff, 0.5);
-            backLight.position.set(-15, -10, -15);
-            scene3d.add(backLight);
-
-            lensGroup = new THREE.Group();
-            scene3d.add(lensGroup);
-            rayGroup = new THREE.Group();
-            scene3d.add(rayGroup);
-
-            state.threeReady = true;
-            window.addEventListener("resize", onResize3D);
-        }
-
-        function onResize3D() {
-            if (!state.threeReady) return;
-            camera3d.aspect = innerWidth / innerHeight;
-            camera3d.updateProjectionMatrix();
-            renderer3d.setSize(innerWidth, innerHeight);
-        }
-
-        function buildLensMesh(eqL, eqR, aperture) {
-            var nR = 40;
-            var pts = [];
-            for (var i = 0; i <= nR; i++) {
-                var r = (i / nR) * aperture;
-                var z = safeEval(eqL, r);
-                if (!isFinite(z)) continue;
-                pts.push(new THREE.Vector2(r, z));
-            }
-            for (var i = nR; i >= 0; i--) {
-                var r = (i / nR) * aperture;
-                var z = safeEval(eqR, r);
-                if (!isFinite(z)) continue;
-                pts.push(new THREE.Vector2(r, z));
-            }
-            if (pts.length < 4) return null;
-
-            var geo = new THREE.LatheGeometry(pts, 48);
-            var mat = new THREE.MeshPhongMaterial({
-                color: 0x4488cc,
-                emissive: 0x112244,
-                emissiveIntensity: 0.15,
-                transparent: true,
-                opacity: 0.85,
-                side: THREE.DoubleSide,
-                shininess: 60,
-                specular: 0x446688,
-            });
-            var mesh = new THREE.Mesh(geo, mat);
-            mesh.rotation.x = -Math.PI / 2;
-            mesh.castShadow = false;
-            mesh.receiveShadow = false;
-            return mesh;
-        }
-
-        function buildRays3D(eq, eqR, aperture, angle, n, rayCount) {
-            var colors = [0xff4444, 0xffb434, 0x44ff66];
-            var allSegs = [[], [], []];
-            var dir = { z: Math.cos(angle), r: Math.sin(angle) };
-            var perp = { z: -dir.r, r: dir.z };
-
-            var nSide = Math.max(1, Math.round(Math.sqrt(rayCount)));
-            if (nSide < 1) nSide = 1;
-            var halfSize = aperture * 0.7071;
-            var startDist = 35;
-            var endDist = 3000;
-            var traceCache = {};
-
-            function traceAtOffset(rOff) {
-                var P = {
-                    z: -startDist * dir.z + rOff * perp.z,
-                    r: -startDist * dir.r + rOff * perp.r,
-                };
-                var D = normVec(dir);
-                var h1 = findIntersection(P, D, eq);
-                if (!h1) return null;
-                var N = normVec({ z: -1, r: deriv(eq, h1.r) });
-                if (N.z * D.z + N.r * D.r > 0) N = { z: -N.z, r: -N.r };
-                var T1 = refract3d(D, N, 1 / n);
-                if (!T1) return null;
-                var h2 = findIntersection(
-                    { z: h1.z + 1e-6 * T1.z, r: h1.r + 1e-6 * T1.r },
-                    T1, eqR
-                );
-                if (!h2) return null;
-                var N2 = normVec({ z: -1, r: deriv(eqR, h2.r) });
-                if (N2.z * T1.z + N2.r * T1.r > 0) N2 = { z: -N2.z, r: -N2.r };
-                var T2 = refract3d(T1, N2, n);
-                if (!T2) return null;
-                var end = { z: h2.z + endDist * T2.z, r: h2.r + endDist * T2.r };
-                return { P: P, h1: h1, h2: h2, end: end };
+            .section:last-child {
+                border-bottom: none;
+                margin-bottom: 0;
+                padding-bottom: 0;
             }
 
-            for (var i = 0; i < nSide; i++) {
-                for (var j = 0; j < nSide; j++) {
-                    var x = (i / Math.max(1, nSide - 1) - 0.5) * 2 * halfSize;
-                    var y = (j / Math.max(1, nSide - 1) - 0.5) * 2 * halfSize;
-                    var r = Math.sqrt(x * x + y * y);
-                    if (r > aperture) continue;
+            label {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin: 4px 0;
+                font-size: 12px;
+                font-weight: 500;
+                gap: 6px;
+            }
 
-                    var key = r.toFixed(4);
-                    var ray;
-                    if (traceCache[key]) {
-                        ray = traceCache[key];
-                    } else {
-                        ray = traceAtOffset(r);
-                        traceCache[key] = ray;
-                    }
-                    if (!ray) continue;
+            label .label-text {
+                flex-shrink: 0;
+                color: var(--text-sec);
+                white-space: nowrap;
+            }
 
-                    var theta = Math.atan2(y || 1e-10, x || 1e-10);
-                    var ct = Math.cos(theta);
-                    var st = Math.sin(theta);
-                    var pts = [ray.P, ray.h1, ray.h2, ray.end];
-                    for (var si = 0; si < 3; si++) {
-                        var p0 = pts[si];
-                        var p1 = pts[si + 1];
-                        allSegs[si].push(
-                            p0.r * ct, p0.r * st, p0.z,
-                            p1.r * ct, p1.r * st, p1.z
-                        );
-                    }
+            .input-wrap {
+                display: flex;
+                align-items: center;
+                gap: 5px;
+                flex: 1;
+                justify-content: flex-end;
+                min-width: 0;
+            }
+
+            input[type="range"] {
+                -webkit-appearance: none;
+                flex: 1;
+                min-width: 40px;
+                max-width: 90px;
+                height: 3px;
+                background: rgba(255, 255, 255, 0.12);
+                border-radius: 2px;
+                outline: none;
+                cursor: pointer;
+            }
+            @media (prefers-color-scheme: light) {
+                input[type="range"] {
+                    background: rgba(0, 0, 0, 0.08);
                 }
             }
 
-            var group = new THREE.Group();
-            for (var si = 0; si < 3; si++) {
-                if (allSegs[si].length === 0) continue;
-                var geo = new THREE.BufferGeometry();
-                geo.setAttribute("position", new THREE.Float32BufferAttribute(allSegs[si], 3));
-                var mat = new THREE.LineBasicMaterial({
-                    color: colors[si],
-                    transparent: true,
-                    opacity: 0.4,
+            input[type="range"]::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                width: 14px;
+                height: 14px;
+                border-radius: 50%;
+                background: #fff;
+                box-shadow:
+                    0 2px 6px rgba(0, 0, 0, 0.2),
+                    0 0 0 1px rgba(0, 0, 0, 0.04);
+                cursor: pointer;
+                transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+            }
+            input[type="range"]::-webkit-slider-thumb:hover {
+                transform: scale(1.15);
+            }
+            input[type="range"]::-webkit-slider-thumb:active {
+                transform: scale(0.95);
+            }
+
+            input[type="number"],
+            input[type="text"] {
+                background: var(--input-bg);
+                border: 1px solid var(--glass-border);
+                border-radius: 10px;
+                padding: 4px 5px;
+                color: inherit;
+                font-size: 11px;
+                font-family: "SF Mono", monospace;
+                outline: none;
+                width: 52px;
+                text-align: center;
+                flex-shrink: 0;
+            }
+            input[type="text"] {
+                width: 100%;
+                text-align: left;
+                margin-top: 2px;
+                font-family: inherit;
+                font-size: 11.5px;
+            }
+
+            .val {
+                display: inline-block;
+                width: 36px;
+                text-align: right;
+                font-family: "SF Mono", monospace;
+                font-size: 10.5px;
+                color: var(--accent);
+                font-weight: 700;
+                flex-shrink: 0;
+            }
+
+            .glass-group {
+                background: var(--input-bg);
+                border: 1px solid var(--glass-border);
+                border-radius: 14px;
+                padding: 8px;
+                margin: 4px 0;
+            }
+
+            .glass-group .group-title {
+                font-size: 9.5px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                color: var(--text-sec);
+                margin-bottom: 4px;
+                display: block;
+            }
+
+            .toggle-row {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin: 5px 0;
+                font-size: 12px;
+                font-weight: 500;
+            }
+
+            .switch {
+                position: relative;
+                width: 34px;
+                height: 17px;
+                flex-shrink: 0;
+            }
+
+            .switch input {
+                opacity: 0;
+                width: 0;
+                height: 0;
+            }
+
+            .slider {
+                position: absolute;
+                cursor: pointer;
+                inset: 0;
+                background: rgba(255, 255, 255, 0.15);
+                border-radius: 17px;
+                transition: 0.25s;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            }
+            @media (prefers-color-scheme: light) {
+                .slider {
+                    background: rgba(0, 0, 0, 0.1);
+                    border-color: rgba(0, 0, 0, 0.12);
+                }
+            }
+
+            .slider::before {
+                position: absolute;
+                content: "";
+                height: 11px;
+                width: 11px;
+                left: 2px;
+                bottom: 2px;
+                background: white;
+                border-radius: 50%;
+                transition: 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+            }
+
+            input:checked + .slider {
+                background: linear-gradient(135deg, #00d4ff, #0077b6);
+                border-color: transparent;
+            }
+
+            input:checked + .slider::before {
+                transform: translateX(17px);
+            }
+
+            button {
+                width: 100%;
+                margin-top: 4px;
+                padding: 7px;
+                border: none;
+                border-radius: 12px;
+                background: linear-gradient(
+                    135deg,
+                    rgba(0, 212, 255, 0.85),
+                    rgba(0, 119, 182, 0.85)
+                );
+                color: #fff;
+                font-size: 11.5px;
+                font-weight: 700;
+                cursor: pointer;
+                transition: opacity 0.2s;
+                letter-spacing: 0.2px;
+            }
+
+            button:hover {
+                opacity: 0.85;
+            }
+            button:active {
+                opacity: 0.7;
+            }
+
+            @media (max-width: 720px) {
+                #controls {
+                    width: 270px;
+                    padding: 12px;
+                }
+            }
+        </style>
+    </head>
+
+    <body>
+        <div id="canvas-container">
+            <canvas id="canvas"></canvas>
+        </div>
+
+        <div id="expandBtn" class="glass" title="Развернуть панель">
+            <span></span>
+        </div>
+
+        <div id="controls" class="glass">
+            <div class="panel-header">
+                <div
+                    class="panel-toggle"
+                    id="panelToggle"
+                    title="Свернуть панель"
+                >
+                    <span></span>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="toggle-row">
+                    <span>3D-вид</span>
+                    <label class="switch">
+                        <input type="checkbox" id="modeToggle" />
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="section">
+                <label>
+                    <span class="label-text">Преломление n</span>
+                    <div class="input-wrap">
+                        <input
+                            id="nLensRange"
+                            type="range"
+                            min="1"
+                            max="10"
+                            step="0.01"
+                            value="1.5"
+                        />
+                        <input
+                            id="nLensInput"
+                            type="number"
+                            value="1.5"
+                            step="0.01"
+                        />
+                        <span class="val" id="nLensVal">1.5</span>
+                    </div>
+                </label>
+                <label>
+                    <span class="label-text">Угол пучка (°)</span>
+                    <div class="input-wrap">
+                        <input
+                            id="beamAngleRange"
+                            type="range"
+                            min="-90"
+                            max="90"
+                            step="0.1"
+                            value="0"
+                        />
+                        <input
+                            id="beamAngleInput"
+                            type="number"
+                            value="0"
+                            step="0.1"
+                        />
+                        <span class="val" id="beamAngleVal">0</span>
+                    </div>
+                </label>
+                <label>
+                    <span class="label-text">Кол-во лучей</span>
+                    <div class="input-wrap">
+                        <input
+                            id="rayCountRange"
+                            type="range"
+                            min="3"
+                            max="201"
+                            step="1"
+                            value="41"
+                        />
+                        <input
+                            id="rayCountInput"
+                            type="number"
+                            value="41"
+                            step="1"
+                        />
+                        <span class="val" id="rayCountVal">41</span>
+                    </div>
+                </label>
+            </div>
+
+            <div class="section">
+                <div class="glass-group">
+                    <span class="group-title"
+                        >Полином z(r)=z₀+a₂r²+a₄r⁴+a₆r⁶</span
+                    >
+                    <label>
+                        <span class="label-text">z₀</span>
+                        <div class="input-wrap">
+                            <input
+                                id="z0Range"
+                                type="range"
+                                min="-20"
+                                max="20"
+                                step="0.001"
+                                value="-5"
+                            />
+                            <input
+                                id="z0Input"
+                                type="number"
+                                value="-5"
+                                step="0.001"
+                            />
+                            <span class="val" id="z0Val">-5</span>
+                        </div>
+                    </label>
+                    <label>
+                        <span class="label-text">a₂</span>
+                        <div class="input-wrap">
+                            <input
+                                id="a2Range"
+                                type="range"
+                                min="-0.1"
+                                max="0.1"
+                                step="1e-5"
+                                value="0.006457"
+                            />
+                            <input
+                                id="a2Input"
+                                type="number"
+                                value="0.006457"
+                                step="1e-5"
+                            />
+                            <span class="val" id="a2Val">0.006</span>
+                        </div>
+                    </label>
+                    <label>
+                        <span class="label-text">a₄</span>
+                        <div class="input-wrap">
+                            <input
+                                id="a4Range"
+                                type="range"
+                                min="-0.001"
+                                max="0.001"
+                                step="1e-7"
+                                value="-5e-7"
+                            />
+                            <input
+                                id="a4Input"
+                                type="number"
+                                value="-5e-7"
+                                step="1e-7"
+                            />
+                            <span class="val" id="a4Val">0</span>
+                        </div>
+                    </label>
+                    <label>
+                        <span class="label-text">a₆</span>
+                        <div class="input-wrap">
+                            <input
+                                id="a6Range"
+                                type="range"
+                                min="-1e-5"
+                                max="1e-5"
+                                step="1e-10"
+                                value="0"
+                            />
+                            <input
+                                id="a6Input"
+                                type="number"
+                                value="0"
+                                step="1e-10"
+                            />
+                            <span class="val" id="a6Val">0</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="toggle-row">
+                    <span>Использовать поле для уравнения</span>
+                    <label class="switch">
+                        <input type="checkbox" id="useFieldCheckbox" checked />
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <label
+                    style="
+                        flex-direction: column;
+                        align-items: flex-start;
+                        gap: 2px;
+                    "
+                >
+                    <span class="label-text">z(r)</span>
+                    <input
+                        type="text"
+                        id="leftSurfaceEq"
+                        placeholder="-5 + 0.006457*r**2-5e-7*r**4"
+                    />
+                </label>
+            </div>
+
+            <div class="section">
+                <label>
+                    <span class="label-text">Масштаб</span>
+                    <div class="input-wrap">
+                        <span
+                            class="val"
+                            id="scaleVal"
+                            style="width: auto; flex-shrink: 0"
+                            >7.00</span
+                        >
+                    </div>
+                </label>
+                <button id="resetViewBtn">Сбросить вид</button>
+            </div>
+        </div>
+
+        <script type="importmap">
+            {
+                "imports": {
+                    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+                }
+            }
+        </script>
+
+        <script type="module">
+            import * as THREE from "three";
+            import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+            const canvas2d = document.getElementById("canvas");
+            const ctx = canvas2d.getContext("2d");
+            const container = document.getElementById("canvas-container");
+            const controlsEl = document.getElementById("controls");
+            const expandBtn = document.getElementById("expandBtn");
+
+            const minScale = 2;
+            const maxScale = 10000;
+            const DEG = Math.PI / 180;
+
+            let state = {
+                scale: 7,
+                cx: 0,
+                cy: 0,
+                isDragging: false,
+                dragButton: -1,
+                dragStartX: 0,
+                dragStartY: 0,
+                mode: "2d",
+                dirty: true,
+                threeReady: false,
+            };
+
+            let lensCache = { key: "" };
+
+            function requestDraw() {
+                if (state.mode === "3d") {
+                    state.dirty = true;
+                    return;
+                }
+                if (state.redrawPending) return;
+                state.redrawPending = true;
+                requestAnimationFrame(function () {
+                    state.redrawPending = false;
+                    draw2D();
                 });
-                var lines = new THREE.LineSegments(geo, mat);
-                group.add(lines);
             }
-            return group;
-        }
 
-        function rebuild3D() {
-            if (!state.threeReady || state.mode !== "3d") return;
-
-            while (lensGroup.children.length) lensGroup.remove(lensGroup.children[0]);
-            while (rayGroup.children.length) rayGroup.remove(rayGroup.children[0]);
-
-            var params = getParams();
-            var key = params.eq + "|" + params.eqR;
-            if (lensCache.key !== key) {
-                lensCache = { key: key, data: sampleLens(params.eq, params.eqR) };
-            }
-            var lens = lensCache.data;
-
-            var mesh = buildLensMesh(params.eq, params.eqR, lens.aperture);
-            if (mesh) lensGroup.add(mesh);
-
-            var rays = buildRays3D(params.eq, params.eqR, lens.aperture, params.angle, params.n, params.rayCount);
-            rayGroup.add(rays);
-
-            state.dirty = false;
-        }
-
-        function switchTo3D() {
-            if (!state.threeReady) initThree();
-
-            canvas2d.style.display = "none";
-            renderer3d.domElement.style.display = "block";
-
-            state.mode = "3d";
-            state.dirty = true;
-
-            if (animId === null) {
-                animate3D();
-            }
-            rebuild3D();
-        }
-
-        function switchTo2D() {
-            state.mode = "2d";
-            if (renderer3d) renderer3d.domElement.style.display = "none";
-            canvas2d.style.display = "block";
-            draw2D();
-        }
-
-        function animate3D() {
-            animId = requestAnimationFrame(animate3D);
-            if (state.mode !== "3d") {
-                animId = null;
-                return;
-            }
-            if (state.dirty) rebuild3D();
-            controls3d.update();
-            renderer3d.render(scene3d, camera3d);
-        }
-
-        function updateTheme() {
-            var light = isLight();
-            currentIsLight = light;
-            if (scene3d) {
-                scene3d.background = new THREE.Color(light ? 0xf4f6fa : 0x07070a);
-            }
-            if (state.mode === "2d") requestDraw();
-        }
-
-        // ==============================
-        // UI
-        // ==============================
-
-        function syncFromRange(n) {
-            var val = document.getElementById(n + "Range").value;
-            document.getElementById(n + "Input").value = val;
-            var display = parseFloat(val);
-            if (n === "a2") display = display.toFixed(3);
-            else if (n === "a4" || n === "a6") display = display.toExponential(1);
-            else display = display.toFixed(1).replace(/\.0$/, "");
-            document.getElementById(n + "Val").textContent = display;
-            requestDraw();
-        }
-
-        function syncFromInput(n) {
-            var val = document.getElementById(n + "Input").value;
-            document.getElementById(n + "Range").value = val;
-            var display = parseFloat(val);
-            if (n === "a2") display = display.toFixed(3);
-            else if (n === "a4" || n === "a6") display = display.toExponential(1);
-            else display = display.toFixed(1).replace(/\.0$/, "");
-            document.getElementById(n + "Val").textContent = display;
-            requestDraw();
-        }
-
-        function resetView() {
-            if (state.mode === "3d") {
-                if (camera3d) {
-                    camera3d.position.set(55, 32, 55);
-                    controls3d.target.set(0, 0, 0);
-                    controls3d.update();
+            function safeEval(expr, r) {
+                try {
+                    return eval(expr.replace(/\br\b/g, "(" + r + ")"));
+                } catch {
+                    return NaN;
                 }
-            } else {
-                state.scale = 7;
-                state.cx = canvas2d.width / 4;
+            }
+
+            function deriv(expr, r, h) {
+                h = h || 1e-4;
+                return (
+                    (safeEval(expr, r + h) - safeEval(expr, r - h)) / (2 * h)
+                );
+            }
+
+            function normVec(v) {
+                var L = Math.hypot(v.z, v.r);
+                return { z: v.z / L, r: v.r / L };
+            }
+
+            function refract3d(I, N, eta) {
+                var cosi = -(N.z * I.z + N.r * I.r);
+                var k = 1 - eta * eta * (1 - cosi * cosi);
+                if (k < 0) return null;
+                return {
+                    z: eta * I.z + (eta * cosi - Math.sqrt(k)) * N.z,
+                    r: eta * I.r + (eta * cosi - Math.sqrt(k)) * N.r,
+                };
+            }
+
+            function getParams() {
+                var useField =
+                    document.getElementById("useFieldCheckbox").checked;
+                var eq = useField
+                    ? document.getElementById("leftSurfaceEq").value.trim()
+                    : "";
+                if (!eq) {
+                    var z0 = document.getElementById("z0Range").value;
+                    var a2 = document.getElementById("a2Range").value;
+                    var a4 = document.getElementById("a4Range").value;
+                    var a6 = document.getElementById("a6Range").value;
+                    eq =
+                        z0 +
+                        "+(" +
+                        a2 +
+                        ")*r*r+(" +
+                        a4 +
+                        ")*r**4+(" +
+                        a6 +
+                        ")*r**6";
+                }
+                var eqR = "(0-(" + eq + "))";
+                return {
+                    n: parseFloat(document.getElementById("nLensRange").value),
+                    angle:
+                        parseFloat(
+                            document.getElementById("beamAngleRange").value,
+                        ) * DEG,
+                    rayCount: parseInt(
+                        document.getElementById("rayCountRange").value,
+                    ),
+                    eq: eq,
+                    eqR: eqR,
+                };
+            }
+
+            function sampleLens(eqL, eqR) {
+                var L = [];
+                var R = [];
+                var aperture = 0;
+                for (var r = 0; ; r += 0.2) {
+                    var zL = safeEval(eqL, r);
+                    var zR = safeEval(eqR, r);
+                    if (!isFinite(zL) || !isFinite(zR) || zL > zR) break;
+                    aperture = r;
+                    L.push({ z: zL, r: r });
+                    R.push({ z: zR, r: r });
+                }
+                for (var r = -0.2; ; r -= 0.2) {
+                    var zL = safeEval(eqL, r);
+                    var zR = safeEval(eqR, r);
+                    if (!isFinite(zL) || !isFinite(zR) || zL > zR) break;
+                    L.unshift({ z: zL, r: r });
+                    R.unshift({ z: zR, r: r });
+                }
+                return { L: L, R: R, aperture: aperture };
+            }
+
+            function findIntersection(P, D, eq) {
+                function f(t) {
+                    return P.z + t * D.z - safeEval(eq, P.r + t * D.r);
+                }
+                var f0 = f(0);
+                for (var t = 0.2; t < 1000; t += 0.2) {
+                    var f1 = f(t);
+                    if (isFinite(f0) && isFinite(f1) && f0 * f1 <= 0) {
+                        var a = t - 0.2;
+                        var b = t;
+                        for (var i = 0; i < 30; i++) {
+                            var m = 0.5 * (a + b);
+                            if (f(a) * f(m) <= 0) b = m;
+                            else a = m;
+                        }
+                        var th = 0.5 * (a + b);
+                        return { z: P.z + th * D.z, r: P.r + th * D.r };
+                    }
+                    f0 = f1;
+                }
+                return null;
+            }
+
+            function traceRays(eq, eqR, aperture, angle, n, count) {
+                var rays = [];
+                var dir = { z: Math.cos(angle), r: Math.sin(angle) };
+                var perp = { z: -dir.r, r: dir.z };
+                for (var i = 0; i < count; i++) {
+                    var r0 = -aperture + (2 * aperture * i) / (count - 1);
+                    var P = {
+                        z: -80 * dir.z + r0 * perp.z,
+                        r: -80 * dir.r + r0 * perp.r,
+                    };
+                    var D = normVec(dir);
+                    var h1 = findIntersection(P, D, eq);
+                    if (!h1) continue;
+                    var N = normVec({ z: -1, r: deriv(eq, h1.r) });
+                    if (N.z * D.z + N.r * D.r > 0) N = { z: -N.z, r: -N.r };
+                    var T1 = refract3d(D, N, 1 / n);
+                    if (!T1) continue;
+                    var h2 = findIntersection(
+                        { z: h1.z + 1e-6 * T1.z, r: h1.r + 1e-6 * T1.r },
+                        T1,
+                        eqR,
+                    );
+                    if (!h2) continue;
+                    var N2 = normVec({ z: -1, r: deriv(eqR, h2.r) });
+                    if (N2.z * T1.z + N2.r * T1.r > 0)
+                        N2 = { z: -N2.z, r: -N2.r };
+                    var T2 = refract3d(T1, N2, n);
+                    if (!T2) continue;
+                    var end = { z: h2.z + 3000 * T2.z, r: h2.r + 3000 * T2.r };
+                    rays.push({
+                        P: P,
+                        h1: h1,
+                        T1: T1,
+                        h2: h2,
+                        T2: T2,
+                        end: end,
+                        disabled: false,
+                    });
+                }
+                return rays;
+            }
+
+            function toScreen(p, cx, cy, scale) {
+                cx = cx || state.cx;
+                cy = cy || state.cy;
+                scale = scale || state.scale;
+                return { sx: cx + p.z * scale, sy: cy - p.r * scale };
+            }
+
+            function draw2D() {
+                ctx.clearRect(0, 0, canvas2d.width, canvas2d.height);
+                var params = getParams();
+                var key = params.eq + "|" + params.eqR;
+                if (lensCache.key !== key) {
+                    lensCache = {
+                        key: key,
+                        data: sampleLens(params.eq, params.eqR),
+                    };
+                }
+                var lens = lensCache.data;
+                var rays = traceRays(
+                    params.eq,
+                    params.eqR,
+                    lens.aperture,
+                    params.angle,
+                    params.n,
+                    params.rayCount,
+                );
+                var cx = state.cx;
+                var cy = state.cy;
+                var scale = state.scale;
+
+                var grad = ctx.createLinearGradient(cx, 0, cx + 100, 0);
+                grad.addColorStop(0, "rgba(150,180,255,0.2)");
+                grad.addColorStop(1, "rgba(100,130,255,0.15)");
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                lens.L.forEach(function (p, i) {
+                    var s = toScreen(p, cx, cy, scale);
+                    if (i === 0) ctx.moveTo(s.sx, s.sy);
+                    else ctx.lineTo(s.sx, s.sy);
+                });
+                for (var i = lens.R.length - 1; i >= 0; i--) {
+                    var s = toScreen(lens.R[i], cx, cy, scale);
+                    ctx.lineTo(s.sx, s.sy);
+                }
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.strokeStyle = "rgba(0,180,255,0.6)";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                lens.L.forEach(function (p, i) {
+                    var s = toScreen(p, cx, cy, scale);
+                    if (i === 0) ctx.moveTo(s.sx, s.sy);
+                    else ctx.lineTo(s.sx, s.sy);
+                });
+                ctx.stroke();
+                ctx.beginPath();
+                lens.R.forEach(function (p, i) {
+                    var s = toScreen(p, cx, cy, scale);
+                    if (i === 0) ctx.moveTo(s.sx, s.sy);
+                    else ctx.lineTo(s.sx, s.sy);
+                });
+                ctx.stroke();
+
+                for (var i = 0; i < rays.length; i++) {
+                    var r = rays[i];
+                    if (r.disabled) continue;
+                    var sP = toScreen(r.P, cx, cy, scale);
+                    var sH1 = toScreen(r.h1, cx, cy, scale);
+                    var sH2 = toScreen(r.h2, cx, cy, scale);
+                    var sEnd = toScreen(r.end, cx, cy, scale);
+
+                    ctx.strokeStyle = "rgba(255,60,60,0.9)";
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(sP.sx, sP.sy);
+                    ctx.lineTo(sH1.sx, sH1.sy);
+                    ctx.stroke();
+
+                    ctx.strokeStyle = "rgba(255,180,50,0.9)";
+                    ctx.beginPath();
+                    ctx.moveTo(sH1.sx, sH1.sy);
+                    ctx.lineTo(sH2.sx, sH2.sy);
+                    ctx.stroke();
+
+                    ctx.strokeStyle = "rgba(50,255,100,0.9)";
+                    ctx.beginPath();
+                    ctx.moveTo(sH2.sx, sH2.sy);
+                    ctx.lineTo(sEnd.sx, sEnd.sy);
+                    ctx.stroke();
+                }
+            }
+
+            function resizeCanvas() {
+                canvas2d.width = window.innerWidth;
+                canvas2d.height = window.innerHeight;
+                state.cx =
+                    state.mode === "3d"
+                        ? canvas2d.width / 2
+                        : canvas2d.width / 4;
                 state.cy = canvas2d.height / 2;
-                document.getElementById("scaleVal").textContent = state.scale.toFixed(2);
+                if (state.mode === "2d") requestDraw();
+            }
+
+            window.addEventListener("load", resizeCanvas);
+            window.addEventListener("resize", resizeCanvas);
+
+            // ==============================
+            // Three.js 3D Engine
+            // ==============================
+
+            let scene3d, camera3d, renderer3d, controls3d;
+            let lensGroup, rayGroup;
+            let animId = null;
+            let currentIsLight = false;
+
+            function isLight() {
+                return window.matchMedia("(prefers-color-scheme: light)")
+                    .matches;
+            }
+
+            function initThree() {
+                scene3d = new THREE.Scene();
+                currentIsLight = isLight();
+                scene3d.background = new THREE.Color(
+                    currentIsLight ? 0xf4f6fa : 0x07070a,
+                );
+
+                camera3d = new THREE.PerspectiveCamera(
+                    50,
+                    innerWidth / innerHeight,
+                    0.1,
+                    500,
+                );
+                camera3d.position.set(55, 32, 55);
+                camera3d.lookAt(0, 0, 0);
+
+                renderer3d = new THREE.WebGLRenderer({
+                    antialias: true,
+                    alpha: false,
+                });
+                renderer3d.setSize(innerWidth, innerHeight);
+                renderer3d.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                renderer3d.domElement.style.display = "none";
+                renderer3d.domElement.style.cursor = "grab";
+                container.appendChild(renderer3d.domElement);
+
+                controls3d = new OrbitControls(camera3d, renderer3d.domElement);
+                controls3d.enableDamping = true;
+                controls3d.dampingFactor = 0.08;
+                controls3d.minDistance = 5;
+                controls3d.maxDistance = 150;
+                controls3d.target.set(0, 0, 0);
+
+                var ambLight = new THREE.AmbientLight(0x404060, 1.0);
+                scene3d.add(ambLight);
+                var dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+                dirLight.position.set(15, 30, 15);
+                scene3d.add(dirLight);
+                var backLight = new THREE.DirectionalLight(0x4488ff, 0.5);
+                backLight.position.set(-15, -10, -15);
+                scene3d.add(backLight);
+
+                lensGroup = new THREE.Group();
+                scene3d.add(lensGroup);
+                rayGroup = new THREE.Group();
+                scene3d.add(rayGroup);
+
+                state.threeReady = true;
+                window.addEventListener("resize", onResize3D);
+            }
+
+            function onResize3D() {
+                if (!state.threeReady) return;
+                camera3d.aspect = innerWidth / innerHeight;
+                camera3d.updateProjectionMatrix();
+                renderer3d.setSize(innerWidth, innerHeight);
+            }
+
+            function buildLensMesh(eqL, eqR, aperture) {
+                var nR = 40;
+                var pts = [];
+                for (var i = 0; i <= nR; i++) {
+                    var r = (i / nR) * aperture;
+                    var z = safeEval(eqL, r);
+                    if (!isFinite(z)) continue;
+                    pts.push(new THREE.Vector2(r, z));
+                }
+                for (var i = nR; i >= 0; i--) {
+                    var r = (i / nR) * aperture;
+                    var z = safeEval(eqR, r);
+                    if (!isFinite(z)) continue;
+                    pts.push(new THREE.Vector2(r, z));
+                }
+                if (pts.length < 4) return null;
+
+                var geo = new THREE.LatheGeometry(pts, 48);
+                var mat = new THREE.MeshPhongMaterial({
+                    color: 0x4488cc,
+                    emissive: 0x112244,
+                    emissiveIntensity: 0.15,
+                    transparent: true,
+                    opacity: 0.85,
+                    side: THREE.DoubleSide,
+                    shininess: 60,
+                    specular: 0x446688,
+                });
+                var mesh = new THREE.Mesh(geo, mat);
+                mesh.rotation.x = -Math.PI / 2;
+                mesh.castShadow = false;
+                mesh.receiveShadow = false;
+                return mesh;
+            }
+
+            function buildRays3D(eq, eqR, aperture, angle, n, rayCount) {
+                var colors = [0xff4444, 0xffb434, 0x44ff66];
+                var allSegs = [[], [], []];
+                var dir = { z: Math.cos(angle), r: Math.sin(angle) };
+                var perp = { z: -dir.r, r: dir.z };
+
+                var nSide = Math.max(1, Math.round(Math.sqrt(rayCount)));
+                if (nSide < 1) nSide = 1;
+                var halfSize = aperture * 0.7071;
+                var startDist = 35;
+                var endDist = 3000;
+                var traceCache = {};
+
+                function traceAtOffset(rOff) {
+                    var P = {
+                        z: -startDist * dir.z + rOff * perp.z,
+                        r: -startDist * dir.r + rOff * perp.r,
+                    };
+                    var D = normVec(dir);
+                    var h1 = findIntersection(P, D, eq);
+                    if (!h1) return null;
+                    var N = normVec({ z: -1, r: deriv(eq, h1.r) });
+                    if (N.z * D.z + N.r * D.r > 0) N = { z: -N.z, r: -N.r };
+                    var T1 = refract3d(D, N, 1 / n);
+                    if (!T1) return null;
+                    var h2 = findIntersection(
+                        { z: h1.z + 1e-6 * T1.z, r: h1.r + 1e-6 * T1.r },
+                        T1,
+                        eqR,
+                    );
+                    if (!h2) return null;
+                    var N2 = normVec({ z: -1, r: deriv(eqR, h2.r) });
+                    if (N2.z * T1.z + N2.r * T1.r > 0)
+                        N2 = { z: -N2.z, r: -N2.r };
+                    var T2 = refract3d(T1, N2, n);
+                    if (!T2) return null;
+                    var end = {
+                        z: h2.z + endDist * T2.z,
+                        r: h2.r + endDist * T2.r,
+                    };
+                    return { P: P, h1: h1, h2: h2, end: end };
+                }
+
+                for (var i = 0; i < nSide; i++) {
+                    for (var j = 0; j < nSide; j++) {
+                        var x =
+                            (i / Math.max(1, nSide - 1) - 0.5) * 2 * halfSize;
+                        var y =
+                            (j / Math.max(1, nSide - 1) - 0.5) * 2 * halfSize;
+                        var r = Math.sqrt(x * x + y * y);
+                        if (r > aperture) continue;
+
+                        var key = r.toFixed(4);
+                        var ray;
+                        if (traceCache[key]) {
+                            ray = traceCache[key];
+                        } else {
+                            ray = traceAtOffset(r);
+                            traceCache[key] = ray;
+                        }
+                        if (!ray) continue;
+
+                        var theta = Math.atan2(y || 1e-10, x || 1e-10);
+                        var ct = Math.cos(theta);
+                        var st = Math.sin(theta);
+                        var pts = [ray.P, ray.h1, ray.h2, ray.end];
+                        for (var si = 0; si < 3; si++) {
+                            var p0 = pts[si];
+                            var p1 = pts[si + 1];
+                            allSegs[si].push(
+                                p0.r * ct,
+                                p0.r * st,
+                                p0.z,
+                                p1.r * ct,
+                                p1.r * st,
+                                p1.z,
+                            );
+                        }
+                    }
+                }
+
+                var group = new THREE.Group();
+                for (var si = 0; si < 3; si++) {
+                    if (allSegs[si].length === 0) continue;
+                    var geo = new THREE.BufferGeometry();
+                    geo.setAttribute(
+                        "position",
+                        new THREE.Float32BufferAttribute(allSegs[si], 3),
+                    );
+                    var mat = new THREE.LineBasicMaterial({
+                        color: colors[si],
+                        transparent: true,
+                        opacity: 0.4,
+                    });
+                    var lines = new THREE.LineSegments(geo, mat);
+                    group.add(lines);
+                }
+                return group;
+            }
+
+            function rebuild3D() {
+                if (!state.threeReady || state.mode !== "3d") return;
+
+                while (lensGroup.children.length)
+                    lensGroup.remove(lensGroup.children[0]);
+                while (rayGroup.children.length)
+                    rayGroup.remove(rayGroup.children[0]);
+
+                var params = getParams();
+                var key = params.eq + "|" + params.eqR;
+                if (lensCache.key !== key) {
+                    lensCache = {
+                        key: key,
+                        data: sampleLens(params.eq, params.eqR),
+                    };
+                }
+                var lens = lensCache.data;
+
+                var mesh = buildLensMesh(params.eq, params.eqR, lens.aperture);
+                if (mesh) lensGroup.add(mesh);
+
+                var rays = buildRays3D(
+                    params.eq,
+                    params.eqR,
+                    lens.aperture,
+                    params.angle,
+                    params.n,
+                    params.rayCount,
+                );
+                rayGroup.add(rays);
+
+                state.dirty = false;
+            }
+
+            function switchTo3D() {
+                if (!state.threeReady) initThree();
+
+                canvas2d.style.display = "none";
+                renderer3d.domElement.style.display = "block";
+
+                state.mode = "3d";
+                state.dirty = true;
+
+                if (animId === null) {
+                    animate3D();
+                }
+                rebuild3D();
+            }
+
+            function switchTo2D() {
+                state.mode = "2d";
+                if (renderer3d) renderer3d.domElement.style.display = "none";
+                canvas2d.style.display = "block";
+                draw2D();
+            }
+
+            function animate3D() {
+                animId = requestAnimationFrame(animate3D);
+                if (state.mode !== "3d") {
+                    animId = null;
+                    return;
+                }
+                if (state.dirty) rebuild3D();
+                controls3d.update();
+                renderer3d.render(scene3d, camera3d);
+            }
+
+            function updateTheme() {
+                var light = isLight();
+                currentIsLight = light;
+                if (scene3d) {
+                    scene3d.background = new THREE.Color(
+                        light ? 0xf4f6fa : 0x07070a,
+                    );
+                }
+                if (state.mode === "2d") requestDraw();
+            }
+
+            // ==============================
+            // UI
+            // ==============================
+
+            function syncFromRange(n) {
+                var val = document.getElementById(n + "Range").value;
+                document.getElementById(n + "Input").value = val;
+                var display = parseFloat(val);
+                if (n === "a2") display = display.toFixed(3);
+                else if (n === "a4" || n === "a6")
+                    display = display.toExponential(1);
+                else display = display.toFixed(1).replace(/\.0$/, "");
+                document.getElementById(n + "Val").textContent = display;
                 requestDraw();
             }
-        }
 
-        function setupControls() {
-            document.getElementById("nLensRange").addEventListener("input", function() { syncFromRange("nLens"); });
-            document.getElementById("nLensInput").addEventListener("input", function() { syncFromInput("nLens"); });
-            document.getElementById("beamAngleRange").addEventListener("input", function() { syncFromRange("beamAngle"); });
-            document.getElementById("beamAngleInput").addEventListener("input", function() { syncFromInput("beamAngle"); });
-            document.getElementById("rayCountRange").addEventListener("input", function() { syncFromRange("rayCount"); });
-            document.getElementById("rayCountInput").addEventListener("input", function() { syncFromInput("rayCount"); });
-            document.getElementById("z0Range").addEventListener("input", function() { syncFromRange("z0"); });
-            document.getElementById("z0Input").addEventListener("input", function() { syncFromInput("z0"); });
-            document.getElementById("a2Range").addEventListener("input", function() { syncFromRange("a2"); });
-            document.getElementById("a2Input").addEventListener("input", function() { syncFromInput("a2"); });
-            document.getElementById("a4Range").addEventListener("input", function() { syncFromRange("a4"); });
-            document.getElementById("a4Input").addEventListener("input", function() { syncFromInput("a4"); });
-            document.getElementById("a6Range").addEventListener("input", function() { syncFromRange("a6"); });
-            document.getElementById("a6Input").addEventListener("input", function() { syncFromInput("a6"); });
-            document.getElementById("useFieldCheckbox").addEventListener("change", requestDraw);
-            document.getElementById("leftSurfaceEq").addEventListener("input", requestDraw);
+            function syncFromInput(n) {
+                var val = document.getElementById(n + "Input").value;
+                document.getElementById(n + "Range").value = val;
+                var display = parseFloat(val);
+                if (n === "a2") display = display.toFixed(3);
+                else if (n === "a4" || n === "a6")
+                    display = display.toExponential(1);
+                else display = display.toFixed(1).replace(/\.0$/, "");
+                document.getElementById(n + "Val").textContent = display;
+                requestDraw();
+            }
 
-            document.getElementById("modeToggle").addEventListener("change", function() {
-                if (this.checked) switchTo3D();
-                else switchTo2D();
+            function resetView() {
+                if (state.mode === "3d") {
+                    if (camera3d) {
+                        camera3d.position.set(55, 32, 55);
+                        controls3d.target.set(0, 0, 0);
+                        controls3d.update();
+                    }
+                } else {
+                    state.scale = 7;
+                    state.cx = canvas2d.width / 4;
+                    state.cy = canvas2d.height / 2;
+                    document.getElementById("scaleVal").textContent =
+                        state.scale.toFixed(2);
+                    requestDraw();
+                }
+            }
+
+            function setupControls() {
+                document
+                    .getElementById("nLensRange")
+                    .addEventListener("input", function () {
+                        syncFromRange("nLens");
+                    });
+                document
+                    .getElementById("nLensInput")
+                    .addEventListener("input", function () {
+                        syncFromInput("nLens");
+                    });
+                document
+                    .getElementById("beamAngleRange")
+                    .addEventListener("input", function () {
+                        syncFromRange("beamAngle");
+                    });
+                document
+                    .getElementById("beamAngleInput")
+                    .addEventListener("input", function () {
+                        syncFromInput("beamAngle");
+                    });
+                document
+                    .getElementById("rayCountRange")
+                    .addEventListener("input", function () {
+                        syncFromRange("rayCount");
+                    });
+                document
+                    .getElementById("rayCountInput")
+                    .addEventListener("input", function () {
+                        syncFromInput("rayCount");
+                    });
+                document
+                    .getElementById("z0Range")
+                    .addEventListener("input", function () {
+                        syncFromRange("z0");
+                    });
+                document
+                    .getElementById("z0Input")
+                    .addEventListener("input", function () {
+                        syncFromInput("z0");
+                    });
+                document
+                    .getElementById("a2Range")
+                    .addEventListener("input", function () {
+                        syncFromRange("a2");
+                    });
+                document
+                    .getElementById("a2Input")
+                    .addEventListener("input", function () {
+                        syncFromInput("a2");
+                    });
+                document
+                    .getElementById("a4Range")
+                    .addEventListener("input", function () {
+                        syncFromRange("a4");
+                    });
+                document
+                    .getElementById("a4Input")
+                    .addEventListener("input", function () {
+                        syncFromInput("a4");
+                    });
+                document
+                    .getElementById("a6Range")
+                    .addEventListener("input", function () {
+                        syncFromRange("a6");
+                    });
+                document
+                    .getElementById("a6Input")
+                    .addEventListener("input", function () {
+                        syncFromInput("a6");
+                    });
+                document
+                    .getElementById("useFieldCheckbox")
+                    .addEventListener("change", requestDraw);
+                document
+                    .getElementById("leftSurfaceEq")
+                    .addEventListener("input", requestDraw);
+
+                document
+                    .getElementById("modeToggle")
+                    .addEventListener("change", function () {
+                        if (this.checked) switchTo3D();
+                        else switchTo2D();
+                    });
+
+                document
+                    .getElementById("resetViewBtn")
+                    .addEventListener("click", resetView);
+            }
+
+            canvas2d.addEventListener("contextmenu", function (e) {
+                e.preventDefault();
             });
 
-            document.getElementById("resetViewBtn").addEventListener("click", resetView);
-        }
+            canvas2d.addEventListener("mousedown", function (e) {
+                state.isDragging = true;
+                state.dragButton = e.button;
+                state.dragStartX = e.clientX;
+                state.dragStartY = e.clientY;
+            });
 
-        canvas2d.addEventListener("contextmenu", function(e) { e.preventDefault(); });
+            canvas2d.addEventListener("mousemove", function (e) {
+                if (!state.isDragging) return;
+                var dx = e.clientX - state.dragStartX;
+                var dy = e.clientY - state.dragStartY;
+                state.cx += dx;
+                state.cy += dy;
+                state.dragStartX = e.clientX;
+                state.dragStartY = e.clientY;
+                requestDraw();
+            });
 
-        canvas2d.addEventListener("mousedown", function(e) {
-            state.isDragging = true;
-            state.dragButton = e.button;
-            state.dragStartX = e.clientX;
-            state.dragStartY = e.clientY;
-        });
+            canvas2d.addEventListener("mouseup", function () {
+                state.isDragging = false;
+            });
+            canvas2d.addEventListener("mouseleave", function () {
+                state.isDragging = false;
+            });
 
-        canvas2d.addEventListener("mousemove", function(e) {
-            if (!state.isDragging) return;
-            var dx = e.clientX - state.dragStartX;
-            var dy = e.clientY - state.dragStartY;
-            state.cx += dx;
-            state.cy += dy;
-            state.dragStartX = e.clientX;
-            state.dragStartY = e.clientY;
-            requestDraw();
-        });
+            canvas2d.addEventListener("wheel", function (e) {
+                e.preventDefault();
+                var factor = e.deltaY < 0 ? 1.05 : 0.95;
+                var mx = e.offsetX;
+                var my = e.offsetY;
+                var x0 = (mx - state.cx) / state.scale;
+                var y0 = (my - state.cy) / state.scale;
+                state.scale = Math.min(
+                    maxScale,
+                    Math.max(minScale, state.scale * factor),
+                );
+                state.cx = mx - x0 * state.scale;
+                state.cy = my - y0 * state.scale;
+                document.getElementById("scaleVal").textContent =
+                    state.scale.toFixed(2);
+                requestDraw();
+            });
 
-        canvas2d.addEventListener("mouseup", function() { state.isDragging = false; });
-        canvas2d.addEventListener("mouseleave", function() { state.isDragging = false; });
+            document
+                .getElementById("panelToggle")
+                .addEventListener("click", function () {
+                    controlsEl.classList.add("collapsed");
+                    expandBtn.style.display = "flex";
+                });
+            expandBtn.addEventListener("click", function () {
+                controlsEl.classList.remove("collapsed");
+                expandBtn.style.display = "none";
+            });
 
-        canvas2d.addEventListener("wheel", function(e) {
-            e.preventDefault();
-            var factor = e.deltaY < 0 ? 1.05 : 0.95;
-            var mx = e.offsetX;
-            var my = e.offsetY;
-            var x0 = (mx - state.cx) / state.scale;
-            var y0 = (my - state.cy) / state.scale;
-            state.scale = Math.min(maxScale, Math.max(minScale, state.scale * factor));
-            state.cx = mx - x0 * state.scale;
-            state.cy = my - y0 * state.scale;
-            document.getElementById("scaleVal").textContent = state.scale.toFixed(2);
-            requestDraw();
-        });
+            var mql = window.matchMedia("(prefers-color-scheme: light)");
+            mql.addEventListener("change", updateTheme);
 
-        document.getElementById("panelToggle").addEventListener("click", function() {
-            controlsEl.classList.add("collapsed");
-            expandBtn.style.display = "flex";
-        });
-        expandBtn.addEventListener("click", function() {
-            controlsEl.classList.remove("collapsed");
-            expandBtn.style.display = "none";
-        });
-
-        var mql = window.matchMedia("(prefers-color-scheme: light)");
-        mql.addEventListener("change", updateTheme);
-
-        setupControls();
-        draw2D();
-    </script>
-</body>
+            setupControls();
+            draw2D();
+        </script>
+    </body>
 </html>
