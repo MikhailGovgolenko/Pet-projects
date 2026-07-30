@@ -10,7 +10,7 @@ export const cards = [
     component: lazy(() => import("../lens/LensPage")),
   },
   {
-    id: "wave",
+    id: "EMWave",
     icon: "⚡",
     title: "Электромагнитная волна",
     description: "Плоские и сферические электромагнитные волны. Поляризация, стоячие волны, интерференция и гауссовы пучки.",

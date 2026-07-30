@@ -1,21 +1,44 @@
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { cards } from "./pages/cards";
 import HomePage from "./pages/HomePage";
 
-const pageMap = {};
+const BASE = "/Pet-projects/";
+
+var pageMap = {};
 for (const card of cards) {
   pageMap[card.id] = card.component;
 }
 
+function getTabFromPath() {
+  var stored = sessionStorage.redirect;
+  if (stored) {
+    sessionStorage.removeItem("redirect");
+    return stored.replace(BASE, "") || "home";
+  }
+  return location.pathname.replace(BASE, "") || "home";
+}
+
+function updateUrl(tab: string) {
+  var path = tab === "home" ? BASE : BASE + tab;
+  history.pushState(null, "", path);
+}
+
 export default function App() {
-  const [tab, setTab] = useState("home");
-  const Page = tab !== "home" && pageMap[tab];
+  const [tab, setTab] = useState(getTabFromPath);
+
+  useEffect(() => {
+    var onPop = () => setTab(getTabFromPath());
+    addEventListener("popstate", onPop);
+    return () => removeEventListener("popstate", onPop);
+  }, []);
+
+  var Page = tab !== "home" && pageMap[tab];
 
   return (
     <div style={{ height: "100%", background: "var(--bg)", position: "relative" }}>
       {tab !== "home" && (
         <div
-          onClick={() => setTab("home")}
+          onClick={() => { setTab("home"); updateUrl("home"); }}
           className="glass"
           style={{
             position: "fixed",
@@ -44,7 +67,7 @@ export default function App() {
       )}
 
       <Suspense fallback={null}>
-        {tab === "home" && <HomePage onNavigate={setTab} />}
+        {tab === "home" && <HomePage onNavigate={(t) => { setTab(t); updateUrl(t); }} />}
         {Page && <Page />}
       </Suspense>
     </div>
