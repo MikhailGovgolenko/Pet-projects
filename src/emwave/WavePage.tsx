@@ -29,16 +29,64 @@ export default function WavePage() {
 
   return (
     <div style={{ height: "100%", position: "relative" }}>
+      <style>{`
+        .wave-badge {
+          top: calc(68px + env(safe-area-inset-top));
+          max-width: calc(100vw - 24px);
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .wave-info {
+          right: 20px;
+          bottom: 20px;
+          width: min(300px, calc(100vw - 40px));
+          max-height: 40vh;
+          overflow-y: auto;
+          overscroll-behavior: contain;
+        }
+        @media (max-width: 640px) {
+          .wave-badge {
+            top: calc(64px + env(safe-area-inset-top));
+            padding: 8px 18px;
+            font-size: 12.5px;
+          }
+          .wave-legend {
+            left: 50%;
+            right: auto;
+            top: calc(118px + env(safe-area-inset-top));
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 14px;
+            border-radius: 100px;
+          }
+          .wave-legend h4 { display: none; }
+          .wave-legend .legend-item { margin: 0 !important; }
+          .wave-info {
+            left: 12px;
+            right: 12px;
+            bottom: calc(12px + env(safe-area-inset-bottom));
+            width: auto;
+            max-height: 32vh;
+            padding: 12px;
+          }
+        }
+        @media (max-width: 380px) {
+          .wave-legend { gap: 10px; padding: 7px 12px; font-size: 11.5px; }
+        }
+      `}</style>
+
       <div id="canvas-container" style={{ position: "fixed", inset: 0, zIndex: 0 }}>
         <WaveScene params={params} toggles={toggles} />
       </div>
 
       {/* Wave badge — center top */}
       <div
-        className="glass"
+        className="glass wave-badge"
         style={{
           position: "absolute",
-          top: 68,
           left: "50%",
           transform: "translateX(-50%)",
           padding: "10px 26px",
@@ -56,7 +104,7 @@ export default function WavePage() {
 
       {/* Legend — right top */}
       <div
-        className="glass"
+        className="glass wave-legend"
         style={{
           position: "absolute",
           right: 20,
@@ -103,18 +151,15 @@ export default function WavePage() {
           style={{ display: "flex", alignItems: "center", gap: 10, margin: "7px 0" }}
         >
           <span style={{ width: 11, height: 11, borderRadius: "50%", background: "#00ff88", boxShadow: "0 0 6px #00ff88", flexShrink: 0 }} />
-          Envelope
+          Огибающая
         </div>
       </div>
 
       {/* Info panel — right bottom */}
       <div
-        className="glass"
+        className="glass wave-info"
         style={{
           position: "absolute",
-          right: 20,
-          bottom: 20,
-          width: 300,
           padding: 16,
           zIndex: 10,
           fontSize: 12.5,

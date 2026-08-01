@@ -42,7 +42,7 @@ export default function App() {
           className="glass"
           style={{
             position: "fixed",
-            top: 16,
+            top: "calc(16px + env(safe-area-inset-top))",
             left: "50%",
             transform: "translateX(-50%)",
             zIndex: 100,

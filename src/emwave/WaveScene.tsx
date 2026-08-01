@@ -330,6 +330,24 @@ function AnimatedScene({ params, toggles }) {
     };
   }, [preset, params.angle, kVal, omegaVal, params.beamMode, params.beamWidth, toggles.showField, toggles.showLines, toggles.showK, toggles.showWaveArrows, toggles.showFront, toggles.showEnvelope, waves, scene]);
 
+  // Rebuild the grid when the theme changes (grid colors are theme-dependent)
+  useEffect(function () {
+    var r = allRef.current;
+    function updateTheme() {
+      if (!r.grid) return;
+      var isLight = window.matchMedia("(prefers-color-scheme: light)").matches;
+      var gridColor = isLight ? 0xd0d4dc : 0x2a2a35;
+      var gridSub = isLight ? 0xe8ebf0 : 0x15151c;
+      scene.remove(r.grid);
+      var grid = new THREE.GridHelper(20, 20, gridColor, gridSub);
+      scene.add(grid);
+      r.grid = grid;
+    }
+    var mql = window.matchMedia("(prefers-color-scheme: light)");
+    mql.addEventListener("change", updateTheme);
+    return function () { mql.removeEventListener("change", updateTheme); };
+  }, [scene]);
+
   useFrame(function () {
     var r = allRef.current;
     var t = clockRef.current.getElapsedTime();
