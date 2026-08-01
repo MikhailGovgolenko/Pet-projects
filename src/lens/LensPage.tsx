@@ -41,7 +41,7 @@ export default function LensPage() {
   }, []);
 
   return (
-    <div style={{ height: "100vh", overflow: "hidden", position: "relative" }}>
+    <div style={{ height: "100lvh", overflow: "hidden", position: "relative" }}>
       <div id="canvas-container" style={{ position: "absolute", inset: 0, zIndex: 0 }}>
         {!mode3d ? (
           <Lens2D params={paramsWithEq} lensCache={lensCache} onScaleChange={setScale} scale={scale} />
