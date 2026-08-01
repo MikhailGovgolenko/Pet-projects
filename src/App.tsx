@@ -48,7 +48,8 @@ export default function App() {
   return (
     <div
       style={{
-        minHeight: "100dvh",
+        minHeight: "100%",
+        height: tab === "home" ? undefined : "100%",
         width: "100%",
         background: "blue",
         position: "relative",

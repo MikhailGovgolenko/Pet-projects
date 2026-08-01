@@ -30,7 +30,7 @@ export default function WavePage() {
   return (
     <div
       style={{
-        height: "100dvh",
+        height: "100%",
         width: "100%",
         overflow: "hidden",
         position: "relative",
