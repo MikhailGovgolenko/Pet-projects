@@ -34,7 +34,6 @@ export default function WavePage() {
         width: "100%",
         overflow: "hidden",
         position: "relative",
-        background: "red",
       }}
     >
       <style>{`
