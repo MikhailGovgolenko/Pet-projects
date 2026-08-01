@@ -165,7 +165,13 @@ export default function Lens3D({ params }) {
     <Canvas
       camera={{ position: [55, 32, 55], fov: 50, near: 0.1, far: 500 }}
       gl={{ antialias: true }}
-      style={{ width: "100%", height: "100%", cursor: "grab" }}
+      style={{
+        width: "100%",
+        height: "100%",
+        position: "absolute",
+        inset: 0,
+        cursor: "grab",
+      }}
     >
       <Scene
         eq={params.eq}

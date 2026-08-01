@@ -491,7 +491,13 @@ export default function WaveScene({ params, toggles }) {
     <Canvas
       camera={{ position: [10, 8, 10], fov: 45, near: 0.1, far: 100 }}
       gl={{ antialias: true }}
-      style={{ width: "100%", height: "100%", cursor: "grab" }}
+      style={{
+        width: "100%",
+        height: "100%",
+        position: "absolute",
+        inset: 0,
+        cursor: "grab",
+      }}
     >
       <ambientLight intensity={1.0} color={0x404060} />
       <directionalLight position={[15, 30, 15]} intensity={1.5} color={0xffffff} />

@@ -14,6 +14,23 @@ export default function Lens2D({ params, lensCache, onScaleChange, scale }) {
   const drawPending = useRef(false);
   const isWheelZoom = useRef(false);
 
+  const syncCanvasSize = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    let rect = canvas.getBoundingClientRect();
+    let w = rect.width;
+    let h = rect.height;
+    if (w <= 0 || h <= 0) {
+      w = window.innerWidth;
+      h = window.innerHeight;
+    }
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.max(1, Math.round(w * dpr));
+    canvas.height = Math.max(1, Math.round(h * dpr));
+    canvas.getContext("2d").setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { width: w, height: h };
+  }, []);
+
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -96,21 +113,24 @@ export default function Lens2D({ params, lensCache, onScaleChange, scale }) {
   useEffect(() => {
     const canvas = canvasRef.current;
     const state = stateRef.current;
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    state.cx = canvas.width / 4;
-    state.cy = canvas.height / 2;
+    if (!canvas) return;
+    const size = syncCanvasSize();
+    if (size) {
+      state.cx = size.width / 4;
+      state.cy = size.height / 2;
+    }
     state.scale = 7;
     draw();
-  }, [draw]);
+  }, [draw, syncCanvasSize]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     stateRef.current.scale = scale;
     if (!isWheelZoom.current) {
-      stateRef.current.cx = canvas.width / 4;
-      stateRef.current.cy = canvas.height / 2;
+      const rect = canvas.getBoundingClientRect();
+      stateRef.current.cx = rect.width / 4;
+      stateRef.current.cy = rect.height / 2;
     }
     isWheelZoom.current = false;
     draw();
@@ -120,15 +140,20 @@ export default function Lens2D({ params, lensCache, onScaleChange, scale }) {
     const onResize = () => {
       const canvas = canvasRef.current;
       if (!canvas) return;
-      canvas.width = canvas.clientWidth;
-      canvas.height = canvas.clientHeight;
-      stateRef.current.cx = canvas.width / 4;
-      stateRef.current.cy = canvas.height / 2;
+      const size = syncCanvasSize();
+      if (size) {
+        stateRef.current.cx = size.width / 4;
+        stateRef.current.cy = size.height / 2;
+      }
       draw();
     };
     window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, [draw]);
+    window.visualViewport?.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.visualViewport?.removeEventListener("resize", onResize);
+    };
+  }, [draw, syncCanvasSize]);
 
   useEffect(() => {
     if (drawPending.current) return;
