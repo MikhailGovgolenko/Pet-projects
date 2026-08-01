@@ -51,7 +51,7 @@ export default function App() {
         minHeight: "100%",
         height: tab === "home" ? undefined : "100%",
         width: "100%",
-        background: "blue",
+        background: "var(--bg)",
         position: "relative",
         overflow: "hidden",
       }}
