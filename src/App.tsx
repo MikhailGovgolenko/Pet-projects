@@ -33,6 +33,17 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (tab !== "home") {
+      window.scrollTo(0, 0);
+      document.documentElement.style.overflow = "hidden";
+      document.body.style.overflow = "hidden";
+    } else {
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow = "";
+    }
+  }, [tab]);
+
+  useEffect(() => {
     var meta = document.getElementById("theme-color");
     if (!meta) return;
     var update = () => {
