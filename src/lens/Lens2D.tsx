@@ -120,8 +120,8 @@ export default function Lens2D({ params, lensCache, onScaleChange, scale }) {
     const onResize = () => {
       const canvas = canvasRef.current;
       if (!canvas) return;
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      canvas.width = canvas.clientWidth;
+      canvas.height = canvas.clientHeight;
       stateRef.current.cx = canvas.width / 4;
       stateRef.current.cy = canvas.height / 2;
       draw();

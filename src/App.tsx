@@ -32,6 +32,19 @@ export default function App() {
     return () => removeEventListener("popstate", onPop);
   }, []);
 
+  useEffect(() => {
+    var meta = document.getElementById("theme-color");
+    if (!meta) return;
+    var update = () => {
+      var dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      meta.setAttribute("content", dark ? "#07070a" : "#f4f6fa");
+    };
+    update();
+    var mql = window.matchMedia("(prefers-color-scheme: dark)");
+    mql.addEventListener("change", update);
+    return () => mql.removeEventListener("change", update);
+  }, []);
+
   var Page = tab !== "home" && pageMap[tab];
 
   return (
