@@ -50,7 +50,7 @@ export default function App() {
       style={{
         minHeight: "100dvh",
         width: "100%",
-        background: "var(--bg)",
+        background: "blue",
         position: "relative",
         overflow: "hidden",
       }}
