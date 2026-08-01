@@ -496,6 +496,7 @@ export default function WaveScene({ params, toggles }) {
         height: "100%",
         position: "absolute",
         inset: 0,
+        background: "blue",
         cursor: "grab",
       }}
     >
