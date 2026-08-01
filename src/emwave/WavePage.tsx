@@ -28,7 +28,14 @@ export default function WavePage() {
   var badgeText = badgeNames[params.preset] || "Волна";
 
   return (
-    <div style={{ height: "100lvh", overflow: "hidden", position: "relative" }}>
+    <div
+      style={{
+        height: "100dvh",
+        width: "100%",
+        overflow: "hidden",
+        position: "relative",
+      }}
+    >
       <style>{`
         .wave-badge {
           top: calc(68px + env(safe-area-inset-top));
@@ -73,7 +80,16 @@ export default function WavePage() {
         }
       `}</style>
 
-      <div id="canvas-container" style={{ position: "absolute", inset: 0, zIndex: 0 }}>
+      <div
+        id="canvas-container"
+        style={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          zIndex: 0,
+        }}
+      >
         <WaveScene params={params} toggles={toggles} />
       </div>
 
@@ -109,43 +125,99 @@ export default function WavePage() {
           fontSize: 12.5,
           fontWeight: 500,
         }}
+      >
+        <h4
+          style={{
+            margin: "0 0 10px 0",
+            fontSize: 14,
+            fontWeight: 700,
+            opacity: 0.9,
+          }}
         >
-          <h4
+          Обозначения
+        </h4>
+        <div
+          className="legend-item"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            margin: "7px 0",
+          }}
+        >
+          <span
             style={{
-              margin: "0 0 10px 0",
-              fontSize: 14,
-              fontWeight: 700,
-              opacity: 0.9,
+              width: 11,
+              height: 11,
+              borderRadius: "50%",
+              background: "#00d4ff",
+              boxShadow: "0 0 6px #00d4ff",
+              flexShrink: 0,
             }}
-          >
-            Обозначения
-          </h4>
-          <div
-            className="legend-item"
-            style={{ display: "flex", alignItems: "center", gap: 10, margin: "7px 0" }}
-          >
-            <span style={{ width: 11, height: 11, borderRadius: "50%", background: "#00d4ff", boxShadow: "0 0 6px #00d4ff", flexShrink: 0 }} />
-            E
+          />
+          E
         </div>
         <div
           className="legend-item"
-          style={{ display: "flex", alignItems: "center", gap: 10, margin: "7px 0" }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            margin: "7px 0",
+          }}
         >
-          <span style={{ width: 11, height: 11, borderRadius: "50%", background: "#ff3366", boxShadow: "0 0 6px #ff3366", flexShrink: 0 }} />
+          <span
+            style={{
+              width: 11,
+              height: 11,
+              borderRadius: "50%",
+              background: "#ff3366",
+              boxShadow: "0 0 6px #ff3366",
+              flexShrink: 0,
+            }}
+          />
           B
         </div>
         <div
           className="legend-item"
-          style={{ display: "flex", alignItems: "center", gap: 10, margin: "7px 0" }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            margin: "7px 0",
+          }}
         >
-          <span style={{ width: 11, height: 11, borderRadius: "50%", background: "#ffd700", boxShadow: "0 0 6px #ffd700", flexShrink: 0 }} />
+          <span
+            style={{
+              width: 11,
+              height: 11,
+              borderRadius: "50%",
+              background: "#ffd700",
+              boxShadow: "0 0 6px #ffd700",
+              flexShrink: 0,
+            }}
+          />
           k
         </div>
         <div
           className="legend-item"
-          style={{ display: "flex", alignItems: "center", gap: 10, margin: "7px 0" }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            margin: "7px 0",
+          }}
         >
-          <span style={{ width: 11, height: 11, borderRadius: "50%", background: "#00ff88", boxShadow: "0 0 6px #00ff88", flexShrink: 0 }} />
+          <span
+            style={{
+              width: 11,
+              height: 11,
+              borderRadius: "50%",
+              background: "#00ff88",
+              boxShadow: "0 0 6px #00ff88",
+              flexShrink: 0,
+            }}
+          />
           Огибающая
         </div>
       </div>
@@ -173,23 +245,24 @@ export default function WavePage() {
         >
           Физика
         </h4>
-        {info && info.formulas.map(function (f, i) {
-          return (
-            <div
-              key={i}
-              className="formula"
-              style={{
-                fontFamily: '"Times New Roman", Times, serif',
-                fontStyle: "italic",
-                fontSize: 14,
-                margin: "6px 0",
-                opacity: 0.95,
-              }}
-            >
-              {f}
-            </div>
-          );
-        })}
+        {info &&
+          info.formulas.map(function (f, i) {
+            return (
+              <div
+                key={i}
+                className="formula"
+                style={{
+                  fontFamily: '"Times New Roman", Times, serif',
+                  fontStyle: "italic",
+                  fontSize: 14,
+                  margin: "6px 0",
+                  opacity: 0.95,
+                }}
+              >
+                {f}
+              </div>
+            );
+          })}
         {info && (
           <div
             className="desc"
@@ -200,7 +273,9 @@ export default function WavePage() {
               lineHeight: 1.4,
             }}
           >
-            {typeof info.desc === "function" ? info.desc(params.angle) : info.desc}
+            {typeof info.desc === "function"
+              ? info.desc(params.angle)
+              : info.desc}
           </div>
         )}
       </div>

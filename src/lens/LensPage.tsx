@@ -37,14 +37,35 @@ export default function LensPage() {
 
   const resetView = useCallback(() => {
     setScale(7);
-    setResetKey(k => k + 1);
+    setResetKey((k) => k + 1);
   }, []);
 
   return (
-    <div style={{ height: "100lvh", overflow: "hidden", position: "relative" }}>
-      <div id="canvas-container" style={{ position: "absolute", inset: 0, zIndex: 0 }}>
+    <div
+      style={{
+        height: "100dvh",
+        width: "100%",
+        overflow: "hidden",
+        position: "relative",
+      }}
+    >
+      <div
+        id="canvas-container"
+        style={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          zIndex: 0,
+        }}
+      >
         {!mode3d ? (
-          <Lens2D params={paramsWithEq} lensCache={lensCache} onScaleChange={setScale} scale={scale} />
+          <Lens2D
+            params={paramsWithEq}
+            lensCache={lensCache}
+            onScaleChange={setScale}
+            scale={scale}
+          />
         ) : (
           <Lens3D key={resetKey} params={paramsWithEq} />
         )}
@@ -52,11 +73,7 @@ export default function LensPage() {
 
       <GlassPanel title="Линза">
         <div className="section">
-          <ToggleSwitch
-            label="3D-вид"
-            checked={mode3d}
-            onChange={setMode3d}
-          />
+          <ToggleSwitch label="3D-вид" checked={mode3d} onChange={setMode3d} />
         </div>
         <LensControls
           params={params}
