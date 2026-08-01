@@ -28,7 +28,7 @@ export default function WavePage() {
   var badgeText = badgeNames[params.preset] || "Волна";
 
   return (
-    <div style={{ minHeight: "100dvh", position: "relative" }}>
+    <div style={{ height: "100vh", overflow: "hidden", position: "relative" }}>
       <style>{`
         .wave-badge {
           top: calc(68px + env(safe-area-inset-top));
@@ -78,7 +78,7 @@ export default function WavePage() {
         }
       `}</style>
 
-      <div id="canvas-container" style={{ position: "fixed", inset: 0, zIndex: 0 }}>
+      <div id="canvas-container" style={{ position: "absolute", inset: 0, zIndex: 0 }}>
         <WaveScene params={params} toggles={toggles} />
       </div>
 
