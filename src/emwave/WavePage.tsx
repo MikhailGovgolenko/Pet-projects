@@ -28,7 +28,7 @@ export default function WavePage() {
   var badgeText = badgeNames[params.preset] || "Волна";
 
   return (
-    <div style={{ height: "100%", position: "relative" }}>
+    <div style={{ minHeight: "100dvh", position: "relative" }}>
       <style>{`
         .wave-badge {
           top: calc(68px + env(safe-area-inset-top));

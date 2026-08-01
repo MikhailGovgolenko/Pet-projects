@@ -35,7 +35,15 @@ export default function App() {
   var Page = tab !== "home" && pageMap[tab];
 
   return (
-    <div style={{ height: "100%", background: "var(--bg)", position: "relative" }}>
+    <div
+      style={{
+        minHeight: "100dvh",
+        width: "100%",
+        background: "var(--bg)",
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
       {tab !== "home" && (
         <div
           onClick={() => { setTab("home"); updateUrl("home"); }}
