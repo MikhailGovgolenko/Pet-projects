@@ -1,4 +1,12 @@
-export default function ToggleSwitch({ label, checked, onChange }) {
+import React from "react";
+
+interface ToggleSwitchProps {
+  label: string;
+  checked: boolean;
+  onChange?: (checked: boolean) => void;
+}
+
+function ToggleSwitch({ label, checked, onChange }: ToggleSwitchProps) {
   return (
     <div
       style={{
@@ -11,6 +19,7 @@ export default function ToggleSwitch({ label, checked, onChange }) {
       }}
     >
       <span>{label}</span>
+
       <label
         style={{
           position: "relative",
@@ -22,36 +31,42 @@ export default function ToggleSwitch({ label, checked, onChange }) {
       >
         <input
           type="checkbox"
+          role="switch"
+          aria-label={label}
           checked={checked}
-          onChange={e => onChange(e.target.checked)}
-          style={{ opacity: 0, width: 0, height: 0, position: "absolute" }}
+          onChange={(e) => onChange?.(e.target.checked)}
+          style={{
+            position: "absolute",
+            opacity: 0,
+            width: 0,
+            height: 0,
+          }}
         />
+
         <span
           style={{
             position: "absolute",
             inset: 0,
             background: checked
               ? "linear-gradient(135deg, #00d4ff, #0077b6)"
-              : "rgba(255,255,255,0.15)",
+              : "var(--toggle-off)",
             borderRadius: 17,
-            transition: "0.25s",
-            border: checked
-              ? "1px solid transparent"
-              : "1px solid rgba(255,255,255,0.2)",
+            transition: "background 0.25s, box-shadow 0.25s",
+            boxShadow: checked ? "none" : "inset 0 0 0 1px var(--glass-border)",
           }}
         >
           <span
             style={{
               position: "absolute",
-              content: '""',
-              height: 11,
+              top: 3,
+              left: 3,
               width: 11,
-              left: checked ? 19 : 2,
-              bottom: 2,
-              background: "white",
+              height: 11,
+              background: "#fff",
               borderRadius: "50%",
-              transition: "0.25s cubic-bezier(0.34, 1.56, 0.64, 1)",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+              transform: checked ? "translateX(17px)" : "translateX(0)",
+              transition: "transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)",
+              boxShadow: "0 1px 2px rgba(0,0,0,0.18)",
             }}
           />
         </span>
@@ -59,3 +74,5 @@ export default function ToggleSwitch({ label, checked, onChange }) {
     </div>
   );
 }
+
+export default React.memo(ToggleSwitch);

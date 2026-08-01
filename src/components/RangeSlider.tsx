@@ -57,7 +57,7 @@ export default function RangeSlider({
             minWidth: 40,
             maxWidth: 90,
             height: 3,
-            background: "rgba(255,255,255,0.12)",
+            background: "var(--range-track)",
             borderRadius: 2,
             outline: "none",
             cursor: "pointer",

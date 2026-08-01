@@ -76,12 +76,19 @@ export default function CustomSelect({ value, options, onChange }) {
           pointerEvents: open ? "auto" : "none",
           transition: "opacity 0.2s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
           overflow: "hidden",
-          padding: "6px 0",
-          maxHeight: 280,
-          overflowY: "auto",
-          overscrollBehavior: "contain",
+          padding: 4,
         }}
       >
+        <div
+          className="select-list"
+          style={{
+            maxHeight: 272,
+            overflowY: "auto",
+            overscrollBehavior: "contain",
+            borderRadius: 14,
+            padding: "6px 2px",
+          }}
+        >
         {options.map(function (o) {
           var selected = o.value === value;
           return (
@@ -99,7 +106,7 @@ export default function CustomSelect({ value, options, onChange }) {
                 fontSize: 13,
                 color: selected ? "var(--accent)" : "var(--text)",
                 fontWeight: selected ? 700 : 400,
-                margin: "0 6px",
+                margin: "2px 0",
                 borderRadius: 10,
               }}
               onMouseEnter={function (e) {
@@ -113,6 +120,7 @@ export default function CustomSelect({ value, options, onChange }) {
             </div>
           );
         })}
+        </div>
       </div>
     </div>
   );

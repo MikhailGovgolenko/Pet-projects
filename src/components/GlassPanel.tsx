@@ -10,9 +10,9 @@ export default function GlassPanel({ title, children }) {
         className="glass"
         style={{
           position: "absolute",
-          left: 16,
-          top: 16,
-          width: 320,
+          left: "calc(16px + env(safe-area-inset-left))",
+          top: "calc(16px + env(safe-area-inset-top))",
+          width: "min(320px, calc(100vw - 32px))",
           padding: 12,
           zIndex: 10,
           transition: "transform 0.45s cubic-bezier(0.32,0.72,0,1), opacity 0.35s ease",
@@ -69,8 +69,8 @@ export default function GlassPanel({ title, children }) {
         onClick={() => setCollapsed(false)}
         style={{
           position: "fixed",
-          left: 20,
-          top: 20,
+          left: "calc(20px + env(safe-area-inset-left))",
+          top: "calc(20px + env(safe-area-inset-top))",
           width: 44,
           height: 44,
           borderRadius: "50%",
@@ -81,8 +81,8 @@ export default function GlassPanel({ title, children }) {
           zIndex: 20,
           transition: "transform 0.2s",
           background: "var(--glass-bg)",
-          backdropFilter: "blur(60px) saturate(240%)",
-          WebkitBackdropFilter: "blur(60px) saturate(240%)",
+          backdropFilter: "blur(80px) saturate(260%)",
+          WebkitBackdropFilter: "blur(80px) saturate(260%)",
           border: "1px solid var(--glass-border)",
           boxShadow: "var(--glass-shadow)",
         }}

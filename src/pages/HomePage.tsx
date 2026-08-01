@@ -3,15 +3,12 @@ import { cards } from "./cards";
 export default function HomePage({ onNavigate }) {
   return (
     <div
+      className="home-page"
       style={{
-        minHeight: "100vh",
-        background: "var(--bg)",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        padding: "60px 20px",
         transition: "background 0.4s ease",
-        overflowY: "auto",
       }}
     >
       <style>{`
@@ -23,6 +20,18 @@ export default function HomePage({ onNavigate }) {
           from { opacity: 0; translate: 0 20px; }
           to { opacity: 1; translate: 0 0; }
         }
+
+        .home-page {
+          position: relative;
+          min-height: 100vh;
+          min-height: 100dvh;
+          background: var(--bg);
+          padding: calc(48px + env(safe-area-inset-top)) 20px
+            calc(32px + env(safe-area-inset-bottom));
+          overflow-x: hidden;
+          overflow-y: auto;
+        }
+
         .home-title { animation: fadeInDown 0.8s ease both; }
         .card-wrap {
           position: relative;
@@ -34,12 +43,14 @@ export default function HomePage({ onNavigate }) {
         }
         .card-wrap:nth-child(1) { animation-delay: 0.1s; }
         .card-wrap:nth-child(2) { animation-delay: 0.2s; }
-        .card-wrap:hover {
-          transform: translateY(-4px) scale(1.01);
+
+        @media (hover: hover) {
+          .card-wrap:hover { transform: translateY(-4px) scale(1.01); }
         }
 
         .home-card {
           position: relative;
+          z-index: 1;
           display: flex;
           flex-direction: column;
           padding: 28px;
@@ -53,14 +64,16 @@ export default function HomePage({ onNavigate }) {
           backdrop-filter: none;
           -webkit-backdrop-filter: none;
         }
-        .card-wrap:hover .home-card {
-          box-shadow: 0 20px 60px rgba(0,0,0,0.15), var(--glass-shadow);
-          background: var(--card-hover);
-        }
-        .card-wrap:hover .card-action { color: var(--accent); }
-        .card-wrap:hover .card-arrow {
-          transform: translateX(3px);
-          background: rgba(0,212,255,0.12);
+        @media (hover: hover) {
+          .card-wrap:hover .home-card {
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15), var(--glass-shadow);
+            background: var(--card-hover);
+          }
+          .card-wrap:hover .card-action { color: var(--accent); }
+          .card-wrap:hover .card-arrow {
+            transform: translateX(3px);
+            background: rgba(0,212,255,0.12);
+          }
         }
 
         .card-icon {
@@ -155,9 +168,18 @@ export default function HomePage({ onNavigate }) {
           border-color: var(--accent);
           background: var(--card-hover);
         }
+
+        @media (max-width: 480px) {
+          .home-page { padding-left: 14px; padding-right: 14px; }
+          .home-title { margin-bottom: 32px; }
+          .home-title h1 { font-size: 32px; letter-spacing: -1px; }
+          .home-card { padding: 22px; }
+          .home-card h2 { font-size: 18px; padding-right: 56px; }
+          .card-icon { width: 42px; height: 42px; font-size: 19px; }
+        }
       `}</style>
 
-      <header className="home-title" style={{ textAlign: "center", marginBottom: 48 }}>
+      <header className="home-title" style={{ textAlign: "center", marginBottom: 48, position: "relative", zIndex: 1 }}>
         <h1
           style={{
             fontSize: 42,
@@ -175,8 +197,10 @@ export default function HomePage({ onNavigate }) {
 
       <div
         style={{
+          position: "relative",
+          zIndex: 1,
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))",
           gap: 20,
           width: "100%",
           maxWidth: 960,
