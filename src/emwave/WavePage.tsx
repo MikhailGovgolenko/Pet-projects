@@ -65,12 +65,7 @@ export default function WavePage() {
           .wave-legend h4 { display: none; }
           .wave-legend .legend-item { margin: 0 !important; }
           .wave-info {
-            left: 12px;
-            right: 12px;
-            bottom: calc(12px + env(safe-area-inset-bottom));
-            width: auto;
-            max-height: 32vh;
-            padding: 12px;
+            display: none;
           }
         }
         @media (max-width: 380px) {

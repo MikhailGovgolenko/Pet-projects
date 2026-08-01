@@ -5,18 +5,44 @@ export default function GlassPanel({ title, children }) {
 
   return (
     <>
+      <style>{`
+        .controls-panel {
+          position: absolute;
+          left: calc(16px + env(safe-area-inset-left));
+          top: calc(16px + env(safe-area-inset-top));
+          width: min(320px, calc(100vw - 32px));
+          padding: 12px;
+          transition: transform 0.45s cubic-bezier(0.32,0.72,0,1), opacity 0.35s ease;
+        }
+        .controls-panel.collapsed {
+          transform: translateX(calc(-100% - 40px));
+          opacity: 0;
+          pointer-events: none;
+        }
+        @media (max-width: 640px) {
+          .controls-panel {
+            left: 12px;
+            right: 12px;
+            width: auto;
+            top: auto;
+            bottom: calc(16px + env(safe-area-inset-bottom));
+            max-height: 46dvh;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
+            padding: 12px 12px calc(16px + env(safe-area-inset-bottom));
+          }
+          .controls-panel.collapsed {
+            transform: translateY(calc(100% + 48px));
+          }
+        }
+      `}</style>
+
       <div
         id="controls"
-        className="glass"
+        className={"glass controls-panel" + (collapsed ? " collapsed" : "")}
         style={{
-          position: "absolute",
-          left: "calc(16px + env(safe-area-inset-left))",
-          top: "calc(16px + env(safe-area-inset-top))",
-          width: "min(320px, calc(100vw - 32px))",
-          padding: 12,
           zIndex: 10,
-          transition: "transform 0.45s cubic-bezier(0.32,0.72,0,1), opacity 0.35s ease",
-          transform: collapsed ? "translateX(calc(-100% - 40px))" : "none",
           opacity: collapsed ? 0 : 1,
           pointerEvents: collapsed ? "none" : "auto",
         }}
