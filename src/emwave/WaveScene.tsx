@@ -491,6 +491,9 @@ export default function WaveScene({ params, toggles }) {
     <Canvas
       camera={{ position: [10, 8, 10], fov: 45, near: 0.1, far: 100 }}
       gl={{ antialias: true }}
+      onCreated={({ gl }) => {
+        gl.setClearColor("#ff0000", 1);
+      }}
       style={{
         width: "100%",
         height: "100%",
