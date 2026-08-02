@@ -8,7 +8,7 @@ export default function ThemeUpdater() {
   useEffect(function () {
     function update() {
       var light = window.matchMedia("(prefers-color-scheme: light)").matches;
-      scene.background = new Color(light ? 0xf4f6fa : 0x07070a);
+      scene.background = new Color(0xff0000);
     }
     update();
     var mql = window.matchMedia("(prefers-color-scheme: light)");
