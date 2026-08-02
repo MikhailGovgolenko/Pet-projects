@@ -1,6 +1,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { cards } from "./pages/cards";
 import HomePage from "./pages/HomePage";
+import { useI18n } from "./i18n";
 
 const BASE = "/Pet-projects/";
 
@@ -24,6 +25,7 @@ function updateUrl(tab: string) {
 }
 
 export default function App() {
+  const { t } = useI18n();
   const [tab, setTab] = useState(getTabFromPath);
 
   useEffect(() => {
@@ -81,7 +83,7 @@ export default function App() {
           onMouseLeave={(e) => e.currentTarget.style.color = "var(--text-sec)"}
         >
           <span style={{ fontSize: 16 }}>🏠</span>
-          <span>На главную</span>
+          <span>{t("app.home")}</span>
         </div>
       )}
 

@@ -1,6 +1,8 @@
 import { cards } from "./cards";
+import { useI18n } from "../i18n";
 
 export default function HomePage({ onNavigate }) {
+  const { t } = useI18n();
   return (
     <div
       className="home-page"
@@ -215,10 +217,10 @@ export default function HomePage({ onNavigate }) {
                 onClick={() => onNavigate(card.id)}
               >
                 <div className="card-icon">{card.icon}</div>
-                <h2>{card.title}</h2>
-                <p>{card.description}</p>
+                <h2>{t(card.titleKey)}</h2>
+                <p>{t(card.descKey)}</p>
                 <div className="card-footer">
-                  <span className="card-action">Открыть симуляцию</span>
+                  <span className="card-action">{t("home.open")}</span>
                   <div className="card-arrow"></div>
                 </div>
               </div>

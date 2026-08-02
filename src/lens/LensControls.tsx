@@ -1,7 +1,9 @@
 import RangeSlider from "../components/RangeSlider";
 import ToggleSwitch from "../components/ToggleSwitch";
+import { useI18n } from "../i18n";
 
 export default function LensControls({ params, setParams, resetView, scale }) {
+  const { t } = useI18n();
   const formatVal = (n, v) => {
     if (n === "a2") return parseFloat(v).toFixed(3);
     if (n === "a4" || n === "a6") return parseFloat(v).toExponential(1);
@@ -24,7 +26,7 @@ export default function LensControls({ params, setParams, resetView, scale }) {
     <>
       <div className="section">
         <ToggleSwitch
-          label="Использовать поле для уравнения"
+          label={t("lens.useField")}
           checked={params.useField}
           onChange={toggleUseField}
         />
@@ -32,17 +34,17 @@ export default function LensControls({ params, setParams, resetView, scale }) {
 
       <div className="section">
         <RangeSlider
-          label="Преломление n"
+          label={t("lens.refraction")}
           min={1} max={10} step={0.01} value={params.n}
           onChange={set("n")}
         />
         <RangeSlider
-          label="Угол пучка (°)"
+          label={t("lens.beamAngle")}
           min={-90} max={90} step={0.1} value={params.angle}
           onChange={set("angle")}
         />
         <RangeSlider
-          label="Кол-во лучей"
+          label={t("lens.rayCount")}
           min={3} max={201} step={1} value={params.rayCount}
           onChange={set("rayCount")}
         />
@@ -51,7 +53,7 @@ export default function LensControls({ params, setParams, resetView, scale }) {
       {!params.useField && (
         <div className="section">
           <div className="glass-group">
-            <span className="group-title">Полином z(r)=z₀+a₂r²+a₄r⁴+a₆r⁶</span>
+            <span className="group-title">{t("lens.polynomial")}</span>
             <RangeSlider
               label="z₀"
               min={-20} max={20} step={0.001} value={params.z0}
@@ -109,12 +111,12 @@ export default function LensControls({ params, setParams, resetView, scale }) {
 
       <div className="section">
         <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "4px 0", fontSize: 12, fontWeight: 500 }}>
-          <span style={{ color: "var(--text-sec)" }}>Масштаб</span>
+          <span style={{ color: "var(--text-sec)" }}>{t("lens.scale")}</span>
           <span style={{ color: "var(--accent)", fontFamily: '"SF Mono", monospace', fontSize: 10.5, fontWeight: 700 }}>
             {scale.toFixed(2)}
           </span>
         </label>
-        <button onClick={resetView}>Сбросить вид</button>
+        <button onClick={resetView}>{t("lens.resetView")}</button>
       </div>
     </>
   );
