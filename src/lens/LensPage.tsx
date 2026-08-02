@@ -4,6 +4,7 @@ import ToggleSwitch from "../components/ToggleSwitch";
 import LensControls from "./LensControls";
 import Lens2D from "./Lens2D";
 import Lens3D from "./Lens3D";
+import { useI18n } from "../i18n";
 
 function buildEq(params) {
   if (params.useField && params.customEq.trim()) {
@@ -13,6 +14,7 @@ function buildEq(params) {
 }
 
 export default function LensPage() {
+  const { t } = useI18n();
   const [mode3d, setMode3d] = useState(false);
   const [scale, setScale] = useState(7);
   const [resetKey, setResetKey] = useState(0);
@@ -71,9 +73,9 @@ export default function LensPage() {
         )}
       </div>
 
-      <GlassPanel title="Линза">
+      <GlassPanel title={t("lens.panel")}>
         <div className="section">
-          <ToggleSwitch label="3D-вид" checked={mode3d} onChange={setMode3d} />
+          <ToggleSwitch label={t("lens.mode3d")} checked={mode3d} onChange={setMode3d} />
         </div>
         <LensControls
           params={params}
