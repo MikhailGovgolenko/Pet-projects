@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo, useEffect } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import GlassPanel from "../components/GlassPanel";
 import ToggleSwitch from "../components/ToggleSwitch";
 import LensControls from "./LensControls";
