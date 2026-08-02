@@ -43,7 +43,7 @@ export default function LensPage() {
   return (
     <div
       style={{
-        height: "100%",
+        minHeight: "100dvh",
         width: "100%",
         overflow: "hidden",
         position: "relative",
