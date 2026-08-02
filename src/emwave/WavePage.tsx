@@ -38,10 +38,30 @@ export default function WavePage() {
     >
       <style>{`
         .wave-badge {
+          position: absolute;
+          left: 50%;
+          transform: translateX(-50%);
           top: calc(68px + env(safe-area-inset-top));
+          padding: 10px 26px;
+          border-radius: 100px;
+          font-size: 13.5px;
+          font-weight: 700;
+          letter-spacing: 0.2px;
+          z-index: 10;
+          pointer-events: none;
+          white-space: nowrap;
           max-width: calc(100vw - 24px);
           overflow: hidden;
           text-overflow: ellipsis;
+        }
+        .wave-legend {
+          position: absolute;
+          right: 20px;
+          top: 20px;
+          padding: 14px 18px;
+          z-index: 10;
+          font-size: 12.5px;
+          font-weight: 500;
         }
         .wave-info {
           right: 20px;
@@ -94,38 +114,12 @@ export default function WavePage() {
       </div>
 
       {/* Wave badge — center top */}
-      <div
-        className="glass wave-badge"
-        style={{
-          position: "absolute",
-          left: "50%",
-          transform: "translateX(-50%)",
-          padding: "10px 26px",
-          borderRadius: 100,
-          fontSize: 13.5,
-          fontWeight: 700,
-          letterSpacing: "0.2px",
-          zIndex: 10,
-          pointerEvents: "none",
-          whiteSpace: "nowrap",
-        }}
-      >
+      <div className="glass wave-badge">
         {badgeText}
       </div>
 
       {/* Legend — right top */}
-      <div
-        className="glass wave-legend"
-        style={{
-          position: "absolute",
-          right: 20,
-          top: 20,
-          padding: "14px 18px",
-          zIndex: 10,
-          fontSize: 12.5,
-          fontWeight: 500,
-        }}
-      >
+      <div className="glass wave-legend">
         <h4
           style={{
             margin: "0 0 10px 0",
