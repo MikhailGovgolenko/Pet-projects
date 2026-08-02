@@ -183,7 +183,8 @@ export default function HomePage({ onNavigate }) {
         <h1
           style={{
             fontSize: 42,
-            fontWeight: 800,
+            fontWeight: 900,
+            fontFamily: "'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
             letterSpacing: "-1.5px",
             background: "linear-gradient(135deg, var(--accent), #7ec8e3)",
             WebkitBackgroundClip: "text",
