@@ -43,7 +43,21 @@ function LensMesh({ eq, eqR, aperture }) {
   );
 }
 
-function Rays({ eq, eqR, aperture, angle, n, rayCount }) {
+function lensBox(lens) {
+  var zMin = Infinity;
+  var zMax = -Infinity;
+  for (var i = 0; i < lens.L.length; i++) {
+    var z = lens.L[i].z;
+    if (z < zMin) zMin = z;
+    if (z > zMax) zMax = z;
+    z = lens.R[i].z;
+    if (z < zMin) zMin = z;
+    if (z > zMax) zMax = z;
+  }
+  return { z0: zMin, z1: zMax, r1: lens.aperture };
+}
+
+function Rays({ eq, eqR, aperture, angle, n, rayCount, box }) {
   var angleRad = angle;
 
   var group = useMemo(function () {
@@ -62,7 +76,7 @@ function Rays({ eq, eqR, aperture, angle, n, rayCount }) {
         r: -startDist * dir.r + rOff * perp.r,
       };
       var D = normVec(dir);
-      var h1 = findIntersection(P, D, eq);
+      var h1 = findIntersection(P, D, eq, box);
       if (!h1) return null;
       var N = normVec({ z: -1, r: deriv(eq, h1.r) });
       if (N.z * D.z + N.r * D.r > 0) N = { z: -N.z, r: -N.r };
@@ -70,7 +84,7 @@ function Rays({ eq, eqR, aperture, angle, n, rayCount }) {
       if (!T1) return null;
       var h2 = findIntersection(
         { z: h1.z + 1e-6 * T1.z, r: h1.r + 1e-6 * T1.r },
-        T1, eqR
+        T1, eqR, box
       );
       if (!h2) return null;
       var N2 = normVec({ z: -1, r: deriv(eqR, h2.r) });
@@ -125,12 +139,12 @@ function Rays({ eq, eqR, aperture, angle, n, rayCount }) {
       g.add(new THREE.LineSegments(geo, mat));
     }
     return g;
-  }, [eq, eqR, aperture, angleRad, n, rayCount]);
+  }, [eq, eqR, aperture, angleRad, n, rayCount, box]);
 
   return <primitive object={group} />;
 }
 
-function Scene({ eq, eqR, aperture, angle, n, rayCount }) {
+function Scene({ eq, eqR, aperture, angle, n, rayCount, box }) {
   return (
     <>
       <ambientLight intensity={1.0} color={0x404060} />
@@ -144,6 +158,7 @@ function Scene({ eq, eqR, aperture, angle, n, rayCount }) {
         angle={angle}
         n={n}
         rayCount={rayCount}
+        box={box}
       />
       <ThemeUpdater />
       <OrbitControls
@@ -160,6 +175,8 @@ export default function Lens3D({ params }) {
   const lensSample = useMemo(() => {
     return sampleLens(params.eq, params.eqR);
   }, [params.eq, params.eqR]);
+
+  const box = useMemo(() => lensBox(lensSample), [lensSample]);
 
   return (
     <Canvas
@@ -180,6 +197,7 @@ export default function Lens3D({ params }) {
         angle={params.angle * (Math.PI / 180)}
         n={params.n}
         rayCount={params.rayCount}
+        box={box}
       />
     </Canvas>
   );

@@ -1,4 +1,6 @@
-export default function RangeSlider({
+import { memo } from "react";
+
+export default memo(function RangeSlider({
   name,
   label,
   min, max, step, value,
@@ -103,4 +105,4 @@ export default function RangeSlider({
       </div>
     </label>
   );
-}
+});

@@ -1,9 +1,23 @@
-﻿import { useRef, useEffect, useCallback, memo } from "react";
-import { sampleLens, traceRays } from "./lensMath";
+import { useRef, useEffect, useCallback, memo } from "react";
+import { sampleLens, traceRays, DEG } from "./lensMath";
 import { createCamera } from "./Camera";
 
 function cacheKey(p, aperture) {
   return [p.eq, p.eqR, aperture, p.angle, p.n, p.rayCount].join("|");
+}
+
+function lensBox(lens) {
+  var zMin = Infinity;
+  var zMax = -Infinity;
+  for (var i = 0; i < lens.L.length; i++) {
+    var z = lens.L[i].z;
+    if (z < zMin) zMin = z;
+    if (z > zMax) zMax = z;
+    z = lens.R[i].z;
+    if (z < zMin) zMin = z;
+    if (z > zMax) zMax = z;
+  }
+  return { z0: zMin, z1: zMax, r1: lens.aperture };
 }
 
 function drawLens(ctx, lens, camera) {
@@ -80,11 +94,13 @@ function Lens2D({ params, resetKey, scaleRef }) {
   const renderScheduled = useRef(false);
   const zoomReportScheduled = useRef(false);
   const pinchRef = useRef(null);
-  const simCacheRef = useRef<{
+  const lensCacheRef = useRef<{
     key: string;
     lens?: ReturnType<typeof sampleLens>;
-    rays?: ReturnType<typeof traceRays>;
+    box?: { z0: number; z1: number; r1: number };
   }>({ key: "" });
+  const rayCacheRef = useRef<{ key: string; rays?: ReturnType<typeof traceRays> }>({ key: "" });
+  const simPending = useRef(false);
   const paramsRef = useRef(params);
   paramsRef.current = params;
 
@@ -109,12 +125,13 @@ function Lens2D({ params, resetKey, scaleRef }) {
     const ctx = ctxRef.current;
     const canvas = canvasRef.current;
     const camera = cameraRef.current;
-    const cache = simCacheRef.current;
-    if (!ctx || !canvas || !cache.lens) return;
+    const lens = lensCacheRef.current.lens;
+    const rays = rayCacheRef.current.rays;
+    if (!ctx || !canvas || !lens || !rays) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawLens(ctx, cache.lens, camera);
-    drawRays(ctx, cache.rays, camera);
+    drawLens(ctx, lens, camera);
+    drawRays(ctx, rays, camera);
   }, []);
 
   const scheduleRender = useCallback(() => {
@@ -127,14 +144,26 @@ function Lens2D({ params, resetKey, scaleRef }) {
   }, [render]);
 
   useEffect(() => {
-    const p = paramsRef.current;
-    const lens = sampleLens(p.eq, p.eqR);
-    const key = cacheKey(p, lens.aperture);
-    if (simCacheRef.current.key !== key) {
-      const rays = traceRays(p.eq, p.eqR, lens.aperture, p.angle, p.n, p.rayCount);
-      simCacheRef.current = { key, lens, rays };
-    }
-    scheduleRender();
+    if (simPending.current) return;
+    simPending.current = true;
+    requestAnimationFrame(() => {
+      simPending.current = false;
+      const p = paramsRef.current;
+      const eqKey = p.eq + "|" + p.eqR;
+      if (lensCacheRef.current.key !== eqKey) {
+        const lens = sampleLens(p.eq, p.eqR);
+        lensCacheRef.current = { key: eqKey, lens, box: lensBox(lens) };
+      }
+      const lens = lensCacheRef.current.lens;
+      const key = cacheKey(p, lens.aperture);
+      if (rayCacheRef.current.key !== key) {
+        rayCacheRef.current = {
+          key,
+          rays: traceRays(p.eq, p.eqR, lens.aperture, p.angle * DEG, p.n, p.rayCount, lensCacheRef.current.box),
+        };
+      }
+      scheduleRender();
+    });
   }, [params, scheduleRender]);
 
   useEffect(() => {
