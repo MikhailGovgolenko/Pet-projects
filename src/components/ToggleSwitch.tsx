@@ -4,9 +4,10 @@ interface ToggleSwitchProps {
   label: string;
   checked: boolean;
   onChange?: (checked: boolean) => void;
+  name?: string;
 }
 
-function ToggleSwitch({ label, checked, onChange }: ToggleSwitchProps) {
+function ToggleSwitch({ label, checked, onChange, name }: ToggleSwitchProps) {
   return (
     <div
       style={{
@@ -32,6 +33,7 @@ function ToggleSwitch({ label, checked, onChange }: ToggleSwitchProps) {
         <input
           type="checkbox"
           role="switch"
+          name={name}
           aria-label={label}
           checked={checked}
           onChange={(e) => onChange?.(e.target.checked)}

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo } from "react";
+﻿import { useState, useRef, useCallback, useMemo } from "react";
 import GlassPanel from "../components/GlassPanel";
 import ToggleSwitch from "../components/ToggleSwitch";
 import LensControls from "./LensControls";
@@ -16,9 +16,9 @@ function buildEq(params) {
 export default function LensPage() {
   const { t } = useI18n();
   const [mode3d, setMode3d] = useState(false);
-  const [scale, setScale] = useState(7);
   const [resetKey, setResetKey] = useState(0);
-  const lensCache = useRef({ key: "" });
+  const scaleRef = useRef(null);
+  const simCache = useRef({ key: "" });
 
   const [params, setParams] = useState({
     n: 1.5,
@@ -38,7 +38,6 @@ export default function LensPage() {
   }, [params]);
 
   const resetView = useCallback(() => {
-    setScale(7);
     setResetKey((k) => k + 1);
   }, []);
 
@@ -64,9 +63,9 @@ export default function LensPage() {
         {!mode3d ? (
           <Lens2D
             params={paramsWithEq}
-            lensCache={lensCache}
-            onScaleChange={setScale}
-            scale={scale}
+            simCache={simCache}
+            resetKey={resetKey}
+            scaleRef={scaleRef}
           />
         ) : (
           <Lens3D key={resetKey} params={paramsWithEq} />
@@ -75,14 +74,21 @@ export default function LensPage() {
 
       <GlassPanel title={t("lens.panel")}>
         <div className="section">
-          <ToggleSwitch label={t("lens.mode3d")} checked={mode3d} onChange={setMode3d} />
+          <ToggleSwitch name="mode3d" label={t("lens.mode3d")} checked={mode3d} onChange={setMode3d} />
         </div>
         <LensControls
           params={params}
           setParams={setParams}
-          resetView={resetView}
-          scale={scale}
         />
+        <div className="section">
+          <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "4px 0", fontSize: 12, fontWeight: 500 }}>
+            <span style={{ color: "var(--text-sec)" }}>{t("lens.scale")}</span>
+            <span ref={scaleRef} style={{ color: "var(--accent)", fontFamily: '"SF Mono", monospace', fontSize: 10.5, fontWeight: 700 }}>
+              7.00
+            </span>
+          </label>
+          <button onClick={resetView}>{t("lens.resetView")}</button>
+        </div>
       </GlassPanel>
     </div>
   );
