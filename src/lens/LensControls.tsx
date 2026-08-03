@@ -4,17 +4,33 @@ import ToggleSwitch from "../components/ToggleSwitch";
 import { compile, substituteCoeffs, type ExprError } from "./expr";
 import { useI18n } from "../i18n";
 
+function formatVal(n, v) {
+  if (n === "a2") return parseFloat(v).toFixed(3);
+  if (n === "a4" || n === "a6") return parseFloat(v).toExponential(1);
+  return parseFloat(v).toFixed(1).replace(/\.0$/, "");
+}
+
+const fmt = (n) => (v) => formatVal(n, v);
+const formatZ0 = fmt("z0");
+const formatA2 = fmt("a2");
+const formatA4 = fmt("a4");
+const formatA6 = fmt("a6");
+
 function LensControls({ params, setParams }) {
   const { t } = useI18n();
-  const formatVal = (n, v) => {
-    if (n === "a2") return parseFloat(v).toFixed(3);
-    if (n === "a4" || n === "a6") return parseFloat(v).toExponential(1);
-    return parseFloat(v).toFixed(1).replace(/\.0$/, "");
-  };
 
-  const set = (key) => (val) => {
-    setParams((p) => ({ ...p, [key]: val }));
-  };
+  const handlers = useMemo(
+    () => ({
+      n: (v) => setParams((p) => ({ ...p, n: v })),
+      angle: (v) => setParams((p) => ({ ...p, angle: v })),
+      rayCount: (v) => setParams((p) => ({ ...p, rayCount: v })),
+      z0: (v) => setParams((p) => ({ ...p, z0: v })),
+      a2: (v) => setParams((p) => ({ ...p, a2: v })),
+      a4: (v) => setParams((p) => ({ ...p, a4: v })),
+      a6: (v) => setParams((p) => ({ ...p, a6: v })),
+    }),
+    [setParams]
+  );
 
   const toggleUseField = (v) => {
     setParams((p) => ({ ...p, useField: v }));
@@ -50,19 +66,19 @@ function LensControls({ params, setParams }) {
           name="n"
           label={t("lens.refraction")}
           min={1} max={10} step={0.01} value={params.n}
-          onChange={set("n")}
+          onChange={handlers.n}
         />
         <RangeSlider
           name="angle"
           label={t("lens.beamAngle")}
           min={-90} max={90} step={0.1} value={params.angle}
-          onChange={set("angle")}
+          onChange={handlers.angle}
         />
         <RangeSlider
           name="rayCount"
           label={t("lens.rayCount")}
           min={3} max={201} step={1} value={params.rayCount}
-          onChange={set("rayCount")}
+          onChange={handlers.rayCount}
         />
       </div>
 
@@ -74,29 +90,29 @@ function LensControls({ params, setParams }) {
               name="z0"
               label="z₀"
               min={-20} max={20} step={0.001} value={params.z0}
-              onChange={set("z0")}
-              format={(v) => formatVal("z0", v)}
+              onChange={handlers.z0}
+              format={formatZ0}
             />
             <RangeSlider
               name="a2"
               label="a₂"
               min={-0.1} max={0.1} step={1e-5} value={params.a2}
-              onChange={set("a2")}
-              format={(v) => formatVal("a2", v)}
+              onChange={handlers.a2}
+              format={formatA2}
             />
             <RangeSlider
               name="a4"
               label="a₄"
               min={-0.001} max={0.001} step={1e-7} value={params.a4}
-              onChange={set("a4")}
-              format={(v) => formatVal("a4", v)}
+              onChange={handlers.a4}
+              format={formatA4}
             />
             <RangeSlider
               name="a6"
               label="a₆"
               min={-1e-5} max={1e-5} step={1e-10} value={params.a6}
-              onChange={set("a6")}
-              format={(v) => formatVal("a6", v)}
+              onChange={handlers.a6}
+              format={formatA6}
             />
           </div>
         </div>
