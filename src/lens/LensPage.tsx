@@ -81,6 +81,7 @@ export default function LensPage() {
     useField: false,
     customEq: "",
     keepFailed: false,
+    useReflections: false, // when true use new math that accounts for reflections
   });
 
   const paramsWithEq = useMemo(() => {

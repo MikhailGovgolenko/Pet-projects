@@ -22,6 +22,7 @@ const ru = {
   "lens.noWebgl": "WebGL недоступен в этом браузере",
   "lens.viewError": "Ошибка отрисовки сцены",
   "lens.retry": "Повторить",
+  "lens.useReflections": "Учитывать отражения"
 } as const;
 
 export type TranslationKey = keyof typeof ru;
@@ -46,6 +47,7 @@ const en: Record<TranslationKey, string> = {
   "lens.noWebgl": "WebGL is unavailable in this browser",
   "lens.viewError": "Scene render error",
   "lens.retry": "Retry",
+  "lens.useReflections": "Consider reflections",
 };
 
 const dictionaries: Record<Language, Record<TranslationKey, string>> = { ru, en };
