@@ -17,6 +17,7 @@ const ru = {
   "lens.polynomial": "Полином z(r)=z₀+a₂r²+a₄r⁴+a₆r⁶",
   "lens.scale": "Масштаб",
   "lens.resetView": "Сбросить вид",
+  "lens.eqError": "Ошибка формулы",
 } as const;
 
 export type TranslationKey = keyof typeof ru;
@@ -36,6 +37,7 @@ const en: Record<TranslationKey, string> = {
   "lens.polynomial": "Polynomial z(r)=z₀+a₂r²+a₄r⁴+a₆r⁶",
   "lens.scale": "Scale",
   "lens.resetView": "Reset view",
+  "lens.eqError": "Formula error",
 };
 
 const dictionaries: Record<Language, Record<TranslationKey, string>> = { ru, en };
