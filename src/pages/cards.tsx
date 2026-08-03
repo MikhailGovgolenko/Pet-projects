@@ -5,6 +5,8 @@ export const cards = [
   {
     id: "lens",
     icon: "🔍",
+    previewLight: "lens-preview-light.png",
+    previewDark: "lens-preview-dark.png",
     titleKey: "card.lens.title" as TranslationKey,
     descKey: "card.lens.desc" as TranslationKey,
     readmeUrl: "https://github.com/MikhailGovgolenko/Pet-projects/tree/main/src/lens#readme",
