@@ -32,6 +32,21 @@ export function refract3d(I, N, eta) {
 
 const MAX_R = 100;
 
+function findEdge(eqL, eqR, a, b) {
+  for (var i = 0; i < 50; i++) {
+    var m = 0.5 * (a + b);
+    var zL = safeEval(eqL, m);
+    var zR = safeEval(eqR, m);
+    if (!isFinite(zL) || !isFinite(zR)) {
+      b = m;
+      continue;
+    }
+    if (zL > zR) b = m;
+    else a = m;
+  }
+  return 0.5 * (a + b);
+}
+
 export function sampleLens(eqL, eqR) {
   var L = [];
   var R = [];
@@ -39,7 +54,15 @@ export function sampleLens(eqL, eqR) {
   for (var r = 0; r <= MAX_R; r += 0.2) {
     var zL = safeEval(eqL, r);
     var zR = safeEval(eqR, r);
-    if (!isFinite(zL) || !isFinite(zR) || zL > zR) break;
+    if (!isFinite(zL) || !isFinite(zR)) break;
+    if (zL > zR) {
+      var re = findEdge(eqL, eqR, Math.max(0, r - 0.2), r);
+      var ze = safeEval(eqL, re);
+      aperture = re;
+      L.push({ z: ze, r: re });
+      R.push({ z: ze, r: re });
+      break;
+    }
     aperture = r;
     L.push({ z: zL, r: r });
     R.push({ z: zR, r: r });
@@ -48,7 +71,14 @@ export function sampleLens(eqL, eqR) {
   for (var r = -0.2; r >= -MAX_R; r -= 0.2) {
     var zL = safeEval(eqL, r);
     var zR = safeEval(eqR, r);
-    if (!isFinite(zL) || !isFinite(zR) || zL > zR) break;
+    if (!isFinite(zL) || !isFinite(zR)) break;
+    if (zL > zR) {
+      var re = findEdge(eqL, eqR, r + 0.2, r);
+      var ze = safeEval(eqL, re);
+      L.unshift({ z: ze, r: re });
+      R.unshift({ z: ze, r: re });
+      break;
+    }
     L.unshift({ z: zL, r: r });
     R.unshift({ z: zR, r: r });
   }
