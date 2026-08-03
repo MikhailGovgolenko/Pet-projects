@@ -29,7 +29,6 @@ export default function LensPage() {
   const [mode3d, setMode3d] = useState(false);
   const [resetKey, setResetKey] = useState(0);
   const scaleRef = useRef(null);
-  const simCache = useRef({ key: "" });
 
   const [params, setParams] = useState({
     n: 1.5,
@@ -74,7 +73,6 @@ export default function LensPage() {
         {!mode3d ? (
           <Lens2D
             params={paramsWithEq}
-            simCache={simCache}
             resetKey={resetKey}
             scaleRef={scaleRef}
           />

@@ -23,5 +23,18 @@
     "@vitejs/plugin-react": "^4.3.0",
     "typescript": "^7.0.2",
     "vite": "^5.4.0"
-  }
+  },
+  "description": "<img width=\"1200\" height=\"630\" alt=\"og-image\" src=\"https://github.com/user-attachments/assets/03552c3f-f17a-4a4d-8dce-605d0172d686\" />",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MikhailGovgolenko/Pet-projects.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/MikhailGovgolenko/Pet-projects/issues"
+  },
+  "homepage": "https://github.com/MikhailGovgolenko/Pet-projects#readme"
 }
