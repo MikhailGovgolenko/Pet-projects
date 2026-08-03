@@ -82,8 +82,7 @@ function Rays({ eq, eqR, aperture, angle, n, rayCount, box }) {
   useLayoutEffect(() => {
     var dir = { z: Math.cos(angle), r: Math.sin(angle) };
     var perp = { z: -dir.r, r: dir.z };
-    var nSide = Math.max(1, Math.round(Math.sqrt(rayCount)));
-    var halfSize = aperture * 0.7071;
+    var count = Math.max(1, Math.round(rayCount));
     var startDist = 35;
     var endDist = 3000;
     var cache = traceCache.current;
@@ -95,51 +94,59 @@ function Rays({ eq, eqR, aperture, angle, n, rayCount, box }) {
       };
       var D = normVec(dir);
       var h1 = findIntersection(P, D, eq, box);
-      if (!h1) return null;
+      var end = { z: P.z + endDist * D.z, r: P.r + endDist * D.r };
+      if (!h1) return { P, h1: null, h2: null, end };
       var N = normVec({ z: -1, r: deriv(eq, h1.r) });
       if (N.z * D.z + N.r * D.r > 0) N = { z: -N.z, r: -N.r };
       var T1 = refract3d(D, N, 1 / n);
-      if (!T1) return null;
+      if (!T1) return { P, h1, h2: null, end };
       var h2 = findIntersection(
         { z: h1.z + 1e-6 * T1.z, r: h1.r + 1e-6 * T1.r },
         T1, eqR, box
       );
-      if (!h2) return null;
+      if (!h2) {
+        return { P, h1, h2: null, end: { z: h1.z + endDist * T1.z, r: h1.r + endDist * T1.r } };
+      }
       var N2 = normVec({ z: -1, r: deriv(eqR, h2.r) });
       if (N2.z * T1.z + N2.r * T1.r > 0) N2 = { z: -N2.z, r: -N2.r };
       var T2 = refract3d(T1, N2, n);
-      if (!T2) return null;
-      var end = { z: h2.z + endDist * T2.z, r: h2.r + endDist * T2.r };
-      return { P, h1, h2, end };
+      var end2 = T2
+        ? { z: h2.z + endDist * T2.z, r: h2.r + endDist * T2.r }
+        : { z: h2.z + endDist * T1.z, r: h2.r + endDist * T1.r };
+      return { P, h1, h2, end: end2 };
     }
 
     var allSegs = [[], [], []];
-    for (var i = 0; i < nSide; i++) {
-      for (var j = 0; j < nSide; j++) {
-        var x = (i / Math.max(1, nSide - 1) - 0.5) * 2 * halfSize;
-        var y = (j / Math.max(1, nSide - 1) - 0.5) * 2 * halfSize;
-        var r = Math.sqrt(x * x + y * y);
-        if (r > aperture) continue;
-        var ck = eq + "|" + eqR + "|" + angle.toFixed(4) + "|" + n + "|" + r.toFixed(4);
-        var ray = cache.get(ck);
-        if (ray === undefined) {
-          if (cache.size > 20000) cache.clear();
-          ray = traceAtOffset(r);
-          cache.set(ck, ray);
-        }
-        if (!ray) continue;
-        var theta = Math.atan2(y || 1e-10, x || 1e-10);
-        var ct = Math.cos(theta);
-        var st = Math.sin(theta);
-        var pts = [ray.P, ray.h1, ray.h2, ray.end];
-        for (var si = 0; si < 3; si++) {
-          var p0 = pts[si];
-          var p1 = pts[si + 1];
-          allSegs[si].push(
-            p0.r * ct, p0.r * st, p0.z,
-            p1.r * ct, p1.r * st, p1.z
-          );
-        }
+    for (var i = 0; i < count; i++) {
+      var frac = count > 1 ? i / (count - 1) : 0;
+      var r = aperture * Math.sqrt(frac);
+      var theta = i * 2.3999632297286533;
+      var ck = eq + "|" + eqR + "|" + angle.toFixed(4) + "|" + n + "|" + r.toFixed(4);
+      var ray = cache.get(ck);
+      if (ray === undefined) {
+        if (cache.size > 20000) cache.clear();
+        ray = traceAtOffset(r);
+        cache.set(ck, ray);
+      }
+      var ct = Math.cos(theta);
+      var st = Math.sin(theta);
+      if (!ray.h1) {
+        allSegs[0].push(
+          ray.P.r * ct, ray.P.r * st, ray.P.z,
+          ray.end.r * ct, ray.end.r * st, ray.end.z
+        );
+        continue;
+      }
+      var pts = [ray.P, ray.h1];
+      if (ray.h2) pts.push(ray.h2);
+      pts.push(ray.end);
+      for (var si = 0; si < pts.length - 1; si++) {
+        var p0 = pts[si];
+        var p1 = pts[si + 1];
+        allSegs[si].push(
+          p0.r * ct, p0.r * st, p0.z,
+          p1.r * ct, p1.r * st, p1.z
+        );
       }
     }
 
