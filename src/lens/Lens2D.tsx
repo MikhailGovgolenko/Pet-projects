@@ -99,7 +99,7 @@ function drawRays(ctx, rays, camera) {
   }
 }
 
-function Lens2D({ params, resetKey, scaleRef, onDrawnCount }) {
+function Lens2D({ params, resetKey, scaleRef }) {
   const canvasRef = useRef(null);
   const ctxRef = useRef(null);
   const cameraRef = useRef(createCamera());
@@ -175,10 +175,9 @@ function Lens2D({ params, resetKey, scaleRef, onDrawnCount }) {
           rays: traceRays(p.eq, p.eqR, lens.aperture, p.angle * DEG, p.n, p.rayCount, lensCacheRef.current.box, p.keepFailed),
         };
       }
-      onDrawnCount(rayCacheRef.current.rays.length);
       scheduleRender();
     });
-  }, [params, scheduleRender, onDrawnCount]);
+  }, [params, scheduleRender]);
 
   useEffect(() => {
     const canvas = canvasRef.current;

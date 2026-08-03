@@ -40,13 +40,8 @@ export default function LensPage() {
     a6: 0,
     useField: false,
     customEq: "",
-    keepFailed: true,
+    keepFailed: false,
   });
-
-  const [drawnCount, setDrawnCount] = useState(41);
-  const onDrawnCount = useCallback((n: number) => {
-    setDrawnCount((prev) => (prev === n ? prev : n));
-  }, []);
 
   const paramsWithEq = useMemo(() => {
     var eq = buildEq(params);
@@ -81,10 +76,9 @@ export default function LensPage() {
             params={paramsWithEq}
             resetKey={resetKey}
             scaleRef={scaleRef}
-            onDrawnCount={onDrawnCount}
           />
         ) : (
-          <Lens3D key={resetKey} params={paramsWithEq} onDrawnCount={onDrawnCount} />
+          <Lens3D key={resetKey} params={paramsWithEq} />
         )}
       </div>
 
@@ -95,7 +89,6 @@ export default function LensPage() {
         <LensControls
           params={params}
           setParams={setParams}
-          drawnCount={drawnCount}
         />
         <div className="section">
           <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "4px 0", fontSize: 12, fontWeight: 500 }}>
