@@ -1,8 +1,10 @@
+import { evaluate } from "./expr";
+
 export const DEG = Math.PI / 180;
 
 export function safeEval(expr, r) {
   try {
-    return eval(expr.replace(/\br\b/g, "(" + r + ")"));
+    return evaluate(expr, r);
   } catch {
     return NaN;
   }
@@ -28,11 +30,13 @@ export function refract3d(I, N, eta) {
   };
 }
 
+const MAX_R = 100;
+
 export function sampleLens(eqL, eqR) {
   var L = [];
   var R = [];
   var aperture = 0;
-  for (var r = 0; ; r += 0.2) {
+  for (var r = 0; r <= MAX_R; r += 0.2) {
     var zL = safeEval(eqL, r);
     var zR = safeEval(eqR, r);
     if (!isFinite(zL) || !isFinite(zR) || zL > zR) break;
@@ -40,7 +44,8 @@ export function sampleLens(eqL, eqR) {
     L.push({ z: zL, r: r });
     R.push({ z: zR, r: r });
   }
-  for (var r = -0.2; ; r -= 0.2) {
+  if (aperture <= 0) return { L: [], R: [], aperture: 0 };
+  for (var r = -0.2; r >= -MAX_R; r -= 0.2) {
     var zL = safeEval(eqL, r);
     var zR = safeEval(eqR, r);
     if (!isFinite(zL) || !isFinite(zR) || zL > zR) break;
@@ -74,6 +79,7 @@ export function findIntersection(P, D, eq) {
 }
 
 export function traceRays(eq, eqR, aperture, angle, n, count) {
+  if (aperture <= 0) return [];
   var rays = [];
   var dir = { z: Math.cos(angle), r: Math.sin(angle) };
   var perp = { z: -dir.r, r: dir.z };

@@ -4,13 +4,24 @@ import ToggleSwitch from "../components/ToggleSwitch";
 import LensControls from "./LensControls";
 import Lens2D from "./Lens2D";
 import Lens3D from "./Lens3D";
+import { compile, substituteCoeffs } from "./expr";
 import { useI18n } from "../i18n";
+
+function defaultEq(params) {
+  return `${params.z0}+(${params.a2})*r*r+(${params.a4})*r**4+(${params.a6})*r**6`;
+}
 
 function buildEq(params) {
   if (params.useField && params.customEq.trim()) {
-    return params.customEq.trim();
+    const eq = substituteCoeffs(params.customEq.trim(), params);
+    try {
+      compile(eq);
+      return eq;
+    } catch {
+      return defaultEq(params);
+    }
   }
-  return `${params.z0}+(${params.a2})*r*r+(${params.a4})*r**4+(${params.a6})*r**6`;
+  return defaultEq(params);
 }
 
 export default function LensPage() {

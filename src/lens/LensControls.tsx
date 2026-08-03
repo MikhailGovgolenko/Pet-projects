@@ -1,6 +1,7 @@
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import RangeSlider from "../components/RangeSlider";
 import ToggleSwitch from "../components/ToggleSwitch";
+import { compile, substituteCoeffs, type ExprError } from "./expr";
 import { useI18n } from "../i18n";
 
 function LensControls({ params, setParams }) {
@@ -22,6 +23,16 @@ function LensControls({ params, setParams }) {
   const setEq = (v) => {
     setParams((p) => ({ ...p, customEq: v }));
   };
+
+  const eqError = useMemo<ExprError | null>(() => {
+    if (!params.useField || !params.customEq.trim()) return null;
+    try {
+      compile(substituteCoeffs(params.customEq.trim(), params));
+      return null;
+    } catch (e) {
+      return e as ExprError;
+    }
+  }, [params.useField, params.customEq, params.z0, params.a2, params.a4, params.a6]);
 
   return (
     <>
@@ -103,10 +114,11 @@ function LensControls({ params, setParams }) {
               type="text"
               value={params.customEq}
               onChange={(e) => setEq(e.target.value)}
-              placeholder="-5 + 0.006457*r**2-5e-7*r**4"
+              placeholder="z0+a2*r^2+a4*r^4, e.g. -5+0.006457*r^2-5e-7*r^4"
+              aria-invalid={!!eqError}
               style={{
                 background: "var(--input-bg)",
-                border: "1px solid var(--glass-border)",
+                border: `1px solid ${eqError ? "var(--danger)" : "var(--glass-border)"}`,
                 borderRadius: 10,
                 padding: "4px 5px",
                 color: "inherit",
@@ -116,6 +128,11 @@ function LensControls({ params, setParams }) {
                 fontFamily: "inherit",
               }}
             />
+            {eqError && (
+              <span style={{ fontSize: 10.5, color: "var(--danger)", lineHeight: 1.3 }}>
+                {t("lens.eqError")}: {eqError.message}
+              </span>
+            )}
           </label>
         </div>
       )}
