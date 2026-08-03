@@ -4,8 +4,8 @@ import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import ThemeUpdater from "../components/ThemeUpdater";
 import * as THREE from "three";
 import { LineSegments2, LineSegmentsGeometry, LineMaterial, OrbitControls as OrbitControlsImpl } from "three-stdlib";
-import * as M from "./lensMath";
-import * as M_OLD from "./lensMath_71dfb37";
+import * as M from "./lensMathReflect";
+import * as M_OLD from "./lensMath";
 import { useI18n } from "../i18n";
 
 const RAY_BASE = [0xff3c3c, 0xffb432, 0x32ff64, 0xff5cc8, 0xff5cc8].map((c) => new THREE.Color(c));
