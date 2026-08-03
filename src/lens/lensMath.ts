@@ -104,7 +104,3 @@ export function traceRays(eq, eqR, aperture, angle, n, count) {
   }
   return rays;
 }
-
-export function toScreen(p, cx, cy, scale) {
-  return { sx: cx + p.z * scale, sy: cy - p.r * scale };
-}

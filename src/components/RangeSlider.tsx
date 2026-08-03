@@ -1,9 +1,11 @@
 export default function RangeSlider({
+  name,
   label,
   min, max, step, value,
   onChange,
   format,
 }: {
+  name?: any;
   label: any;
   min: any; max: any; step: any; value: any;
   onChange: any;
@@ -46,6 +48,7 @@ export default function RangeSlider({
       >
         <input
           type="range"
+          name={name}
           min={min}
           max={max}
           step={step}
@@ -65,6 +68,7 @@ export default function RangeSlider({
         />
         <input
           type="number"
+          name={name}
           value={value}
           step={step}
           onChange={e => onChange(parseFloat(e.target.value) || 0)}
