@@ -129,6 +129,7 @@ button:active { opacity: 0.7; }
 /* ---------- Range slider track & thumb ---------- */
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
+  appearance: none;
   width: 14px;
   height: 14px;
   border-radius: 50%;
@@ -179,10 +180,12 @@ input[type="range"]::-webkit-slider-thumb:active {
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
+  appearance: none;
   margin: 0;
 }
 input[type="number"] {
   -moz-appearance: textfield;
+  appearance: textfield;
 }
 .spin-wrap {
   position: relative;

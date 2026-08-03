@@ -1,11 +1,41 @@
 import { useMemo, useLayoutEffect, useRef, useState, useEffect } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import ThemeUpdater from "../components/ThemeUpdater";
-import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
+import { LineSegments2, LineSegmentsGeometry, LineMaterial, OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { safeEval, sampleLens, traceRay3D } from "./lensMath";
+import { useI18n } from "../i18n";
 
-const RAY_COLORS = [0xff4444, 0xffb434, 0x44ff66];
+const RAY_COLORS = [0xff3c3c, 0xffb432, 0x32ff64];
+
+const FOV = 50;
+const SCALE = 7;
+
+function computeInit(params) {
+  const w = typeof window !== "undefined" ? window.innerWidth : 1280;
+  const h = typeof window !== "undefined" ? window.innerHeight : 720;
+  const d = h / (2 * SCALE * Math.tan((FOV * Math.PI) / 360));
+  let zc = 0;
+  try {
+    const b = lensBox(sampleLens(params.eq, params.eqR));
+    zc = 0.5 * (b.z0 + b.z1);
+  } catch {}
+  return {
+    pos: new THREE.Vector3(-d, 0, zc),
+    target: new THREE.Vector3(0, 0, zc),
+    d,
+    k: SCALE * d,
+  };
+}
+
+function Fallback() {
+  const { t } = useI18n();
+  return (
+    <div style={{ color: "var(--text-sec)", fontSize: 13, textAlign: "center", padding: 16 }}>
+      {t("lens.noWebgl")}
+    </div>
+  );
+}
 
 function LensMesh({ eq, eqR, aperture }) {
   const geo = useMemo(() => {
@@ -32,14 +62,15 @@ function LensMesh({ eq, eqR, aperture }) {
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} geometry={geo}>
       <meshPhongMaterial
-        color={0x4488cc}
-        emissive={0x112244}
-        emissiveIntensity={0.15}
+        color={0x9cc8f0}
+        emissive={0x223355}
+        emissiveIntensity={0.25}
         transparent
-        opacity={0.85}
+        opacity={0.45}
+        depthWrite={false}
         side={THREE.DoubleSide}
-        shininess={60}
-        specular={0x446688}
+        shininess={80}
+        specular={0xaaccff}
       />
     </mesh>
   );
@@ -61,17 +92,21 @@ function lensBox(lens) {
 
 function Rays({ eq, eqR, aperture, angle, n, rayCount, box, keepFailed }) {
   const traceCache = useRef(new Map());
+  const { size } = useThree();
 
   const structure = useMemo(() => {
     const group = new THREE.Group();
     const segs = RAY_COLORS.map((color) => {
-      const geo = new THREE.BufferGeometry();
-      const mat = new THREE.LineBasicMaterial({
+      const geo = new LineSegmentsGeometry();
+      const mat = new LineMaterial({
         color,
         transparent: true,
-        opacity: 0.4,
+        opacity: 0.9,
+        linewidth: 1.5,
+        resolution: new THREE.Vector2(1, 1),
       });
-      const seg = new THREE.LineSegments(geo, mat);
+      mat.toneMapped = false;
+      const seg = new LineSegments2(geo, mat);
       seg.visible = false;
       group.add(seg);
       return seg;
@@ -80,12 +115,24 @@ function Rays({ eq, eqR, aperture, angle, n, rayCount, box, keepFailed }) {
   }, []);
 
   useLayoutEffect(() => {
+    for (const seg of structure.segs) {
+      (seg.material as any).resolution.set(size.width, size.height);
+    }
+  }, [structure, size]);
+
+  useLayoutEffect(() => {
+    function updateSeg(si, positions, visible) {
+      const seg = structure.segs[si];
+      seg.geometry.setPositions(positions);
+      delete (seg.geometry as any)._maxInstanceCount;
+      seg.visible = visible;
+    }
     var dx = Math.sin(angle);
     var dz = Math.cos(angle);
     var perpx = -Math.cos(angle);
     var perpz = Math.sin(angle);
     var count = Math.max(1, Math.round(rayCount));
-    var startDist = 35;
+    var startDist = 120;
     var endDist = 3000;
     var cache = traceCache.current;
     var zMid = box ? 0.5 * (box.z0 + box.z1) : 0;
@@ -135,8 +182,7 @@ function Rays({ eq, eqR, aperture, angle, n, rayCount, box, keepFailed }) {
       }
       if (okPts.length === 0) {
         for (var si = 0; si < 3; si++) {
-          structure.segs[si].geometry.setAttribute("position", new THREE.Float32BufferAttribute([], 3));
-          structure.segs[si].visible = false;
+          updateSeg(si, [0, 0, 0, 0, 0, 0], false);
         }
         return;
       }
@@ -192,20 +238,48 @@ function Rays({ eq, eqR, aperture, angle, n, rayCount, box, keepFailed }) {
     }
 
     for (var si = 0; si < 3; si++) {
-      var seg = structure.segs[si];
-      if (allSegs[si].length > 0) {
-        seg.geometry.setAttribute("position", new THREE.Float32BufferAttribute(allSegs[si], 3));
-        seg.visible = true;
-      } else {
-        seg.visible = false;
-      }
+      updateSeg(si, allSegs[si].length > 0 ? allSegs[si] : [0, 0, 0, 0, 0, 0], allSegs[si].length > 0);
     }
   }, [eq, eqR, aperture, angle, n, rayCount, box, structure, keepFailed]);
 
   return <primitive object={structure.group} />;
 }
 
-function Scene({ eq, eqR, aperture, angle, n, rayCount, box, keepFailed }) {
+function Orbit({ scaleRef, init }) {
+  const { camera, gl } = useThree();
+  const controls = useMemo(() => {
+    const c = new OrbitControlsImpl(camera, gl.domElement);
+    c.enableDamping = true;
+    c.dampingFactor = 0.08;
+    c.zoomToCursor = true;
+    c.target.copy(init.target);
+    c.update();
+    return c;
+  }, [camera, gl, init]);
+
+  useFrame(() => {
+    const d = controls.getDistance();
+    if (d > 1e-9) {
+      const near = Math.max(d * 0.005, 1e-9);
+      const far = Math.max(d * 2000000, 2000);
+      if (camera.near !== near || camera.far !== far) {
+        camera.near = near;
+        camera.far = far;
+        camera.updateProjectionMatrix();
+      }
+      if (scaleRef && scaleRef.current) {
+        scaleRef.current.textContent = (init.k / d).toFixed(2);
+      }
+    }
+    controls.update();
+  });
+
+  useEffect(() => () => controls.dispose(), [controls]);
+
+  return <primitive object={controls} />;
+}
+
+function Scene({ eq, eqR, aperture, angle, n, rayCount, box, keepFailed, scaleRef, init }) {
   return (
     <>
       <ambientLight intensity={1.0} color={0x404060} />
@@ -223,18 +297,14 @@ function Scene({ eq, eqR, aperture, angle, n, rayCount, box, keepFailed }) {
         keepFailed={keepFailed}
       />
       <ThemeUpdater />
-      <OrbitControls
-        enableDamping
-        dampingFactor={0.08}
-        minDistance={5}
-        maxDistance={150}
-      />
+      <Orbit scaleRef={scaleRef} init={init} />
     </>
   );
 }
 
-export default function Lens3D({ params }) {
+export default function Lens3D({ params, scaleRef }) {
   const [applied, setApplied] = useState(params);
+  const [init] = useState(() => computeInit(params));
   const pendingRef = useRef(false);
   const latestRef = useRef(params);
   latestRef.current = params;
@@ -257,8 +327,9 @@ export default function Lens3D({ params }) {
   return (
     <Canvas
       dpr={[1, 2]}
-      camera={{ position: [55, 32, 55], fov: 50, near: 0.1, far: 500 }}
-      gl={{ antialias: true, powerPreference: "high-performance" }}
+      camera={{ position: [init.pos.x, init.pos.y, init.pos.z], fov: FOV, near: 0.01, far: 1000000 }}
+      gl={{ antialias: true }}
+      fallback={<Fallback />}
       style={{
         width: "100%",
         height: "100%",
@@ -276,6 +347,8 @@ export default function Lens3D({ params }) {
         rayCount={applied.rayCount}
         box={box}
         keepFailed={applied.keepFailed}
+        scaleRef={scaleRef}
+        init={init}
       />
     </Canvas>
   );

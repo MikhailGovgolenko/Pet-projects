@@ -58,6 +58,7 @@ export default memo(function RangeSlider({
           onChange={e => onChange(parseFloat(e.target.value))}
           style={{
             WebkitAppearance: "none",
+            appearance: "none",
             flex: 1,
             minWidth: 40,
             maxWidth: 90,
