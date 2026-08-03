@@ -29,6 +29,7 @@ function LensControls({ params, setParams }) {
       a4: (v) => setParams((p) => ({ ...p, a4: v })),
       a6: (v) => setParams((p) => ({ ...p, a6: v })),
       keepFailed: (v) => setParams((p) => ({ ...p, keepFailed: v })),
+      useReflections: (v) => setParams((p) => ({ ...p, useReflections: v })),
     }),
     [setParams]
   );
@@ -60,15 +61,21 @@ function LensControls({ params, setParams }) {
           checked={params.useField}
           onChange={toggleUseField}
         />
-      </div>
+          <ToggleSwitch
+            name="useReflections"
+            label={t("lens.useReflections")}
+            checked={!!params.useReflections}
+            onChange={handlers.useReflections}
+          />
+        </div>
 
-      <div className="section">
-        <RangeSlider
-          name="n"
-          label={t("lens.refraction")}
-          min={1} max={10} step={0.01} value={params.n}
-          onChange={handlers.n}
-        />
+        <div className="section">
+          <RangeSlider
+            name="n"
+            label={t("lens.refraction")}
+            min={1} max={10} step={0.01} value={params.n}
+            onChange={handlers.n}
+          />
         <RangeSlider
           name="angle"
           label={t("lens.beamAngle")}

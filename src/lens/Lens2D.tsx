@@ -1,9 +1,10 @@
 import { useRef, useEffect, useCallback, memo } from "react";
-import { sampleLens, traceRays, DEG } from "./lensMath";
+import * as M from "./lensMath";
+import * as M_OLD from "./lensMath_71dfb37";
 import { createCamera } from "./Camera";
 
 function cacheKey(p, aperture) {
-  return [p.eq, p.eqR, aperture, p.angle, p.n, p.rayCount, p.keepFailed].join("|");
+  return [p.eq, p.eqR, aperture, p.angle, p.n, p.rayCount, p.keepFailed, p.useReflections].join("|");
 }
 
 function lensBox(lens) {
@@ -56,77 +57,102 @@ function drawLens(ctx, lens, camera) {
   ctx.stroke();
 }
 
-var RAY_RED = [255, 60, 60];
-var RAY_ORANGE = [255, 180, 50];
-var RAY_GREEN = [50, 255, 100];
-var RAY_MAGENTA = [255, 92, 200];
 var REFLEN = 120;
 
-function shade(base, i) {
-  if (i <= 0.001) return "rgba(0,0,0,0)";
-  return (
-    "rgba(" +
-    Math.round(base[0] * i) + "," +
-    Math.round(base[1] * i) + "," +
-    Math.round(base[2] * i) +
-    ",0.9)"
-  );
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+function lerp(a, b, t) { return a + (b - a) * t; }
+function mixColor(c1, c2, t) {
+  return [
+    Math.round(lerp(c1[0], c2[0], t)),
+    Math.round(lerp(c1[1], c2[1], t)),
+    Math.round(lerp(c1[2], c2[2], t)),
+  ];
+}
+
+// single ray hue; brightness controlled by intensity
+var COLOR_SINGLE = [50, 255, 100]; // green (#32FF64)
+
+function rgbToCss(rgb, a) {
+  return 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + a + ')';
+}
+
+function drawSegment(ctx, a, b, color, intensity, coreWidth) {
+  coreWidth = coreWidth || 1.5;
+  // glow
+  ctx.lineWidth = coreWidth * 6;
+  ctx.strokeStyle = rgbToCss(color, clamp(0.06 * intensity, 0.02, 0.14));
+  ctx.beginPath();
+  ctx.moveTo(a.x, a.y);
+  ctx.lineTo(b.x, b.y);
+  ctx.stroke();
+  // colored core
+  ctx.lineWidth = coreWidth * 1.6;
+  ctx.strokeStyle = rgbToCss(color, clamp(0.6 * intensity, 0.2, 0.95));
+  ctx.beginPath();
+  ctx.moveTo(a.x, a.y);
+  ctx.lineTo(b.x, b.y);
+  ctx.stroke();
+  // thin bright center
+  ctx.lineWidth = Math.max(1, coreWidth * 0.6);
+  ctx.strokeStyle = rgbToCss([255,255,255], clamp(0.35 + 0.65 * intensity, 0.2, 1));
+  ctx.beginPath();
+  ctx.moveTo(a.x, a.y);
+  ctx.lineTo(b.x, b.y);
+  ctx.stroke();
 }
 
 function drawRays(ctx, rays, camera) {
+  if (!rays || rays.length === 0) return;
+  // single hue for all rays; brightness varies with intensity
+  var baseColor = COLOR_SINGLE;
+
   for (var i = 0; i < rays.length; i++) {
     var r = rays[i];
     var sP = camera.worldToScreen(r.P);
     var sEnd = camera.worldToScreen(r.end);
+
+    // overall transmitted intensity (used for brightness)
+    var overallIntensity = (r.t1 || 1) * (r.t2 || 1);
+
+    // if no first hit, draw incoming ray with low width and intensity
     if (!r.h1) {
-      ctx.strokeStyle = "rgba(255,60,60,0.9)";
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(sP.x, sP.y);
-      ctx.lineTo(sEnd.x, sEnd.y);
-      ctx.stroke();
+      drawSegment(ctx, sP, sEnd, baseColor, 0.75 * overallIntensity, 1.2);
       continue;
     }
-    var sH1 = camera.worldToScreen(r.h1);
-    ctx.strokeStyle = "rgba(255,60,60,0.9)";
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(sP.x, sP.y);
-    ctx.lineTo(sH1.x, sH1.y);
-    ctx.stroke();
 
+    var sH1 = camera.worldToScreen(r.h1);
+    // incoming segment (before first surface) - show slightly dimmer
+    drawSegment(ctx, sP, sH1, baseColor, 0.8 * overallIntensity, 1.2);
+
+    // reflected ray from first surface
     var sR = camera.worldToScreen({
       z: r.h1.z + r.rdir.z * REFLEN,
       r: r.h1.r + r.rdir.r * REFLEN,
     });
-    ctx.strokeStyle = shade(RAY_MAGENTA, r.r1);
-    ctx.beginPath();
-    ctx.moveTo(sH1.x, sH1.y);
-    ctx.lineTo(sR.x, sR.y);
-    ctx.stroke();
+    // reflection intensity uses r.r1
+    var reflIntensity = r.r1 || 0;
+    if (reflIntensity > 0.001) {
+      // draw reflection with same hue but a bit shifted toward magenta
+      var reflColor = mixColor(baseColor, [255,92,200], 0.25);
+      drawSegment(ctx, sH1, sR, reflColor, reflIntensity, 1.0);
+    }
 
     if (r.h2) {
       var sH2 = camera.worldToScreen(r.h2);
-      ctx.strokeStyle = shade(RAY_ORANGE, r.t1);
-      ctx.beginPath();
-      ctx.moveTo(sH1.x, sH1.y);
-      ctx.lineTo(sH2.x, sH2.y);
-      ctx.stroke();
-      ctx.strokeStyle = shade(RAY_GREEN, r.t1 * r.t2);
-      ctx.beginPath();
-      ctx.moveTo(sH2.x, sH2.y);
-      ctx.lineTo(sEnd.x, sEnd.y);
-      ctx.stroke();
+      // inside lens segment
+      drawSegment(ctx, sH1, sH2, baseColor, 0.6 * (r.t1 || 1), 2.0);
+      // exiting segment
+      drawSegment(ctx, sH2, sEnd, baseColor, overallIntensity, 2.0);
+
+      // internal bounces
       for (var k = 0; k < r.inner.length; k++) {
         var seg = r.inner[k];
         var sA = camera.worldToScreen(seg.a);
         var sB = camera.worldToScreen(seg.b);
-        ctx.strokeStyle = shade(RAY_MAGENTA, seg.i);
-        ctx.beginPath();
-        ctx.moveTo(sA.x, sA.y);
-        ctx.lineTo(sB.x, sB.y);
-        ctx.stroke();
+        var ci = seg.i || 0;
+        drawSegment(ctx, sA, sB, baseColor, ci, 1.2);
       }
+      // escaped/transmitted rays inside
       for (var k = 0; k < r.esc.length; k++) {
         var ex = r.esc[k];
         var sE = camera.worldToScreen(ex.p);
@@ -134,18 +160,11 @@ function drawRays(ctx, rays, camera) {
           z: ex.p.z + ex.dir.z * REFLEN,
           r: ex.p.r + ex.dir.r * REFLEN,
         });
-        ctx.strokeStyle = shade(RAY_MAGENTA, ex.i);
-        ctx.beginPath();
-        ctx.moveTo(sE.x, sE.y);
-        ctx.lineTo(sF.x, sF.y);
-        ctx.stroke();
+        drawSegment(ctx, sE, sF, baseColor, ex.i || 0, 1.0);
       }
     } else {
-      ctx.strokeStyle = shade(RAY_ORANGE, r.t1);
-      ctx.beginPath();
-      ctx.moveTo(sH1.x, sH1.y);
-      ctx.lineTo(sEnd.x, sEnd.y);
-      ctx.stroke();
+      // single-surface transmission (no second hit)
+      drawSegment(ctx, sH1, sEnd, baseColor, r.t1 || 1, 2.0);
     }
   }
 }
@@ -160,10 +179,10 @@ function Lens2D({ params, resetKey, scaleRef }) {
   const pinchRef = useRef(null);
   const lensCacheRef = useRef<{
     key: string;
-    lens?: ReturnType<typeof sampleLens>;
+      lens?: ReturnType<typeof M.sampleLens>;
     box?: { z0: number; z1: number; r1: number };
   }>({ key: "" });
-  const rayCacheRef = useRef<{ key: string; rays?: ReturnType<typeof traceRays> }>({ key: "" });
+    const rayCacheRef = useRef<{ key: string; rays?: ReturnType<typeof M.traceRays> }>({ key: "" });
   const simPending = useRef(false);
   const paramsRef = useRef(params);
   paramsRef.current = params;
@@ -215,16 +234,33 @@ function Lens2D({ params, resetKey, scaleRef }) {
       const p = paramsRef.current;
       const eqKey = p.eq + "|" + p.eqR;
       if (lensCacheRef.current.key !== eqKey) {
-        const lens = sampleLens(p.eq, p.eqR);
+        const math = p.useOldMath ? M_OLD : M;
+        const lens = math.sampleLens(p.eq, p.eqR);
         lensCacheRef.current = { key: eqKey, lens, box: lensBox(lens) };
       }
       const lens = lensCacheRef.current.lens;
       const key = cacheKey(p, lens.aperture);
       if (rayCacheRef.current.key !== key) {
-        rayCacheRef.current = {
-          key,
-          rays: traceRays(p.eq, p.eqR, lens.aperture, p.angle * DEG, p.n, p.rayCount, lensCacheRef.current.box, p.keepFailed),
-        };
+        const math = p.useReflections ? M : M_OLD; // default: old math (no reflections); when useReflections true -> use new math with reflections
+        var rawRays = math.traceRays(p.eq, p.eqR, lens.aperture, p.angle * (p.useReflections ? M.DEG : M_OLD.DEG), p.n, p.rayCount, lensCacheRef.current.box, p.keepFailed);
+        // normalize ray objects to include newer fields (rdir, r1, t1, t2, inner, esc, tir)
+        var rays = (rawRays || []).map(function(rr){
+          return {
+            P: rr.P,
+            h1: rr.h1 || null,
+            h2: rr.h2 || null,
+            end: rr.end || (rr.P ? { z: rr.P.z + 3000, r: rr.P.r } : null),
+            ok: !!rr.ok,
+            tir: !!rr.tir,
+            t1: rr.t1 != null ? rr.t1 : 1,
+            t2: rr.t2 != null ? rr.t2 : 1,
+            r1: rr.r1 != null ? rr.r1 : 0,
+            rdir: rr.rdir || (rr.h1 && rr.h2 ? { z: rr.h2.z-rr.h1.z, r: rr.h2.r-rr.h1.r } : { z:0, r:0 }),
+            inner: rr.inner || [],
+            esc: rr.esc || [],
+          };
+        });
+        rayCacheRef.current = { key, rays };
       }
       scheduleRender();
     });

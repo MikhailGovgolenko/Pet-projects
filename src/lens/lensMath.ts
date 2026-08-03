@@ -181,10 +181,14 @@ export function traceRays(eq, eqR, aperture, angle, n, count, box, keepFailed) {
       if (Np.z * cdir.z + Np.r * cdir.r > 0) Np = { z: -Np.z, r: -Np.r };
       var cosIp = -(Np.z * cdir.z + Np.r * cdir.r);
       var Rp = fresnelReflectance(cosIp, n, 1);
-      inner.push({ a: cp, b: hp, i: ci });
+      // push inner segment only if visible
+      if (ci > THRESHOLD) inner.push({ a: cp, b: hp, i: ci });
       var Tdir = refract3d(cdir, Np, n);
       if (Tdir) {
-        esc.push({ p: hp, dir: Tdir, i: ci * fresnelTransmittance(cosIp, n, 1) });
+        var trans = ci * fresnelTransmittance(cosIp, n, 1);
+        if (trans > THRESHOLD) {
+          esc.push({ p: hp, dir: Tdir, i: trans });
+        }
       }
       bounce(hp, reflect2d(cdir, Np), ci * Rp, depth + 1);
     }
