@@ -68,26 +68,49 @@ export default memo(function RangeSlider({
             cursor: "pointer",
           }}
         />
-        <input
-          type="number"
-          name={name}
-          value={value}
-          step={step}
-          onChange={e => onChange(parseFloat(e.target.value) || 0)}
-          style={{
-            background: "var(--input-bg)",
-            border: "1px solid var(--glass-border)",
-            borderRadius: 10,
-            padding: "4px 5px",
-            color: "inherit",
-            fontSize: 11,
-            fontFamily: '"SF Mono", monospace',
-            outline: "none",
-            width: 52,
-            textAlign: "center",
-            flexShrink: 0,
-          }}
-        />
+        <div className="spin-wrap">
+          <input
+            type="number"
+            name={name}
+            value={value}
+            step={step}
+            onChange={e => onChange(parseFloat(e.target.value) || 0)}
+            style={{
+              background: "var(--input-bg)",
+              border: "1px solid var(--glass-border)",
+              borderRadius: 10,
+              padding: "4px 5px",
+              paddingRight: 15,
+              color: "inherit",
+              fontSize: 11,
+              fontFamily: '"SF Mono", monospace',
+              outline: "none",
+              width: 52,
+              textAlign: "center",
+              flexShrink: 0,
+            }}
+          />
+          <div className="spin-steps">
+            <button
+              aria-label="+"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onChange(Math.min(max, parseFloat((value + step).toPrecision(12))));
+              }}
+            >
+              ▲
+            </button>
+            <button
+              aria-label="−"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onChange(Math.max(min, parseFloat((value - step).toPrecision(12))));
+              }}
+            >
+              ▼
+            </button>
+          </div>
+        </div>
         <span
           style={{
             display: "inline-block",

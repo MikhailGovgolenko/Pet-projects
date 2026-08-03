@@ -95,7 +95,7 @@ button {
   border: none;
   border-radius: 12px;
   background: linear-gradient(
-    135deg,
+    315deg,
     rgba(0, 212, 255, 0.85),
     rgba(0, 119, 182, 0.85)
   );
@@ -173,4 +173,54 @@ input[type="range"]::-webkit-slider-thumb:active {
 [id="controls"]::-webkit-scrollbar-thumb {
   background: var(--glass-border);
   border-radius: 3px;
+}
+
+/* ---------- Number input steppers ---------- */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+.spin-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+.spin-steps {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  bottom: 1px;
+  width: 13px;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--glass-border);
+  border-radius: 0 9px 9px 0;
+  overflow: hidden;
+  background: var(--input-bg);
+}
+.spin-steps button {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-sec);
+  font-size: 7px;
+  line-height: 1;
+  letter-spacing: 0;
+  flex: 1;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+.spin-steps button:hover {
+  color: var(--accent);
+  background: var(--range-track);
+}
+.spin-steps button:active {
+  color: #fff;
+  opacity: 1;
 }

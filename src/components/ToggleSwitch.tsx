@@ -50,7 +50,7 @@ function ToggleSwitch({ label, checked, onChange, name }: ToggleSwitchProps) {
             position: "absolute",
             inset: 0,
             background: checked
-              ? "linear-gradient(135deg, #00d4ff, #0077b6)"
+              ? "linear-gradient(315deg, #00d4ff, #0077b6)"
               : "var(--toggle-off)",
             borderRadius: 17,
             transition: "background 0.25s, box-shadow 0.25s",
