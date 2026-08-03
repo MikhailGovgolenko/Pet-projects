@@ -72,16 +72,19 @@ function drawRays(ctx, rays, camera) {
   }
 }
 
-function Lens2D({ params, simCache, resetKey, scaleRef }) {
+function Lens2D({ params, resetKey, scaleRef }) {
   const canvasRef = useRef(null);
   const ctxRef = useRef(null);
   const cameraRef = useRef(createCamera());
   const dragRef = useRef({ isDragging: false, x: 0, y: 0 });
   const renderScheduled = useRef(false);
   const zoomReportScheduled = useRef(false);
-  const lastZoomRef = useRef(7);
-  const simCacheRef = useRef(simCache);
-  simCacheRef.current = simCache;
+  const pinchRef = useRef(null);
+  const simCacheRef = useRef<{
+    key: string;
+    lens?: ReturnType<typeof sampleLens>;
+    rays?: ReturnType<typeof traceRays>;
+  }>({ key: "" });
   const paramsRef = useRef(params);
   paramsRef.current = params;
 
@@ -148,8 +151,9 @@ function Lens2D({ params, simCache, resetKey, scaleRef }) {
     const rect = canvasRef.current ? canvasRef.current.getBoundingClientRect() : null;
     camera.reset(rect ? rect.width : window.innerWidth, rect ? rect.height : window.innerHeight);
     if (scaleRef.current) scaleRef.current.textContent = camera.scale.toFixed(2);
-    scheduleRender();
-  }, [resetKey, scheduleRender, scaleRef]);
+    renderScheduled.current = false;
+    render();
+  }, [resetKey, render]);
 
   useEffect(() => {
     const onResize = () => {
@@ -168,6 +172,15 @@ function Lens2D({ params, simCache, resetKey, scaleRef }) {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const camera = cameraRef.current;
+
+    const reportScale = () => {
+      if (zoomReportScheduled.current) return;
+      zoomReportScheduled.current = true;
+      requestAnimationFrame(function () {
+        zoomReportScheduled.current = false;
+        if (scaleRef.current) scaleRef.current.textContent = camera.scale.toFixed(2);
+      });
+    };
 
     const onMouseDown = (e) => {
       dragRef.current.isDragging = true;
@@ -191,15 +204,63 @@ function Lens2D({ params, simCache, resetKey, scaleRef }) {
       var factor = e.deltaY < 0 ? 1.05 : 0.95;
       var rect = canvas.getBoundingClientRect();
       camera.zoomAt(e.clientX - rect.left, e.clientY - rect.top, factor);
-      lastZoomRef.current = camera.scale;
-      if (!zoomReportScheduled.current) {
-        zoomReportScheduled.current = true;
-        requestAnimationFrame(function () {
-          zoomReportScheduled.current = false;
-          if (scaleRef.current) scaleRef.current.textContent = lastZoomRef.current.toFixed(2);
-        });
-      }
+      reportScale();
       scheduleRender();
+    };
+
+    const onTouchStart = (e) => {
+      if (e.touches.length === 1) {
+        dragRef.current.isDragging = true;
+        dragRef.current.x = e.touches[0].clientX;
+        dragRef.current.y = e.touches[0].clientY;
+        pinchRef.current = null;
+      } else if (e.touches.length === 2) {
+        dragRef.current.isDragging = false;
+        pinchRef.current = {
+          dist: Math.hypot(
+            e.touches[1].clientX - e.touches[0].clientX,
+            e.touches[1].clientY - e.touches[0].clientY
+          ),
+        };
+      }
+    };
+
+    const onTouchMove = (e) => {
+      e.preventDefault();
+      if (e.touches.length === 2 && pinchRef.current) {
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        if (dist > 0) {
+          var rect = canvas.getBoundingClientRect();
+          camera.zoomAt(
+            (t1.clientX + t2.clientX) / 2 - rect.left,
+            (t1.clientY + t2.clientY) / 2 - rect.top,
+            dist / pinchRef.current.dist
+          );
+          pinchRef.current.dist = dist;
+          reportScale();
+          scheduleRender();
+        }
+      } else if (e.touches.length === 1 && dragRef.current.isDragging) {
+        const t = e.touches[0];
+        camera.pan(t.clientX - dragRef.current.x, t.clientY - dragRef.current.y);
+        dragRef.current.x = t.clientX;
+        dragRef.current.y = t.clientY;
+        scheduleRender();
+      }
+    };
+
+    const onTouchEnd = (e) => {
+      if (e.touches.length === 0) {
+        dragRef.current.isDragging = false;
+        pinchRef.current = null;
+      } else if (e.touches.length === 1) {
+        pinchRef.current = null;
+        dragRef.current.isDragging = true;
+        dragRef.current.x = e.touches[0].clientX;
+        dragRef.current.y = e.touches[0].clientY;
+      }
     };
 
     const onContextMenu = (e) => e.preventDefault();
@@ -209,6 +270,10 @@ function Lens2D({ params, simCache, resetKey, scaleRef }) {
     window.addEventListener("mouseup", onMouseUp);
     canvas.addEventListener("mouseleave", onMouseLeave);
     canvas.addEventListener("wheel", onWheel, { passive: false });
+    canvas.addEventListener("touchstart", onTouchStart, { passive: true });
+    canvas.addEventListener("touchmove", onTouchMove, { passive: false });
+    canvas.addEventListener("touchend", onTouchEnd);
+    canvas.addEventListener("touchcancel", onTouchEnd);
     canvas.addEventListener("contextmenu", onContextMenu);
 
     return () => {
@@ -217,6 +282,10 @@ function Lens2D({ params, simCache, resetKey, scaleRef }) {
       window.removeEventListener("mouseup", onMouseUp);
       canvas.removeEventListener("mouseleave", onMouseLeave);
       canvas.removeEventListener("wheel", onWheel);
+      canvas.removeEventListener("touchstart", onTouchStart);
+      canvas.removeEventListener("touchmove", onTouchMove);
+      canvas.removeEventListener("touchend", onTouchEnd);
+      canvas.removeEventListener("touchcancel", onTouchEnd);
       canvas.removeEventListener("contextmenu", onContextMenu);
     };
   }, [scheduleRender, syncCanvasSize]);
@@ -224,7 +293,7 @@ function Lens2D({ params, simCache, resetKey, scaleRef }) {
   return (
     <canvas
       ref={canvasRef}
-      style={{ display: "block", width: "100%", height: "100%", cursor: "move" }}
+      style={{ display: "block", width: "100%", height: "100%", cursor: "move", touchAction: "none" }}
     />
   );
 }
