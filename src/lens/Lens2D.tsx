@@ -56,6 +56,23 @@ function drawLens(ctx, lens, camera) {
   ctx.stroke();
 }
 
+var RAY_RED = [255, 60, 60];
+var RAY_ORANGE = [255, 180, 50];
+var RAY_GREEN = [50, 255, 100];
+var RAY_MAGENTA = [255, 92, 200];
+var REFLEN = 120;
+
+function shade(base, i) {
+  if (i <= 0.001) return "rgba(0,0,0,0)";
+  return (
+    "rgba(" +
+    Math.round(base[0] * i) + "," +
+    Math.round(base[1] * i) + "," +
+    Math.round(base[2] * i) +
+    ",0.9)"
+  );
+}
+
 function drawRays(ctx, rays, camera) {
   for (var i = 0; i < rays.length; i++) {
     var r = rays[i];
@@ -78,19 +95,53 @@ function drawRays(ctx, rays, camera) {
     ctx.lineTo(sH1.x, sH1.y);
     ctx.stroke();
 
-    ctx.strokeStyle = "rgba(255,180,50,0.9)";
+    var sR = camera.worldToScreen({
+      z: r.h1.z + r.rdir.z * REFLEN,
+      r: r.h1.r + r.rdir.r * REFLEN,
+    });
+    ctx.strokeStyle = shade(RAY_MAGENTA, r.r1);
+    ctx.beginPath();
+    ctx.moveTo(sH1.x, sH1.y);
+    ctx.lineTo(sR.x, sR.y);
+    ctx.stroke();
+
     if (r.h2) {
       var sH2 = camera.worldToScreen(r.h2);
+      ctx.strokeStyle = shade(RAY_ORANGE, r.t1);
       ctx.beginPath();
       ctx.moveTo(sH1.x, sH1.y);
       ctx.lineTo(sH2.x, sH2.y);
       ctx.stroke();
-      ctx.strokeStyle = "rgba(50,255,100,0.9)";
+      ctx.strokeStyle = shade(RAY_GREEN, r.t1 * r.t2);
       ctx.beginPath();
       ctx.moveTo(sH2.x, sH2.y);
       ctx.lineTo(sEnd.x, sEnd.y);
       ctx.stroke();
+      for (var k = 0; k < r.inner.length; k++) {
+        var seg = r.inner[k];
+        var sA = camera.worldToScreen(seg.a);
+        var sB = camera.worldToScreen(seg.b);
+        ctx.strokeStyle = shade(RAY_MAGENTA, seg.i);
+        ctx.beginPath();
+        ctx.moveTo(sA.x, sA.y);
+        ctx.lineTo(sB.x, sB.y);
+        ctx.stroke();
+      }
+      for (var k = 0; k < r.esc.length; k++) {
+        var ex = r.esc[k];
+        var sE = camera.worldToScreen(ex.p);
+        var sF = camera.worldToScreen({
+          z: ex.p.z + ex.dir.z * REFLEN,
+          r: ex.p.r + ex.dir.r * REFLEN,
+        });
+        ctx.strokeStyle = shade(RAY_MAGENTA, ex.i);
+        ctx.beginPath();
+        ctx.moveTo(sE.x, sE.y);
+        ctx.lineTo(sF.x, sF.y);
+        ctx.stroke();
+      }
     } else {
+      ctx.strokeStyle = shade(RAY_ORANGE, r.t1);
       ctx.beginPath();
       ctx.moveTo(sH1.x, sH1.y);
       ctx.lineTo(sEnd.x, sEnd.y);

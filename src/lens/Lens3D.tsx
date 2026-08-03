@@ -6,7 +6,8 @@ import { LineSegments2, LineSegmentsGeometry, LineMaterial, OrbitControls as Orb
 import { safeEval, sampleLens, traceRay3D } from "./lensMath";
 import { useI18n } from "../i18n";
 
-const RAY_COLORS = [0xff3c3c, 0xffb432, 0x32ff64];
+const RAY_BASE = [0xff3c3c, 0xffb432, 0x32ff64, 0xff5cc8, 0xff5cc8].map((c) => new THREE.Color(c));
+const REFLEN = 120;
 
 const FOV = 50;
 const SCALE = 7;
@@ -96,10 +97,11 @@ function Rays({ eq, eqR, aperture, angle, n, rayCount, box, keepFailed }) {
 
   const structure = useMemo(() => {
     const group = new THREE.Group();
-    const segs = RAY_COLORS.map((color) => {
+    const segs = RAY_BASE.map((base, si) => {
       const geo = new LineSegmentsGeometry();
       const mat = new LineMaterial({
-        color,
+        color: 0xffffff,
+        vertexColors: true,
         transparent: true,
         opacity: 0.9,
         linewidth: 1.5,
@@ -121,11 +123,20 @@ function Rays({ eq, eqR, aperture, angle, n, rayCount, box, keepFailed }) {
   }, [structure, size]);
 
   useLayoutEffect(() => {
-    function updateSeg(si, positions, visible) {
+    function updateSeg(si, positions, colors, visible) {
       const seg = structure.segs[si];
       seg.geometry.setPositions(positions);
+      seg.geometry.setColors(colors);
       delete (seg.geometry as any)._maxInstanceCount;
       seg.visible = visible;
+    }
+    function push(allSegs, allCols, si, a, b, intensity) {
+      allSegs[si].push(a.x, a.y, a.z, b.x, b.y, b.z);
+      var base = RAY_BASE[si];
+      var r = base.r * intensity;
+      var g = base.g * intensity;
+      var bl = base.b * intensity;
+      allCols[si].push(r, g, bl, r, g, bl);
     }
     var dx = Math.sin(angle);
     var dz = Math.cos(angle);
@@ -178,11 +189,12 @@ function Rays({ eq, eqR, aperture, angle, n, rayCount, box, keepFailed }) {
       for (const off of fibDisk(probeN, 0, 0, aperture, aperture).map(toOffset)) {
         var k = off.u.toFixed(4) + "|" + off.w.toFixed(4);
         seen.add(k);
-        if (traceAt(off).ok) okPts.push(off);
+        var probeRay = traceAt(off);
+        if (probeRay.ok || probeRay.tir) okPts.push(off);
       }
       if (okPts.length === 0) {
-        for (var si = 0; si < 3; si++) {
-          updateSeg(si, [0, 0, 0, 0, 0, 0], false);
+        for (var si = 0; si < 4; si++) {
+          updateSeg(si, [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], false);
         }
         return;
       }
@@ -201,7 +213,8 @@ function Rays({ eq, eqR, aperture, angle, n, rayCount, box, keepFailed }) {
           var k2 = off.u.toFixed(4) + "|" + off.w.toFixed(4);
           if (seen.has(k2)) continue;
           seen.add(k2);
-          if (traceAt(off).ok) okPts.push(off);
+          var probeRay2 = traceAt(off);
+          if (probeRay2.ok || probeRay2.tir) okPts.push(off);
         }
       }
       var stride = okPts.length / count;
@@ -213,32 +226,55 @@ function Rays({ eq, eqR, aperture, angle, n, rayCount, box, keepFailed }) {
       picks = fibDisk(count, 0, 0, aperture, aperture).map(toOffset);
     }
 
-    var allSegs = [[], [], []];
+    var allSegs = [[], [], [], []];
+    var allCols = [[], [], [], []];
     for (var i = 0; i < picks.length; i++) {
       var ray = traceAt(picks[i]);
-      if (!ray.ok) {
+      if (ray.h1 && ray.rdir) {
+        push(allSegs, allCols, 3, ray.h1, {
+          x: ray.h1.x + REFLEN * ray.rdir.x,
+          y: ray.h1.y + REFLEN * ray.rdir.y,
+          z: ray.h1.z + REFLEN * ray.rdir.z,
+        }, ray.r1);
+      }
+      if (ray.h2) {
+        for (var ki = 0; ki < ray.inner.length; ki++) {
+          var seg = ray.inner[ki];
+          push(allSegs, allCols, 1, seg.a, seg.b, seg.i);
+        }
+        for (var ke = 0; ke < ray.esc.length; ke++) {
+          var ex = ray.esc[ke];
+          push(allSegs, allCols, 2, ex.p, {
+            x: ex.p.x + REFLEN * ex.dir.x,
+            y: ex.p.y + REFLEN * ex.dir.y,
+            z: ex.p.z + REFLEN * ex.dir.z,
+          }, ex.i);
+        }
+      }
+      if (!ray.ok && !ray.tir) {
         if (keepFailed) {
           if (!ray.h1) {
-            allSegs[0].push(ray.P.x, ray.P.y, ray.P.z, ray.end.x, ray.end.y, ray.end.z);
+            push(allSegs, allCols, 0, ray.P, ray.end, 1);
             continue;
           }
-          allSegs[0].push(ray.P.x, ray.P.y, ray.P.z, ray.h1.x, ray.h1.y, ray.h1.z);
+          push(allSegs, allCols, 0, ray.P, ray.h1, 1);
           if (ray.h2) {
-            allSegs[1].push(ray.h1.x, ray.h1.y, ray.h1.z, ray.h2.x, ray.h2.y, ray.h2.z);
-            allSegs[2].push(ray.h2.x, ray.h2.y, ray.h2.z, ray.end.x, ray.end.y, ray.end.z);
+            push(allSegs, allCols, 1, ray.h1, ray.h2, ray.t1);
+            push(allSegs, allCols, 2, ray.h2, ray.end, ray.t1 * ray.t2);
           } else {
-            allSegs[1].push(ray.h1.x, ray.h1.y, ray.h1.z, ray.end.x, ray.end.y, ray.end.z);
+            push(allSegs, allCols, 1, ray.h1, ray.end, ray.t1);
           }
         }
         continue;
       }
-      allSegs[0].push(ray.P.x, ray.P.y, ray.P.z, ray.h1.x, ray.h1.y, ray.h1.z);
-      allSegs[1].push(ray.h1.x, ray.h1.y, ray.h1.z, ray.h2.x, ray.h2.y, ray.h2.z);
-      allSegs[2].push(ray.h2.x, ray.h2.y, ray.h2.z, ray.end.x, ray.end.y, ray.end.z);
+      push(allSegs, allCols, 0, ray.P, ray.h1, 1);
+      push(allSegs, allCols, 1, ray.h1, ray.h2, ray.t1);
+      push(allSegs, allCols, 2, ray.h2, ray.end, ray.t1 * ray.t2);
     }
 
-    for (var si = 0; si < 3; si++) {
-      updateSeg(si, allSegs[si].length > 0 ? allSegs[si] : [0, 0, 0, 0, 0, 0], allSegs[si].length > 0);
+    for (var si = 0; si < 4; si++) {
+      var has = allSegs[si].length > 0;
+      updateSeg(si, has ? allSegs[si] : [0, 0, 0, 0, 0, 0], has ? allCols[si] : [0, 0, 0, 0, 0, 0], has);
     }
   }, [eq, eqR, aperture, angle, n, rayCount, box, structure, keepFailed]);
 
