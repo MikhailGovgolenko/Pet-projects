@@ -40,15 +40,9 @@ export default function HomePage({ onNavigate }) {
           animation: fadeInUp 0.7s ease both;
           border-radius: 28px;
           isolation: isolate;
-          transform: translateZ(0);
-          transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
         .card-wrap:nth-child(1) { animation-delay: 0.1s; }
         .card-wrap:nth-child(2) { animation-delay: 0.2s; }
-
-        @media (hover: hover) {
-          .card-wrap:hover { transform: translateY(-4px) scale(1.01); }
-        }
 
         .home-card {
           position: relative;
@@ -60,7 +54,10 @@ export default function HomePage({ onNavigate }) {
           cursor: pointer;
           height: 100%;
           overflow: hidden;
-          transition: box-shadow 0.35s ease, background 0.35s ease;
+          transition:
+            transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+            box-shadow 0.35s ease,
+            background 0.35s ease;
           /* backdrop-filter на соседних карточках + transform = глитч в Chrome;
              на однотонном фоне blur всё равно незаметен */
           backdrop-filter: none;
@@ -68,14 +65,10 @@ export default function HomePage({ onNavigate }) {
         }
         @media (hover: hover) {
           .card-wrap:hover .home-card {
+            transform: translateY(-4px) scale(1.01);
             box-shadow: 0 20px 60px rgba(0,0,0,0.15), var(--glass-shadow);
-            background: var(--card-hover);
           }
           .card-wrap:hover .card-action { color: var(--accent); }
-          .card-wrap:hover .card-arrow {
-            transform: translateX(3px);
-            background: rgba(0,212,255,0.12);
-          }
         }
 
         .card-icon {
@@ -93,12 +86,42 @@ export default function HomePage({ onNavigate }) {
           color: var(--accent);
         }
 
+        .card-hero {
+          position: relative;
+          margin: -29px -29px 0;
+          overflow: hidden;
+        }
+        .card-hero picture {
+          display: block;
+        }
+        .card-preview {
+          display: block;
+          width: 100%;
+          height: 200px;
+          object-fit: cover;
+          object-position: center;
+        }
+        .card-hero-fade {
+          position: absolute;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          height: 72px;
+          pointer-events: none;
+          background: linear-gradient(to bottom, rgba(7, 7, 10, 0), rgba(16, 19, 23, 1));
+        }
+        @media (prefers-color-scheme: light) {
+          .card-hero-fade {
+            background: linear-gradient(to bottom, rgba(244, 246, 250, 0), rgba(250, 252, 253, 1));
+          }
+        }
+
         .home-card h2 {
           font-size: 20px;
           font-weight: 700;
           margin-bottom: 8px;
           letter-spacing: -0.3px;
-          padding-right: 80px;
+          margin-top: 10px;
         }
 
         .home-card p {
@@ -121,51 +144,22 @@ export default function HomePage({ onNavigate }) {
           color: var(--text-sec);
         }
 
-        .card-arrow {
-          width: 32px;
-          height: 32px;
-          border-radius: 50%;
-          background: rgba(255,255,255,0.05);
-          display: flex;
+        .readme-link {
+          display: inline-flex;
           align-items: center;
-          justify-content: center;
-          transition: transform 0.2s, background 0.2s;
-          flex-shrink: 0;
-        }
-        .card-arrow::after {
-          content: '';
-          width: 6px;
-          height: 6px;
-          border-right: 2px solid var(--accent);
-          border-top: 2px solid var(--accent);
-          transform: rotate(45deg);
-          margin-left: -1px;
-        }
-
-        .readme-badge {
-          position: absolute;
-          top: 20px;
-          right: 20px;
-          padding: 6px 12px;
+          gap: 6px;
+          padding: 7px 12px;
           border-radius: 100px;
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.6px;
           text-decoration: none;
           color: var(--text-sec);
           background: rgba(128, 128, 128, 0.12);
           border: 1px solid var(--glass-border);
-          box-shadow: var(--glass-shadow);
-          z-index: 5;
+          flex-shrink: 0;
           transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
         }
-        @media (prefers-color-scheme: light) {
-          .readme-badge {
-            background: rgba(0, 0, 0, 0.06);
-          }
-        }
-        .readme-badge:hover {
+        .readme-link:hover {
           color: var(--accent);
           border-color: var(--accent);
           background: var(--card-hover);
@@ -176,8 +170,11 @@ export default function HomePage({ onNavigate }) {
           .home-title { margin-bottom: 32px; }
           .home-title h1 { font-size: 32px; letter-spacing: -1px; }
           .home-card { padding: 22px; }
-          .home-card h2 { font-size: 18px; padding-right: 56px; }
+          .home-card h2 { font-size: 18px; }
           .card-icon { width: 42px; height: 42px; font-size: 19px; }
+          .card-hero { margin: -23px -23px 0; }
+          .card-preview { height: 150px; }
+          .card-hero-fade { height: 56px; }
         }
       `}</style>
 
@@ -216,22 +213,42 @@ export default function HomePage({ onNavigate }) {
                 className="glass home-card"
                 onClick={() => onNavigate(card.id)}
               >
-                <div className="card-icon">{card.icon}</div>
+                {card.previewLight || card.previewDark ? (
+                  <div className="card-hero">
+                    <picture>
+                      {card.previewLight && (
+                        <source
+                          media="(prefers-color-scheme: light)"
+                          srcSet={card.previewLight}
+                        />
+                      )}
+                      <img
+                        className="card-preview"
+                        src={card.previewDark || card.previewLight}
+                        alt=""
+                        draggable={false}
+                      />
+                    </picture>
+                    <div className="card-hero-fade"></div>
+                  </div>
+                ) : (
+                  <div className="card-icon">{card.icon}</div>
+                )}
                 <h2>{t(card.titleKey)}</h2>
                 <p>{t(card.descKey)}</p>
                 <div className="card-footer">
                   <span className="card-action">{t("home.open")}</span>
-                  <div className="card-arrow"></div>
+                  <a
+                    className="readme-link"
+                    href={card.readmeUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    📄 Readme
+                  </a>
                 </div>
               </div>
-              <a
-                href={card.readmeUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="readme-badge"
-              >
-                📄 Readme
-              </a>
             </div>
           );
         })}
