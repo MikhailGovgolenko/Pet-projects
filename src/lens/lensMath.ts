@@ -137,34 +137,42 @@ export function findIntersection(P, D, eq, box) {
 }
 
 export function traceRays(eq, eqR, aperture, angle, n, count, box) {
-  if (aperture <= 0) return [];
   var rays = [];
   var dir = { z: Math.cos(angle), r: Math.sin(angle) };
   var perp = { z: -dir.r, r: dir.z };
   for (var i = 0; i < count; i++) {
-    var r0 = -aperture + (2 * aperture * i) / (count - 1);
+    var r0 = count > 1 ? -aperture + (2 * aperture * i) / (count - 1) : 0;
     var P = {
       z: -80 * dir.z + r0 * perp.z,
       r: -80 * dir.r + r0 * perp.r,
     };
     var D = normVec(dir);
     var h1 = findIntersection(P, D, eq, box);
-    if (!h1) continue;
-    var N = normVec({ z: -1, r: deriv(eq, h1.r) });
-    if (N.z * D.z + N.r * D.r > 0) N = { z: -N.z, r: -N.r };
-    var T1 = refract3d(D, N, 1 / n);
-    if (!T1) continue;
-    var h2 = findIntersection(
-      { z: h1.z + 1e-6 * T1.z, r: h1.r + 1e-6 * T1.r },
-      T1, eqR, box
-    );
-    if (!h2) continue;
-    var N2 = normVec({ z: -1, r: deriv(eqR, h2.r) });
-    if (N2.z * T1.z + N2.r * T1.r > 0) N2 = { z: -N2.z, r: -N2.r };
-    var T2 = refract3d(T1, N2, n);
-    if (!T2) continue;
-    var end = { z: h2.z + 3000 * T2.z, r: h2.r + 3000 * T2.r };
-    rays.push({ P, h1, T1, h2, T2, end, disabled: false });
+    var h2 = null;
+    var end = { z: P.z + 3000 * D.z, r: P.r + 3000 * D.r };
+    if (h1) {
+      var N = normVec({ z: -1, r: deriv(eq, h1.r) });
+      if (N.z * D.z + N.r * D.r > 0) N = { z: -N.z, r: -N.r };
+      var T1 = refract3d(D, N, 1 / n);
+      if (T1) {
+        var h2p = findIntersection(
+          { z: h1.z + 1e-6 * T1.z, r: h1.r + 1e-6 * T1.r },
+          T1, eqR, box
+        );
+        if (h2p) {
+          h2 = h2p;
+          var N2 = normVec({ z: -1, r: deriv(eqR, h2.r) });
+          if (N2.z * T1.z + N2.r * T1.r > 0) N2 = { z: -N2.z, r: -N2.r };
+          var T2 = refract3d(T1, N2, n);
+          end = T2
+            ? { z: h2.z + 3000 * T2.z, r: h2.r + 3000 * T2.r }
+            : { z: h2.z + 3000 * T1.z, r: h2.r + 3000 * T1.r };
+        } else {
+          end = { z: h1.z + 3000 * T1.z, r: h1.r + 3000 * T1.r };
+        }
+      }
+    }
+    rays.push({ P, h1, h2, end });
   }
   return rays;
 }

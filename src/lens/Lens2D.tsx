@@ -59,12 +59,18 @@ function drawLens(ctx, lens, camera) {
 function drawRays(ctx, rays, camera) {
   for (var i = 0; i < rays.length; i++) {
     var r = rays[i];
-    if (r.disabled) continue;
     var sP = camera.worldToScreen(r.P);
-    var sH1 = camera.worldToScreen(r.h1);
-    var sH2 = camera.worldToScreen(r.h2);
     var sEnd = camera.worldToScreen(r.end);
-
+    if (!r.h1) {
+      ctx.strokeStyle = "rgba(255,60,60,0.9)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(sP.x, sP.y);
+      ctx.lineTo(sEnd.x, sEnd.y);
+      ctx.stroke();
+      continue;
+    }
+    var sH1 = camera.worldToScreen(r.h1);
     ctx.strokeStyle = "rgba(255,60,60,0.9)";
     ctx.lineWidth = 1.5;
     ctx.beginPath();
@@ -73,16 +79,23 @@ function drawRays(ctx, rays, camera) {
     ctx.stroke();
 
     ctx.strokeStyle = "rgba(255,180,50,0.9)";
-    ctx.beginPath();
-    ctx.moveTo(sH1.x, sH1.y);
-    ctx.lineTo(sH2.x, sH2.y);
-    ctx.stroke();
-
-    ctx.strokeStyle = "rgba(50,255,100,0.9)";
-    ctx.beginPath();
-    ctx.moveTo(sH2.x, sH2.y);
-    ctx.lineTo(sEnd.x, sEnd.y);
-    ctx.stroke();
+    if (r.h2) {
+      var sH2 = camera.worldToScreen(r.h2);
+      ctx.beginPath();
+      ctx.moveTo(sH1.x, sH1.y);
+      ctx.lineTo(sH2.x, sH2.y);
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(50,255,100,0.9)";
+      ctx.beginPath();
+      ctx.moveTo(sH2.x, sH2.y);
+      ctx.lineTo(sEnd.x, sEnd.y);
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(sH1.x, sH1.y);
+      ctx.lineTo(sEnd.x, sEnd.y);
+      ctx.stroke();
+    }
   }
 }
 
