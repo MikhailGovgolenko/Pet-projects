@@ -31,7 +31,7 @@ function LensControls({ params, setParams }) {
       keepFailed: (v) => setParams((p) => ({ ...p, keepFailed: v })),
       useReflections: (v) => setParams((p) => ({ ...p, useReflections: v })),
     }),
-    [setParams]
+    [setParams],
   );
 
   const toggleUseField = (v) => {
@@ -50,7 +50,14 @@ function LensControls({ params, setParams }) {
     } catch (e) {
       return e as ExprError;
     }
-  }, [params.useField, params.customEq, params.z0, params.a2, params.a4, params.a6]);
+  }, [
+    params.useField,
+    params.customEq,
+    params.z0,
+    params.a2,
+    params.a4,
+    params.a6,
+  ]);
 
   return (
     <>
@@ -61,41 +68,50 @@ function LensControls({ params, setParams }) {
           checked={params.useField}
           onChange={toggleUseField}
         />
-          <ToggleSwitch
-            name="useReflections"
-            label={t("lens.useReflections")}
-            checked={!!params.useReflections}
-            onChange={handlers.useReflections}
-          />
-        </div>
+        <ToggleSwitch
+          name="useReflections"
+          label={t("lens.useReflections")}
+          checked={!!params.useReflections}
+          onChange={handlers.useReflections}
+        />
 
         <div className="section">
-          <RangeSlider
-            name="n"
-            label={t("lens.refraction")}
-            min={1} max={10} step={0.01} value={params.n}
-            onChange={handlers.n}
+          <ToggleSwitch
+            name="keepFailed"
+            label={t("lens.keepFailed")}
+            checked={params.keepFailed}
+            onChange={handlers.keepFailed}
           />
+        </div>
+      </div>
+
+      <div className="section">
+        <RangeSlider
+          name="n"
+          label={t("lens.refraction")}
+          min={1}
+          max={10}
+          step={0.01}
+          value={params.n}
+          onChange={handlers.n}
+        />
         <RangeSlider
           name="angle"
           label={t("lens.beamAngle")}
-          min={-90} max={90} step={0.1} value={params.angle}
+          min={-90}
+          max={90}
+          step={0.1}
+          value={params.angle}
           onChange={handlers.angle}
         />
         <RangeSlider
           name="rayCount"
           label={t("lens.rayCount")}
-          min={3} max={201} step={1} value={params.rayCount}
+          min={3}
+          max={201}
+          step={1}
+          value={params.rayCount}
           onChange={handlers.rayCount}
-        />
-      </div>
-
-      <div className="section">
-        <ToggleSwitch
-          name="keepFailed"
-          label={t("lens.keepFailed")}
-          checked={params.keepFailed}
-          onChange={handlers.keepFailed}
         />
       </div>
 
@@ -106,28 +122,40 @@ function LensControls({ params, setParams }) {
             <RangeSlider
               name="z0"
               label="z₀"
-              min={-20} max={20} step={0.001} value={params.z0}
+              min={-20}
+              max={20}
+              step={0.001}
+              value={params.z0}
               onChange={handlers.z0}
               format={formatZ0}
             />
             <RangeSlider
               name="a2"
               label="a₂"
-              min={-0.1} max={0.1} step={1e-5} value={params.a2}
+              min={-0.1}
+              max={0.1}
+              step={1e-5}
+              value={params.a2}
               onChange={handlers.a2}
               format={formatA2}
             />
             <RangeSlider
               name="a4"
               label="a₄"
-              min={-0.001} max={0.001} step={1e-7} value={params.a4}
+              min={-0.001}
+              max={0.001}
+              step={1e-7}
+              value={params.a4}
               onChange={handlers.a4}
               format={formatA4}
             />
             <RangeSlider
               name="a6"
               label="a₆"
-              min={-1e-5} max={1e-5} step={1e-10} value={params.a6}
+              min={-1e-5}
+              max={1e-5}
+              step={1e-10}
+              value={params.a6}
               onChange={handlers.a6}
               format={formatA6}
             />
@@ -137,8 +165,21 @@ function LensControls({ params, setParams }) {
 
       {params.useField && (
         <div className="section">
-          <label style={{ flexDirection: "column", alignItems: "flex-start", gap: 2, display: "flex" }}>
-            <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-sec)" }}>
+          <label
+            style={{
+              flexDirection: "column",
+              alignItems: "flex-start",
+              gap: 2,
+              display: "flex",
+            }}
+          >
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 500,
+                color: "var(--text-sec)",
+              }}
+            >
               z(r)
             </span>
             <input
@@ -162,7 +203,13 @@ function LensControls({ params, setParams }) {
               }}
             />
             {eqError && (
-              <span style={{ fontSize: 10.5, color: "var(--danger)", lineHeight: 1.3 }}>
+              <span
+                style={{
+                  fontSize: 10.5,
+                  color: "var(--danger)",
+                  lineHeight: 1.3,
+                }}
+              >
                 {t("lens.eqError")}: {eqError.message}
               </span>
             )}
