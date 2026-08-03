@@ -14,7 +14,7 @@ const ru = {
   "lens.refraction": "Преломление n",
   "lens.beamAngle": "Угол пучка (°)",
   "lens.rayCount": "Кол-во лучей",
-  "lens.keepFailed": "Показывать непредомлённые лучи",
+  "lens.keepFailed": "Показывать непреломлённые лучи",
   "lens.polynomial": "Полином z(r)=z₀+a₂r²+a₄r⁴+a₆r⁶",
   "lens.scale": "Масштаб",
   "lens.resetView": "Сбросить вид",
