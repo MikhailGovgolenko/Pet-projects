@@ -3,7 +3,7 @@ import { sampleLens, traceRays, DEG } from "./lensMath";
 import { createCamera } from "./Camera";
 
 function cacheKey(p, aperture) {
-  return [p.eq, p.eqR, aperture, p.angle, p.n, p.rayCount].join("|");
+  return [p.eq, p.eqR, aperture, p.angle, p.n, p.rayCount, p.keepFailed].join("|");
 }
 
 function lensBox(lens) {
@@ -99,7 +99,7 @@ function drawRays(ctx, rays, camera) {
   }
 }
 
-function Lens2D({ params, resetKey, scaleRef }) {
+function Lens2D({ params, resetKey, scaleRef, onDrawnCount }) {
   const canvasRef = useRef(null);
   const ctxRef = useRef(null);
   const cameraRef = useRef(createCamera());
@@ -172,12 +172,13 @@ function Lens2D({ params, resetKey, scaleRef }) {
       if (rayCacheRef.current.key !== key) {
         rayCacheRef.current = {
           key,
-          rays: traceRays(p.eq, p.eqR, lens.aperture, p.angle * DEG, p.n, p.rayCount, lensCacheRef.current.box),
+          rays: traceRays(p.eq, p.eqR, lens.aperture, p.angle * DEG, p.n, p.rayCount, lensCacheRef.current.box, p.keepFailed),
         };
       }
+      onDrawnCount(rayCacheRef.current.rays.length);
       scheduleRender();
     });
-  }, [params, scheduleRender]);
+  }, [params, scheduleRender, onDrawnCount]);
 
   useEffect(() => {
     const canvas = canvasRef.current;

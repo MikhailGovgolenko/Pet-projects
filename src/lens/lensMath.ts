@@ -136,12 +136,13 @@ export function findIntersection(P, D, eq, box) {
   return null;
 }
 
-export function traceRays(eq, eqR, aperture, angle, n, count, box) {
+export function traceRays(eq, eqR, aperture, angle, n, count, box, keepFailed) {
   var rays = [];
   var dir = { z: Math.cos(angle), r: Math.sin(angle) };
   var perp = { z: -dir.r, r: dir.z };
+  var scale = Math.abs(Math.cos(angle));
   for (var i = 0; i < count; i++) {
-    var r0 = count > 1 ? -aperture + (2 * aperture * i) / (count - 1) : 0;
+    var r0 = count > 1 ? (-aperture + (2 * aperture * i) / (count - 1)) * scale : 0;
     var P = {
       z: -80 * dir.z + r0 * perp.z,
       r: -80 * dir.r + r0 * perp.r,
@@ -149,6 +150,7 @@ export function traceRays(eq, eqR, aperture, angle, n, count, box) {
     var D = normVec(dir);
     var h1 = findIntersection(P, D, eq, box);
     var h2 = null;
+    var ok = false;
     var end = { z: P.z + 3000 * D.z, r: P.r + 3000 * D.r };
     if (h1) {
       var N = normVec({ z: -1, r: deriv(eq, h1.r) });
@@ -164,15 +166,19 @@ export function traceRays(eq, eqR, aperture, angle, n, count, box) {
           var N2 = normVec({ z: -1, r: deriv(eqR, h2.r) });
           if (N2.z * T1.z + N2.r * T1.r > 0) N2 = { z: -N2.z, r: -N2.r };
           var T2 = refract3d(T1, N2, n);
-          end = T2
-            ? { z: h2.z + 3000 * T2.z, r: h2.r + 3000 * T2.r }
-            : { z: h2.z + 3000 * T1.z, r: h2.r + 3000 * T1.r };
+          if (T2) {
+            ok = true;
+            end = { z: h2.z + 3000 * T2.z, r: h2.r + 3000 * T2.r };
+          } else {
+            end = { z: h2.z + 3000 * T1.z, r: h2.r + 3000 * T1.r };
+          }
         } else {
           end = { z: h1.z + 3000 * T1.z, r: h1.r + 3000 * T1.r };
         }
       }
     }
-    rays.push({ P, h1, h2, end });
+    if (keepFailed === false && !ok) continue;
+    rays.push({ P, h1, h2, end, ok });
   }
   return rays;
 }

@@ -16,7 +16,7 @@ const formatA2 = fmt("a2");
 const formatA4 = fmt("a4");
 const formatA6 = fmt("a6");
 
-function LensControls({ params, setParams }) {
+function LensControls({ params, setParams, drawnCount }) {
   const { t } = useI18n();
 
   const handlers = useMemo(
@@ -28,6 +28,7 @@ function LensControls({ params, setParams }) {
       a2: (v) => setParams((p) => ({ ...p, a2: v })),
       a4: (v) => setParams((p) => ({ ...p, a4: v })),
       a6: (v) => setParams((p) => ({ ...p, a6: v })),
+      keepFailed: (v) => setParams((p) => ({ ...p, keepFailed: v })),
     }),
     [setParams]
   );
@@ -79,6 +80,21 @@ function LensControls({ params, setParams }) {
           label={t("lens.rayCount")}
           min={3} max={201} step={1} value={params.rayCount}
           onChange={handlers.rayCount}
+        />
+        <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "4px 0", fontSize: 12, fontWeight: 500 }}>
+          <span style={{ color: "var(--text-sec)" }}>{t("lens.drawn")}</span>
+          <span style={{ color: "var(--accent)", fontFamily: '"SF Mono", monospace', fontSize: 10.5, fontWeight: 700 }}>
+            {drawnCount}
+          </span>
+        </label>
+      </div>
+
+      <div className="section">
+        <ToggleSwitch
+          name="keepFailed"
+          label={t("lens.keepFailed")}
+          checked={params.keepFailed}
+          onChange={handlers.keepFailed}
         />
       </div>
 
