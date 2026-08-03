@@ -3,7 +3,7 @@ import { Canvas } from "@react-three/fiber";
 import ThemeUpdater from "../components/ThemeUpdater";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
-import { safeEval, sampleLens, deriv, normVec, refract3d, findIntersection } from "./lensMath";
+import { safeEval, sampleLens, traceRay3D } from "./lensMath";
 
 const RAY_COLORS = [0xff4444, 0xffb434, 0x44ff66];
 
@@ -59,7 +59,7 @@ function lensBox(lens) {
   return { z0: zMin, z1: zMax, r1: lens.aperture };
 }
 
-function Rays({ eq, eqR, aperture, angle, n, rayCount, box, keepFailed, onDrawnCount }) {
+function Rays({ eq, eqR, aperture, angle, n, rayCount, box, keepFailed }) {
   const traceCache = useRef(new Map());
 
   const structure = useMemo(() => {
@@ -80,102 +80,115 @@ function Rays({ eq, eqR, aperture, angle, n, rayCount, box, keepFailed, onDrawnC
   }, []);
 
   useLayoutEffect(() => {
-    var dir = { z: Math.cos(angle), r: Math.sin(angle) };
-    var perp = { z: -dir.r, r: dir.z };
-    var scale = Math.abs(Math.cos(angle));
+    var dx = Math.sin(angle);
+    var dz = Math.cos(angle);
+    var perpx = -Math.cos(angle);
+    var perpz = Math.sin(angle);
     var count = Math.max(1, Math.round(rayCount));
     var startDist = 35;
     var endDist = 3000;
     var cache = traceCache.current;
+    var zMid = box ? 0.5 * (box.z0 + box.z1) : 0;
+    var uC = zMid * Math.sin(angle);
+    var GOLDEN = 2.3999632297286533;
 
-    function traceAtOffset(rOff) {
-      var P = {
-        z: -startDist * dir.z + rOff * perp.z,
-        r: -startDist * dir.r + rOff * perp.r,
-      };
-      var D = normVec(dir);
-      var h1 = findIntersection(P, D, eq, box);
-      var end = { z: P.z + endDist * D.z, r: P.r + endDist * D.r };
-      if (!h1) return { P, h1: null, h2: null, end, ok: false };
-      var N = normVec({ z: -1, r: deriv(eq, h1.r) });
-      if (N.z * D.z + N.r * D.r > 0) N = { z: -N.z, r: -N.r };
-      var T1 = refract3d(D, N, 1 / n);
-      if (!T1) return { P, h1, h2: null, end, ok: false };
-      var h2 = findIntersection(
-        { z: h1.z + 1e-6 * T1.z, r: h1.r + 1e-6 * T1.r },
-        T1, eqR, box
-      );
-      if (!h2) {
-        return { P, h1, h2: null, end: { z: h1.z + endDist * T1.z, r: h1.r + endDist * T1.r }, ok: false };
+    function fibDisk(n, cx, cy, rx, ry) {
+      var res = [];
+      for (var i = 0; i < n; i++) {
+        var t = (i + 0.5) / n;
+        var phi = i * GOLDEN;
+        var rho = Math.sqrt(t);
+        res.push({ a: cx + rho * Math.cos(phi) * rx, b: cy + rho * Math.sin(phi) * ry });
       }
-      var N2 = normVec({ z: -1, r: deriv(eqR, h2.r) });
-      if (N2.z * T1.z + N2.r * T1.r > 0) N2 = { z: -N2.z, r: -N2.r };
-      var T2 = refract3d(T1, N2, n);
-      if (T2) {
-        return { P, h1, h2, end: { z: h2.z + endDist * T2.z, r: h2.r + endDist * T2.r }, ok: true };
-      }
-      return { P, h1, h2, end: { z: h2.z + endDist * T1.z, r: h2.r + endDist * T1.r }, ok: false };
+      return res;
     }
 
-    var allSegs = [[], [], []];
-    var fullCount = 0;
-    for (var i = 0; i < count; i++) {
-      var frac = count > 1 ? i / (count - 1) : 0;
-      var r = aperture * Math.sqrt(frac) * scale;
-      var theta = i * 2.3999632297286533;
-      var ck = eq + "|" + eqR + "|" + angle.toFixed(4) + "|" + n + "|" + r.toFixed(4);
+    function toOffset(ab) {
+      return { u: uC - ab.a * Math.cos(angle), w: ab.b };
+    }
+
+    function traceAt(off) {
+      var ck = eq + "|" + eqR + "|" + angle.toFixed(4) + "|" + n + "|" + off.u.toFixed(4) + "|" + off.w.toFixed(4);
       var ray = cache.get(ck);
       if (ray === undefined) {
         if (cache.size > 20000) cache.clear();
-        ray = traceAtOffset(r);
+        var P = {
+          x: -startDist * dx + off.u * perpx,
+          y: off.w,
+          z: -startDist * dz + off.u * perpz,
+        };
+        ray = traceRay3D(eq, eqR, P, { x: dx, y: 0, z: dz }, n, box, endDist);
         cache.set(ck, ray);
       }
-      var ct = Math.cos(theta);
-      var st = Math.sin(theta);
+      return ray;
+    }
+
+    var picks;
+    if (!keepFailed) {
+      var okPts = [];
+      var seen = new Set();
+      var probeN = Math.max(count, 40);
+      for (const off of fibDisk(probeN, 0, 0, aperture, aperture).map(toOffset)) {
+        var k = off.u.toFixed(4) + "|" + off.w.toFixed(4);
+        seen.add(k);
+        if (traceAt(off).ok) okPts.push(off);
+      }
+      if (okPts.length === 0) {
+        for (var si = 0; si < 3; si++) {
+          structure.segs[si].geometry.setAttribute("position", new THREE.Float32BufferAttribute([], 3));
+          structure.segs[si].visible = false;
+        }
+        return;
+      }
+      var rounds = 0;
+      while (okPts.length < count && rounds < 4) {
+        rounds++;
+        var cx = 0, cy = 0;
+        for (const p of okPts) { cx += p.u; cy += p.w; }
+        cx /= okPts.length;
+        cy /= okPts.length;
+        var rmax = 0.001;
+        for (const p of okPts) rmax = Math.max(rmax, Math.hypot(p.u - cx, p.w - cy));
+        rmax *= 1.4;
+        for (const off of fibDisk(Math.max(count * 8, 160), cx, cy, rmax, rmax).map(toOffset)) {
+          if (okPts.length >= count) break;
+          var k2 = off.u.toFixed(4) + "|" + off.w.toFixed(4);
+          if (seen.has(k2)) continue;
+          seen.add(k2);
+          if (traceAt(off).ok) okPts.push(off);
+        }
+      }
+      var stride = okPts.length / count;
+      picks = [];
+      for (var j = 0; j < count; j++) {
+        picks.push(okPts[Math.min(okPts.length - 1, Math.floor(j * stride))]);
+      }
+    } else {
+      picks = fibDisk(count, 0, 0, aperture, aperture).map(toOffset);
+    }
+
+    var allSegs = [[], [], []];
+    for (var i = 0; i < picks.length; i++) {
+      var ray = traceAt(picks[i]);
       if (!ray.ok) {
         if (keepFailed) {
           if (!ray.h1) {
-            allSegs[0].push(
-              ray.P.r * ct, ray.P.r * st, ray.P.z,
-              ray.end.r * ct, ray.end.r * st, ray.end.z
-            );
+            allSegs[0].push(ray.P.x, ray.P.y, ray.P.z, ray.end.x, ray.end.y, ray.end.z);
             continue;
           }
-          allSegs[0].push(
-            ray.P.r * ct, ray.P.r * st, ray.P.z,
-            ray.h1.r * ct, ray.h1.r * st, ray.h1.z
-          );
+          allSegs[0].push(ray.P.x, ray.P.y, ray.P.z, ray.h1.x, ray.h1.y, ray.h1.z);
           if (ray.h2) {
-            allSegs[1].push(
-              ray.h1.r * ct, ray.h1.r * st, ray.h1.z,
-              ray.h2.r * ct, ray.h2.r * st, ray.h2.z
-            );
-            allSegs[2].push(
-              ray.h2.r * ct, ray.h2.r * st, ray.h2.z,
-              ray.end.r * ct, ray.end.r * st, ray.end.z
-            );
+            allSegs[1].push(ray.h1.x, ray.h1.y, ray.h1.z, ray.h2.x, ray.h2.y, ray.h2.z);
+            allSegs[2].push(ray.h2.x, ray.h2.y, ray.h2.z, ray.end.x, ray.end.y, ray.end.z);
           } else {
-            allSegs[1].push(
-              ray.h1.r * ct, ray.h1.r * st, ray.h1.z,
-              ray.end.r * ct, ray.end.r * st, ray.end.z
-            );
+            allSegs[1].push(ray.h1.x, ray.h1.y, ray.h1.z, ray.end.x, ray.end.y, ray.end.z);
           }
         }
         continue;
       }
-      fullCount++;
-      allSegs[0].push(
-        ray.P.r * ct, ray.P.r * st, ray.P.z,
-        ray.h1.r * ct, ray.h1.r * st, ray.h1.z
-      );
-      allSegs[1].push(
-        ray.h1.r * ct, ray.h1.r * st, ray.h1.z,
-        ray.h2.r * ct, ray.h2.r * st, ray.h2.z
-      );
-      allSegs[2].push(
-        ray.h2.r * ct, ray.h2.r * st, ray.h2.z,
-        ray.end.r * ct, ray.end.r * st, ray.end.z
-      );
+      allSegs[0].push(ray.P.x, ray.P.y, ray.P.z, ray.h1.x, ray.h1.y, ray.h1.z);
+      allSegs[1].push(ray.h1.x, ray.h1.y, ray.h1.z, ray.h2.x, ray.h2.y, ray.h2.z);
+      allSegs[2].push(ray.h2.x, ray.h2.y, ray.h2.z, ray.end.x, ray.end.y, ray.end.z);
     }
 
     for (var si = 0; si < 3; si++) {
@@ -187,13 +200,12 @@ function Rays({ eq, eqR, aperture, angle, n, rayCount, box, keepFailed, onDrawnC
         seg.visible = false;
       }
     }
-    onDrawnCount(keepFailed ? count : fullCount);
-  }, [eq, eqR, aperture, angle, n, rayCount, box, structure, keepFailed, onDrawnCount]);
+  }, [eq, eqR, aperture, angle, n, rayCount, box, structure, keepFailed]);
 
   return <primitive object={structure.group} />;
 }
 
-function Scene({ eq, eqR, aperture, angle, n, rayCount, box, keepFailed, onDrawnCount }) {
+function Scene({ eq, eqR, aperture, angle, n, rayCount, box, keepFailed }) {
   return (
     <>
       <ambientLight intensity={1.0} color={0x404060} />
@@ -209,7 +221,6 @@ function Scene({ eq, eqR, aperture, angle, n, rayCount, box, keepFailed, onDrawn
         rayCount={rayCount}
         box={box}
         keepFailed={keepFailed}
-        onDrawnCount={onDrawnCount}
       />
       <ThemeUpdater />
       <OrbitControls
@@ -222,7 +233,7 @@ function Scene({ eq, eqR, aperture, angle, n, rayCount, box, keepFailed, onDrawn
   );
 }
 
-export default function Lens3D({ params, onDrawnCount }) {
+export default function Lens3D({ params }) {
   const [applied, setApplied] = useState(params);
   const pendingRef = useRef(false);
   const latestRef = useRef(params);
@@ -265,7 +276,6 @@ export default function Lens3D({ params, onDrawnCount }) {
         rayCount={applied.rayCount}
         box={box}
         keepFailed={applied.keepFailed}
-        onDrawnCount={onDrawnCount}
       />
     </Canvas>
   );
