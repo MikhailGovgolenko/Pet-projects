@@ -59,7 +59,7 @@ function lensBox(lens) {
   return { z0: zMin, z1: zMax, r1: lens.aperture };
 }
 
-function Rays({ eq, eqR, aperture, angle, n, rayCount, box }) {
+function Rays({ eq, eqR, aperture, angle, n, rayCount, box, keepFailed, onDrawnCount }) {
   const traceCache = useRef(new Map());
 
   const structure = useMemo(() => {
@@ -82,6 +82,7 @@ function Rays({ eq, eqR, aperture, angle, n, rayCount, box }) {
   useLayoutEffect(() => {
     var dir = { z: Math.cos(angle), r: Math.sin(angle) };
     var perp = { z: -dir.r, r: dir.z };
+    var scale = Math.abs(Math.cos(angle));
     var count = Math.max(1, Math.round(rayCount));
     var startDist = 35;
     var endDist = 3000;
@@ -95,31 +96,32 @@ function Rays({ eq, eqR, aperture, angle, n, rayCount, box }) {
       var D = normVec(dir);
       var h1 = findIntersection(P, D, eq, box);
       var end = { z: P.z + endDist * D.z, r: P.r + endDist * D.r };
-      if (!h1) return { P, h1: null, h2: null, end };
+      if (!h1) return { P, h1: null, h2: null, end, ok: false };
       var N = normVec({ z: -1, r: deriv(eq, h1.r) });
       if (N.z * D.z + N.r * D.r > 0) N = { z: -N.z, r: -N.r };
       var T1 = refract3d(D, N, 1 / n);
-      if (!T1) return { P, h1, h2: null, end };
+      if (!T1) return { P, h1, h2: null, end, ok: false };
       var h2 = findIntersection(
         { z: h1.z + 1e-6 * T1.z, r: h1.r + 1e-6 * T1.r },
         T1, eqR, box
       );
       if (!h2) {
-        return { P, h1, h2: null, end: { z: h1.z + endDist * T1.z, r: h1.r + endDist * T1.r } };
+        return { P, h1, h2: null, end: { z: h1.z + endDist * T1.z, r: h1.r + endDist * T1.r }, ok: false };
       }
       var N2 = normVec({ z: -1, r: deriv(eqR, h2.r) });
       if (N2.z * T1.z + N2.r * T1.r > 0) N2 = { z: -N2.z, r: -N2.r };
       var T2 = refract3d(T1, N2, n);
-      var end2 = T2
-        ? { z: h2.z + endDist * T2.z, r: h2.r + endDist * T2.r }
-        : { z: h2.z + endDist * T1.z, r: h2.r + endDist * T1.r };
-      return { P, h1, h2, end: end2 };
+      if (T2) {
+        return { P, h1, h2, end: { z: h2.z + endDist * T2.z, r: h2.r + endDist * T2.r }, ok: true };
+      }
+      return { P, h1, h2, end: { z: h2.z + endDist * T1.z, r: h2.r + endDist * T1.r }, ok: false };
     }
 
     var allSegs = [[], [], []];
+    var fullCount = 0;
     for (var i = 0; i < count; i++) {
       var frac = count > 1 ? i / (count - 1) : 0;
-      var r = aperture * Math.sqrt(frac);
+      var r = aperture * Math.sqrt(frac) * scale;
       var theta = i * 2.3999632297286533;
       var ck = eq + "|" + eqR + "|" + angle.toFixed(4) + "|" + n + "|" + r.toFixed(4);
       var ray = cache.get(ck);
@@ -130,24 +132,50 @@ function Rays({ eq, eqR, aperture, angle, n, rayCount, box }) {
       }
       var ct = Math.cos(theta);
       var st = Math.sin(theta);
-      if (!ray.h1) {
-        allSegs[0].push(
-          ray.P.r * ct, ray.P.r * st, ray.P.z,
-          ray.end.r * ct, ray.end.r * st, ray.end.z
-        );
+      if (!ray.ok) {
+        if (keepFailed) {
+          if (!ray.h1) {
+            allSegs[0].push(
+              ray.P.r * ct, ray.P.r * st, ray.P.z,
+              ray.end.r * ct, ray.end.r * st, ray.end.z
+            );
+            continue;
+          }
+          allSegs[0].push(
+            ray.P.r * ct, ray.P.r * st, ray.P.z,
+            ray.h1.r * ct, ray.h1.r * st, ray.h1.z
+          );
+          if (ray.h2) {
+            allSegs[1].push(
+              ray.h1.r * ct, ray.h1.r * st, ray.h1.z,
+              ray.h2.r * ct, ray.h2.r * st, ray.h2.z
+            );
+            allSegs[2].push(
+              ray.h2.r * ct, ray.h2.r * st, ray.h2.z,
+              ray.end.r * ct, ray.end.r * st, ray.end.z
+            );
+          } else {
+            allSegs[1].push(
+              ray.h1.r * ct, ray.h1.r * st, ray.h1.z,
+              ray.end.r * ct, ray.end.r * st, ray.end.z
+            );
+          }
+        }
         continue;
       }
-      var pts = [ray.P, ray.h1];
-      if (ray.h2) pts.push(ray.h2);
-      pts.push(ray.end);
-      for (var si = 0; si < pts.length - 1; si++) {
-        var p0 = pts[si];
-        var p1 = pts[si + 1];
-        allSegs[si].push(
-          p0.r * ct, p0.r * st, p0.z,
-          p1.r * ct, p1.r * st, p1.z
-        );
-      }
+      fullCount++;
+      allSegs[0].push(
+        ray.P.r * ct, ray.P.r * st, ray.P.z,
+        ray.h1.r * ct, ray.h1.r * st, ray.h1.z
+      );
+      allSegs[1].push(
+        ray.h1.r * ct, ray.h1.r * st, ray.h1.z,
+        ray.h2.r * ct, ray.h2.r * st, ray.h2.z
+      );
+      allSegs[2].push(
+        ray.h2.r * ct, ray.h2.r * st, ray.h2.z,
+        ray.end.r * ct, ray.end.r * st, ray.end.z
+      );
     }
 
     for (var si = 0; si < 3; si++) {
@@ -159,12 +187,13 @@ function Rays({ eq, eqR, aperture, angle, n, rayCount, box }) {
         seg.visible = false;
       }
     }
-  }, [eq, eqR, aperture, angle, n, rayCount, box, structure]);
+    onDrawnCount(keepFailed ? count : fullCount);
+  }, [eq, eqR, aperture, angle, n, rayCount, box, structure, keepFailed, onDrawnCount]);
 
   return <primitive object={structure.group} />;
 }
 
-function Scene({ eq, eqR, aperture, angle, n, rayCount, box }) {
+function Scene({ eq, eqR, aperture, angle, n, rayCount, box, keepFailed, onDrawnCount }) {
   return (
     <>
       <ambientLight intensity={1.0} color={0x404060} />
@@ -179,6 +208,8 @@ function Scene({ eq, eqR, aperture, angle, n, rayCount, box }) {
         n={n}
         rayCount={rayCount}
         box={box}
+        keepFailed={keepFailed}
+        onDrawnCount={onDrawnCount}
       />
       <ThemeUpdater />
       <OrbitControls
@@ -191,7 +222,7 @@ function Scene({ eq, eqR, aperture, angle, n, rayCount, box }) {
   );
 }
 
-export default function Lens3D({ params }) {
+export default function Lens3D({ params, onDrawnCount }) {
   const [applied, setApplied] = useState(params);
   const pendingRef = useRef(false);
   const latestRef = useRef(params);
@@ -233,6 +264,8 @@ export default function Lens3D({ params }) {
         n={applied.n}
         rayCount={applied.rayCount}
         box={box}
+        keepFailed={applied.keepFailed}
+        onDrawnCount={onDrawnCount}
       />
     </Canvas>
   );
