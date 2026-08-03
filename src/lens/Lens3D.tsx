@@ -1,9 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useLayoutEffect, useRef, useState, useEffect } from "react";
 import { Canvas } from "@react-three/fiber";
 import ThemeUpdater from "../components/ThemeUpdater";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import { safeEval, sampleLens, deriv, normVec, refract3d, findIntersection } from "./lensMath";
+
+const RAY_COLORS = [0xff4444, 0xffb434, 0x44ff66];
 
 function LensMesh({ eq, eqR, aperture }) {
   const geo = useMemo(() => {
@@ -58,17 +60,33 @@ function lensBox(lens) {
 }
 
 function Rays({ eq, eqR, aperture, angle, n, rayCount, box }) {
-  var angleRad = angle;
+  const traceCache = useRef(new Map());
 
-  var group = useMemo(function () {
-    var colors = [0xff4444, 0xffb434, 0x44ff66];
-    var allSegs = [[], [], []];
-    var dir = { z: Math.cos(angleRad), r: Math.sin(angleRad) };
+  const structure = useMemo(() => {
+    const group = new THREE.Group();
+    const segs = RAY_COLORS.map((color) => {
+      const geo = new THREE.BufferGeometry();
+      const mat = new THREE.LineBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0.4,
+      });
+      const seg = new THREE.LineSegments(geo, mat);
+      seg.visible = false;
+      group.add(seg);
+      return seg;
+    });
+    return { group, segs };
+  }, []);
+
+  useLayoutEffect(() => {
+    var dir = { z: Math.cos(angle), r: Math.sin(angle) };
     var perp = { z: -dir.r, r: dir.z };
     var nSide = Math.max(1, Math.round(Math.sqrt(rayCount)));
     var halfSize = aperture * 0.7071;
     var startDist = 35;
     var endDist = 3000;
+    var cache = traceCache.current;
 
     function traceAtOffset(rOff) {
       var P = {
@@ -95,20 +113,19 @@ function Rays({ eq, eqR, aperture, angle, n, rayCount, box }) {
       return { P, h1, h2, end };
     }
 
-    var traceCache = {};
+    var allSegs = [[], [], []];
     for (var i = 0; i < nSide; i++) {
       for (var j = 0; j < nSide; j++) {
         var x = (i / Math.max(1, nSide - 1) - 0.5) * 2 * halfSize;
         var y = (j / Math.max(1, nSide - 1) - 0.5) * 2 * halfSize;
         var r = Math.sqrt(x * x + y * y);
         if (r > aperture) continue;
-        var ck = r.toFixed(4);
-        var ray;
-        if (traceCache[ck]) {
-          ray = traceCache[ck];
-        } else {
+        var ck = eq + "|" + eqR + "|" + angle.toFixed(4) + "|" + n + "|" + r.toFixed(4);
+        var ray = cache.get(ck);
+        if (ray === undefined) {
+          if (cache.size > 20000) cache.clear();
           ray = traceAtOffset(r);
-          traceCache[ck] = ray;
+          cache.set(ck, ray);
         }
         if (!ray) continue;
         var theta = Math.atan2(y || 1e-10, x || 1e-10);
@@ -126,22 +143,18 @@ function Rays({ eq, eqR, aperture, angle, n, rayCount, box }) {
       }
     }
 
-    var g = new THREE.Group();
     for (var si = 0; si < 3; si++) {
-      if (allSegs[si].length === 0) continue;
-      var geo = new THREE.BufferGeometry();
-      geo.setAttribute("position", new THREE.Float32BufferAttribute(allSegs[si], 3));
-      var mat = new THREE.LineBasicMaterial({
-        color: colors[si],
-        transparent: true,
-        opacity: 0.4,
-      });
-      g.add(new THREE.LineSegments(geo, mat));
+      var seg = structure.segs[si];
+      if (allSegs[si].length > 0) {
+        seg.geometry.setAttribute("position", new THREE.Float32BufferAttribute(allSegs[si], 3));
+        seg.visible = true;
+      } else {
+        seg.visible = false;
+      }
     }
-    return g;
-  }, [eq, eqR, aperture, angleRad, n, rayCount, box]);
+  }, [eq, eqR, aperture, angle, n, rayCount, box, structure]);
 
-  return <primitive object={group} />;
+  return <primitive object={structure.group} />;
 }
 
 function Scene({ eq, eqR, aperture, angle, n, rayCount, box }) {
@@ -172,16 +185,31 @@ function Scene({ eq, eqR, aperture, angle, n, rayCount, box }) {
 }
 
 export default function Lens3D({ params }) {
+  const [applied, setApplied] = useState(params);
+  const pendingRef = useRef(false);
+  const latestRef = useRef(params);
+  latestRef.current = params;
+
+  useEffect(() => {
+    if (pendingRef.current) return;
+    pendingRef.current = true;
+    requestAnimationFrame(() => {
+      pendingRef.current = false;
+      setApplied(latestRef.current);
+    });
+  }, [params]);
+
   const lensSample = useMemo(() => {
-    return sampleLens(params.eq, params.eqR);
-  }, [params.eq, params.eqR]);
+    return sampleLens(applied.eq, applied.eqR);
+  }, [applied.eq, applied.eqR]);
 
   const box = useMemo(() => lensBox(lensSample), [lensSample]);
 
   return (
     <Canvas
+      dpr={[1, 2]}
       camera={{ position: [55, 32, 55], fov: 50, near: 0.1, far: 500 }}
-      gl={{ antialias: true }}
+      gl={{ antialias: true, powerPreference: "high-performance" }}
       style={{
         width: "100%",
         height: "100%",
@@ -191,12 +219,12 @@ export default function Lens3D({ params }) {
       }}
     >
       <Scene
-        eq={params.eq}
-        eqR={params.eqR}
+        eq={applied.eq}
+        eqR={applied.eqR}
         aperture={lensSample.aperture}
-        angle={params.angle * (Math.PI / 180)}
-        n={params.n}
-        rayCount={params.rayCount}
+        angle={applied.angle * (Math.PI / 180)}
+        n={applied.n}
+        rayCount={applied.rayCount}
         box={box}
       />
     </Canvas>
