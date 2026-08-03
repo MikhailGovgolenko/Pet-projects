@@ -1,11 +1,11 @@
-﻿import { useState, useRef, useCallback, useMemo } from "react";
+﻿import { useState, useRef, useCallback, useMemo, Component, type ReactNode } from "react";
 import GlassPanel from "../components/GlassPanel";
 import ToggleSwitch from "../components/ToggleSwitch";
 import LensControls from "./LensControls";
 import Lens2D from "./Lens2D";
 import Lens3D from "./Lens3D";
 import { compile, substituteCoeffs } from "./expr";
-import { useI18n } from "../i18n";
+import { useI18n, type TranslationKey } from "../i18n";
 
 function defaultEq(params) {
   return `${params.z0}+(${params.a2})*r*r+(${params.a4})*r**4+(${params.a6})*r**6`;
@@ -22,6 +22,46 @@ function buildEq(params) {
     }
   }
   return defaultEq(params);
+}
+
+class ViewBoundary extends Component<
+  { t: (key: TranslationKey) => string; children?: ReactNode },
+  { error: unknown }
+> {
+  state = { error: null as unknown };
+
+  static getDerivedStateFromError(error: unknown) {
+    return { error };
+  }
+
+  render() {
+    if (this.state.error) {
+      const msg = this.state.error instanceof Error ? this.state.error.message : String(this.state.error);
+      return (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+            alignItems: "center",
+            justifyContent: "center",
+            color: "var(--text-sec)",
+            fontSize: 13,
+            textAlign: "center",
+            padding: 16,
+          }}
+        >
+          <div>
+            {this.props.t("lens.viewError")}: {msg}
+          </div>
+          <button onClick={() => this.setState({ error: null })}>{this.props.t("lens.retry")}</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 export default function LensPage() {
@@ -71,15 +111,17 @@ export default function LensPage() {
           zIndex: 0,
         }}
       >
-        {!mode3d ? (
-          <Lens2D
-            params={paramsWithEq}
-            resetKey={resetKey}
-            scaleRef={scaleRef}
-          />
-        ) : (
-          <Lens3D key={resetKey} params={paramsWithEq} />
-        )}
+        <ViewBoundary key={mode3d ? "3d" : "2d"} t={t}>
+          {!mode3d ? (
+            <Lens2D
+              params={paramsWithEq}
+              resetKey={resetKey}
+              scaleRef={scaleRef}
+            />
+          ) : (
+            <Lens3D key={resetKey} params={paramsWithEq} scaleRef={scaleRef} />
+          )}
+        </ViewBoundary>
       </div>
 
       <GlassPanel title={t("lens.panel")}>

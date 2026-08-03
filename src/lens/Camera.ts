@@ -18,7 +18,7 @@ export function createCamera(scale = 7): Camera {
     y: 0,
     zoomAt(sx, sy, factor) {
       const w = cam.screenToWorld(sx, sy);
-      cam.scale = Math.min(10000, Math.max(2, cam.scale * factor));
+      cam.scale = cam.scale * factor;
       cam.x = sx - w.z * cam.scale;
       cam.y = sy + w.r * cam.scale;
     },
@@ -28,7 +28,7 @@ export function createCamera(scale = 7): Camera {
     },
     reset(width, height) {
       cam.scale = 7;
-      cam.x = width / 4;
+      cam.x = width / 2;
       cam.y = height / 2;
     },
     worldToScreen(p) {

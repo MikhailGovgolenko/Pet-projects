@@ -143,8 +143,8 @@ export function traceRays(eq, eqR, aperture, angle, n, count, box, keepFailed) {
 
   function traceOne(r0) {
     var P = {
-      z: -80 * dir.z + r0 * perp.z,
-      r: -80 * dir.r + r0 * perp.r,
+      z: -120 * dir.z + r0 * perp.z,
+      r: -120 * dir.r + r0 * perp.r,
     };
     var D = normVec(dir);
     var h1 = findIntersection(P, D, eq, box);
