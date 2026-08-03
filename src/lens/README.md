@@ -4,8 +4,9 @@
 
 
 <p align="center">
-  <img width="1709" height="781" alt="image" src="https://github.com/user-attachments/assets/ef7ef30d-79ab-41dc-b013-184b9c053538" />
+  <img width="1911" height="724" alt="lens-preview-light" src="https://github.com/user-attachments/assets/1ffd45f4-ffb5-44a7-877d-53efcd601218" />
 </p>
+
 
 
 
