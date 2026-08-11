@@ -3,7 +3,7 @@ import { cards } from "./pages/cards";
 import HomePage from "./pages/HomePage";
 import { useI18n } from "./i18n";
 
-const BASE = "/Pet-projects/";
+const BASE = "/";
 
 var pageMap = {};
 for (const card of cards) {
@@ -14,7 +14,9 @@ function getTabFromPath() {
   var stored = sessionStorage.redirect;
   if (stored) {
     sessionStorage.removeItem("redirect");
-    return stored.replace(BASE, "") || "home";
+    var recovered = stored.replace(BASE, "") || "home";
+    history.replaceState(null, "", recovered === "home" ? BASE : BASE + recovered);
+    return recovered;
   }
   return location.pathname.replace(BASE, "") || "home";
 }
