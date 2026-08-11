@@ -1,6 +1,6 @@
 <h1 align="center">Симметричная линза без сферической аберрации</h1>
 
-<p align="center"> https://mikhailgovgolenko.github.io/Pet-projects/lens </p>
+<p align="center"> https://pet-projects.govgolenko.ru/lens </p>
 
 
 <p align="center">
@@ -23,4 +23,4 @@ $$
 
 $$M(r)=t-z\left(\frac{r_i\big|_{r_a=r}}{z_i\big|_{r_a=r}}\left(M(r)-z(r)\right)+r\right).$$
 
-С помощью [cайта](https://mikhailgovgolenko.github.io/Pet-projects/lens) можно смоделировать различные поверхности симметричной линзы.
+С помощью [cайта](https://pet-projects.govgolenko.ru/lens) можно смоделировать различные поверхности симметричной линзы.
