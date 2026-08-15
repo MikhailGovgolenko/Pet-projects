@@ -74,12 +74,12 @@ export default function LensPage() {
     n: 1.5,
     angle: 0,
     rayCount: 41,
-    z0: -5,
-    a2: 0.006457,
-    a4: -5e-7,
-    a6: 0,
+    z0: -0.5,
+    a2: 0.05170852666787464,
+    a4: -0.00030700944819219545,
+    a6: 1.942042195006421e-6,
     useField: false,
-    customEq: "",
+    customEq: "z0+5.170850194e-02*r^2-3.069862096e-04*r^4+1.932778274e-06*r^6+2.689897537e-08*r^8-1.507039271e-09*r^10+2.831055327e-11*r^12+2.560362512e-13*r^14-3.403878405e-14*r^16+8.472651009e-16*r^18",
     keepFailed: false,
     useReflections: false, // when true use new math that accounts for reflections
   });
