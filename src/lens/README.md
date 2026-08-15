@@ -1,3 +1,4 @@
+
 <h1 align="center">Симметричная линза без сферической аберрации</h1>
 
 <p align="center">
@@ -7,7 +8,7 @@
 </p>
 
 <p align="center">
-  <img width="1911" height="724" alt="lens-preview-light" src="https://github.com/user-attachments/assets/1ffd45f4-ffb5-44a7-877d-53efcd601218" />
+  <img width="1900" height="626" alt="lens-preview-light" src="https://github.com/user-attachments/assets/49f3958d-ac8a-4f25-8e0a-b353bb4f3bb0" />
 </p>
 
 Была решена следующая задача. Найти профиль осесимметричной линзы
@@ -22,18 +23,13 @@ $$
 точку на оси $z$ — то есть линза была свободна от сферической
 аберрации.
 
-После применения закона Снелла, условия постоянства оптической длины
+После применения закона Снеллиуса, условия постоянства оптической длины
 пути (принципа Ферма) и симметрии поверхностей получено нелинейное
 функционально-дифференциальное уравнение, задающее поверхность
 $z(r)$:
 
 $$
-F\big(r,z(r),z'(r)\big)
-=
-t-z\Big(
-r+q\big(z'(r)\big)
-\big[F\big(r,z(r),z'(r)\big)-z(r)\big]
-\Big),
+F\big(r,z(r),z'(r)\big)=t-z\Big(r+q\big(z'(r)\big)\big[F\big(r,z(r),z'(r)\big)-z(r)\big]\Big),
 $$
 
 где
