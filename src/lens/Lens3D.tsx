@@ -12,23 +12,29 @@ const RAY_BASE = [0xff3c3c, 0xffb432, 0x32ff64, 0xff5cc8, 0xff5cc8].map((c) => n
 const REFLEN = 120;
 
 const FOV = 50;
-const SCALE = 7;
+const FILL = 0.5;
 
 function computeInit(params, sampleLensFn?) {
   const w = typeof window !== "undefined" ? window.innerWidth : 1280;
   const h = typeof window !== "undefined" ? window.innerHeight : 720;
-  const d = h / (2 * SCALE * Math.tan((FOV * Math.PI) / 360));
+  const fovHalf = Math.tan((FOV * Math.PI) / 360);
   let zc = 0;
+  let r1 = 1;
   try {
     const sampleFn = sampleLensFn || (params && params.useReflections ? M.sampleLens : M_OLD.sampleLens);
     const b = lensBox(sampleFn(params.eq, params.eqR));
     zc = 0.5 * (b.z0 + b.z1);
+    r1 = Math.max(b.r1, 1e-6);
   } catch {}
+  // Дистанция камеры подбирается так, чтобы радиус апертуры
+  // занимал долю FILL от высоты экрана.
+  const d = r1 / (FILL * fovHalf);
+  const scale = h / (2 * d * fovHalf);
   return {
     pos: new THREE.Vector3(-d, 0, zc),
     target: new THREE.Vector3(0, 0, zc),
     d,
-    k: SCALE * d,
+    k: scale * d,
   };
 }
 

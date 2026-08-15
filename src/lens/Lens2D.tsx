@@ -184,6 +184,7 @@ function Lens2D({ params, resetKey, scaleRef }) {
   }>({ key: "" });
     const rayCacheRef = useRef<{ key: string; rays?: ReturnType<typeof M.traceRays> }>({ key: "" });
   const simPending = useRef(false);
+  const fittedRef = useRef(false);
   const paramsRef = useRef(params);
   paramsRef.current = params;
 
@@ -239,6 +240,15 @@ function Lens2D({ params, resetKey, scaleRef }) {
         lensCacheRef.current = { key: eqKey, lens, box: lensBox(lens) };
       }
       const lens = lensCacheRef.current.lens;
+      // После первого расчёта линзы подгоняем начальный вид под неё.
+      if (!fittedRef.current && lensCacheRef.current.box) {
+        fittedRef.current = true;
+        const rect = canvasRef.current ? canvasRef.current.getBoundingClientRect() : null;
+        const w = rect && rect.width > 0 ? rect.width : window.innerWidth;
+        const h = rect && rect.height > 0 ? rect.height : window.innerHeight;
+        cameraRef.current.fit(lensCacheRef.current.box, w, h);
+        if (scaleRef.current) scaleRef.current.textContent = cameraRef.current.scale.toFixed(2);
+      }
       const key = cacheKey(p, lens.aperture);
       if (rayCacheRef.current.key !== key) {
         const math = p.useReflections ? M : M_OLD; // default: old math (no reflections); when useReflections true -> use new math with reflections
@@ -278,7 +288,14 @@ function Lens2D({ params, resetKey, scaleRef }) {
   useEffect(() => {
     const camera = cameraRef.current;
     const rect = canvasRef.current ? canvasRef.current.getBoundingClientRect() : null;
-    camera.reset(rect ? rect.width : window.innerWidth, rect ? rect.height : window.innerHeight);
+    const w = rect && rect.width > 0 ? rect.width : window.innerWidth;
+    const h = rect && rect.height > 0 ? rect.height : window.innerHeight;
+    const box = lensCacheRef.current.box;
+    if (box) {
+      camera.fit(box, w, h);
+    } else {
+      camera.reset(w, h);
+    }
     if (scaleRef.current) scaleRef.current.textContent = camera.scale.toFixed(2);
     renderScheduled.current = false;
     render();

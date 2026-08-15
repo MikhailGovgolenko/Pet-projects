@@ -188,7 +188,7 @@ function LensControls({ params, setParams }) {
               type="text"
               value={params.customEq}
               onChange={(e) => setEq(e.target.value)}
-              placeholder="z0+a2*r^2+a4*r^4, e.g. -5+0.006457*r^2-5e-7*r^4"
+              placeholder="-0.5+0.049167*r^2-2.646e-4*r^4+1.532e-6*r^6"
               aria-invalid={!!eqError}
               style={{
                 background: "var(--input-bg)",
