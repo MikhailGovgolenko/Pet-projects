@@ -1,6 +1,14 @@
+diff --git a/public/emwave-preview-dark.png b/public/emwave-preview-dark.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..b273209ade624aaabb175be128e554ebfa203354
+Binary files /dev/null and b/public/emwave-preview-dark.png differ
+diff --git a/public/emwave-preview-light.png b/public/emwave-preview-light.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..df3032974efbf6d3c39440273bb693b40c2732d1
+Binary files /dev/null and b/public/emwave-preview-light.png differ
 diff --git a/src/components/CustomSelect.tsx b/src/components/CustomSelect.tsx
 new file mode 100644
-index 0000000..95a5c6f
+index 0000000000000000000000000000000000000000..95a5c6f94e1dafa4d425d063aa116f5e4651ac57
 --- /dev/null
 +++ b/src/components/CustomSelect.tsx
 @@ -0,0 +1,127 @@
@@ -134,34 +142,40 @@ index 0000000..95a5c6f
 \ No newline at end of file
 diff --git a/src/emwave/README.md b/src/emwave/README.md
 new file mode 100644
-index 0000000..efded04
+index 0000000000000000000000000000000000000000..efded0476c211a842e27b4d35475df1c09a9d38a
 --- /dev/null
 +++ b/src/emwave/README.md
 @@ -0,0 +1 @@
 +Анимация электромагнитной волны
 diff --git a/src/emwave/WaveControls.tsx b/src/emwave/WaveControls.tsx
 new file mode 100644
-index 0000000..85a02a1
+index 0000000000000000000000000000000000000000..79e5d1ccecdf3fa8f0367fce759f5e6b5cead4f7
 --- /dev/null
 +++ b/src/emwave/WaveControls.tsx
-@@ -0,0 +1,123 @@
+@@ -0,0 +1,129 @@
 +import ToggleSwitch from "../components/ToggleSwitch";
 +import RangeSlider from "../components/RangeSlider";
 +import CustomSelect from "../components/CustomSelect";
++import { useI18n, type TranslationKey } from "../i18n";
 +
-+const presets = [
-+  { value: "linear", label: "Линейная поляризация" },
-+  { value: "circularR", label: "Круговая поляризация (R)" },
-+  { value: "circularL", label: "Круговая поляризация (L)" },
-+  { value: "elliptic", label: "Эллиптическая поляризация" },
-+  { value: "standing", label: "Стоячая волна" },
-+  { value: "interference", label: "2D Интерференция" },
-+  { value: "spherical", label: "Сферическая волна" },
-+  { value: "plane_spherical", label: "Плоская+Сферическая" },
-+  { value: "reflection", label: "Отражение от плоскости" },
++const presetKeys: { value: string; key: TranslationKey }[] = [
++  { value: "linear", key: "emwave.preset.linear" },
++  { value: "circularR", key: "emwave.preset.circularR" },
++  { value: "circularL", key: "emwave.preset.circularL" },
++  { value: "elliptic", key: "emwave.preset.elliptic" },
++  { value: "standing", key: "emwave.preset.standing" },
++  { value: "interference", key: "emwave.preset.interference" },
++  { value: "spherical", key: "emwave.preset.spherical" },
++  { value: "plane_spherical", key: "emwave.preset.planeSpherical" },
++  { value: "reflection", key: "emwave.preset.reflection" },
 +];
 +
 +export default function WaveControls({ params, setParams, toggles, setToggles }) {
++  const { t } = useI18n();
++  const presets = presetKeys.map(function (p) {
++    return { value: p.value, label: t(p.key) };
++  });
++
 +  return (
 +    <>
 +      <div className="section">
@@ -181,7 +195,7 @@ index 0000000..85a02a1
 +              whiteSpace: "nowrap",
 +            }}
 +          >
-+            Пресет
++            {t("emwave.preset")}
 +          </span>
 +          <CustomSelect
 +            value={params.preset}
@@ -205,14 +219,14 @@ index 0000000..85a02a1
 +          format={(v) => v.toFixed(1)}
 +        />
 +        <RangeSlider
-+          label="Амплитуда"
++          label={t("emwave.amp")}
 +          min={0.2} max={3} step={0.1} value={params.amp}
 +          onChange={(v) => setParams((p) => ({ ...p, amp: v }))}
 +          format={(v) => v.toFixed(1)}
 +        />
 +        {params.preset === "reflection" && (
 +          <RangeSlider
-+            label="Угол падения"
++            label={t("emwave.angle")}
 +            min={5} max={85} step={1} value={params.angle}
 +            onChange={(v) => setParams((p) => ({ ...p, angle: v }))}
 +            format={(v) => v.toFixed(0) + "°"}
@@ -222,45 +236,45 @@ index 0000000..85a02a1
 +
 +      <div className="section">
 +        <ToggleSwitch
-+          label="Гауссов пучок"
++          label={t("emwave.beam")}
 +          checked={params.beamMode}
 +          onChange={(v) => setParams((p) => ({ ...p, beamMode: v }))}
 +        />
 +        {params.beamMode && (
 +          <RangeSlider
-+            label="Ширина пучка"
++            label={t("emwave.beamWidth")}
 +            min={0.6} max={5} step={0.1} value={params.beamWidth}
 +            onChange={(v) => setParams((p) => ({ ...p, beamWidth: v }))}
 +            format={(v) => v.toFixed(1)}
 +          />
 +        )}
 +        <ToggleSwitch
-+          label="Векторное поле"
++          label={t("emwave.field")}
 +          checked={toggles.showField}
 +          onChange={(v) => setToggles((t) => ({ ...t, showField: v }))}
 +        />
 +        <ToggleSwitch
-+          label="Волновой фронт"
++          label={t("emwave.front")}
 +          checked={toggles.showFront}
 +          onChange={(v) => setToggles((t) => ({ ...t, showFront: v }))}
 +        />
 +        <ToggleSwitch
-+          label="Линии E/B"
++          label={t("emwave.lines")}
 +          checked={toggles.showLines}
 +          onChange={(v) => setToggles((t) => ({ ...t, showLines: v }))}
 +        />
 +        <ToggleSwitch
-+          label="Стрелки волны"
++          label={t("emwave.arrows")}
 +          checked={toggles.showWaveArrows}
 +          onChange={(v) => setToggles((t) => ({ ...t, showWaveArrows: v }))}
 +        />
 +        <ToggleSwitch
-+          label="k-вектор"
++          label={t("emwave.k")}
 +          checked={toggles.showK}
 +          onChange={(v) => setToggles((t) => ({ ...t, showK: v }))}
 +        />
 +        <ToggleSwitch
-+          label="Огибающая пучка"
++          label={t("emwave.envelope")}
 +          checked={toggles.showEnvelope}
 +          onChange={(v) => setToggles((t) => ({ ...t, showEnvelope: v }))}
 +        />
@@ -270,7 +284,7 @@ index 0000000..85a02a1
 +}
 diff --git a/src/emwave/WavePage.tsx b/src/emwave/WavePage.tsx
 new file mode 100644
-index 0000000..5c80ba2
+index 0000000000000000000000000000000000000000..56f51f4cba8592160e5ba8d8bdf58c7af0be9ac7
 --- /dev/null
 +++ b/src/emwave/WavePage.tsx
 @@ -0,0 +1,287 @@
@@ -278,9 +292,11 @@ index 0000000..5c80ba2
 +import GlassPanel from "../components/GlassPanel";
 +import WaveScene from "./WaveScene";
 +import WaveControls from "./WaveControls";
-+import { badgeNames, presetInfo } from "./wavePresets";
++import { badgeKeys, presetInfo } from "./wavePresets";
++import { useI18n } from "../i18n";
 +
 +export default function WavePage() {
++  const { t } = useI18n();
 +  const [params, setParams] = useState({
 +    preset: "linear",
 +    k: 2.0,
@@ -301,7 +317,7 @@ index 0000000..5c80ba2
 +  });
 +
 +  var info = presetInfo[params.preset];
-+  var badgeText = badgeNames[params.preset] || "Волна";
++  var badgeText = t(badgeKeys[params.preset] || "emwave.badge.wave");
 +
 +  return (
 +    <div
@@ -404,7 +420,7 @@ index 0000000..5c80ba2
 +            opacity: 0.9,
 +          }}
 +        >
-+          Обозначения
++          {t("emwave.legend")}
 +        </h4>
 +        <div
 +          className="legend-item"
@@ -488,7 +504,7 @@ index 0000000..5c80ba2
 +              flexShrink: 0,
 +            }}
 +          />
-+          Огибающая
++          {t("emwave.envelopeLegend")}
 +        </div>
 +      </div>
 +
@@ -513,7 +529,7 @@ index 0000000..5c80ba2
 +            fontWeight: 700,
 +          }}
 +        >
-+          Физика
++          {t("emwave.physics")}
 +        </h4>
 +        {info &&
 +          info.formulas.map(function (f, i) {
@@ -543,9 +559,7 @@ index 0000000..5c80ba2
 +              lineHeight: 1.4,
 +            }}
 +          >
-+            {typeof info.desc === "function"
-+              ? info.desc(params.angle)
-+              : info.desc}
++            {t(info.descKey).replace("{angle}", String(params.angle))}
 +          </div>
 +        )}
 +      </div>
@@ -563,7 +577,7 @@ index 0000000..5c80ba2
 +}
 diff --git a/src/emwave/WaveScene.tsx b/src/emwave/WaveScene.tsx
 new file mode 100644
-index 0000000..68f4685
+index 0000000000000000000000000000000000000000..68f46850b54972ec6050280aeb2c9bb470b18e4f
 --- /dev/null
 +++ b/src/emwave/WaveScene.tsx
 @@ -0,0 +1,510 @@
@@ -1079,7 +1093,7 @@ index 0000000..68f4685
 +}
 diff --git a/src/emwave/wavePhysics.ts b/src/emwave/wavePhysics.ts
 new file mode 100644
-index 0000000..056b08b
+index 0000000000000000000000000000000000000000..056b08bf8b38bc38e9f41013dd418a8541f5ce60
 --- /dev/null
 +++ b/src/emwave/wavePhysics.ts
 @@ -0,0 +1,167 @@
@@ -1252,58 +1266,57 @@ index 0000000..056b08b
 +}
 diff --git a/src/emwave/wavePresets.ts b/src/emwave/wavePresets.ts
 new file mode 100644
-index 0000000..12b20b1
+index 0000000000000000000000000000000000000000..0bea954a5c03a85832e270beea4f9194c032f81f
 --- /dev/null
 +++ b/src/emwave/wavePresets.ts
-@@ -0,0 +1,55 @@
-+export const badgeNames = {
-+  linear: "Плоская волна · Линейная поляризация",
-+  circularR: "Плоская волна · Круговая поляризация (R)",
-+  circularL: "Плоская волна · Круговая поляризация (L)",
-+  elliptic: "Плоская волна · Эллиптическая поляризация",
-+  standing: "Стоячая волна",
-+  interference: "Интерференция плоских волн",
-+  spherical: "Сферическая волна",
-+  plane_spherical: "Рассеяние: плоская + сферическая",
-+  reflection: "Отражение от плоскости",
+@@ -0,0 +1,54 @@
++export const badgeKeys = {
++  linear: "emwave.badge.linear",
++  circularR: "emwave.badge.circularR",
++  circularL: "emwave.badge.circularL",
++  elliptic: "emwave.badge.elliptic",
++  standing: "emwave.badge.standing",
++  interference: "emwave.badge.interference",
++  spherical: "emwave.badge.spherical",
++  plane_spherical: "emwave.badge.planeSpherical",
++  reflection: "emwave.badge.reflection",
 +};
 +
 +export const presetInfo = {
 +  linear: {
-+    desc: "Бегущая плоская волна с линейной поляризацией. Векторы E, B и k образуют правую тройку.",
++    descKey: "emwave.info.linear",
 +    formulas: ["E = E₀ cos(kz − ωt) x̂", "B = k̂ × E"],
 +  },
 +  circularR: {
-+    desc: "Правая круговая поляризация (R). Конец вектора E описывает круг по часовой стрелке при взгляде навстречу волне.",
++    descKey: "emwave.info.circularR",
 +    formulas: ["E = E₀[cos(kz−ωt) x̂ + sin(kz−ωt) ŷ]", "B = k̂ × E"],
 +  },
 +  circularL: {
-+    desc: "Левая круговая поляризация (L). Конец вектора E описывает круг против часовой стрелки при взгляде навстречу волне.",
++    descKey: "emwave.info.circularL",
 +    formulas: ["E = E₀[cos(kz−ωt) x̂ − sin(kz−ωt) ŷ]", "B = k̂ × E"],
 +  },
 +  elliptic: {
-+    desc: "Эллиптическая поляризация. Амплитуды по осям x и y различны, конец вектора E описывает эллипс.",
++    descKey: "emwave.info.elliptic",
 +    formulas: ["Eₓ = 2E₀ cos(kz−ωt)", "Eᵧ = E₀ sin(kz−ωt)"],
 +  },
 +  standing: {
-+    desc: "Стоячая волна. Узлы E совпадают с пучностями B. Поля сдвинуты по фазе на π/2 в пространстве и времени.",
++    descKey: "emwave.info.standing",
 +    formulas: ["E = 2E₀ cos(kz) cos(ωt) x̂", "B = (2E₀/c) sin(kz) sin(ωt) ŷ"],
 +  },
 +  interference: {
-+    desc: "Интерференция двух плоских волн с углом 60° между волновыми векторами. Образуется пространственно-временная картина биений.",
++    descKey: "emwave.info.interference",
 +    formulas: ["E = E₁ + E₂", "k₁ · k₂ = |k|² cos 60°"],
 +  },
 +  spherical: {
-+    desc: "Сферическая волна от точечного источника. Поля затухают как 1/r. E ⊥ r, B ⊥ r, E ⊥ B.",
++    descKey: "emwave.info.spherical",
 +    formulas: ["E = E₀ (sin(kr−ωt)/r) θ̂", "B = E₀ (sin(kr−ωt)/r) φ̂"],
 +  },
 +  plane_spherical: {
-+    desc: "Суперпозиция плоской волны и сферической (модель рассеяния). Векторное поле показывает интерференцию падающей и рассеянной волн.",
++    descKey: "emwave.info.planeSpherical",
 +    formulas: ["E = E_plane + E_sphere", "B = B_plane + B_sphere"],
 +  },
 +  reflection: {
-+    desc: (angle) =>
-+      `Отражение s-поляризованной волны от идеальной плоской поверхности под углом ${angle}°. В первой среде падающая и отражённая волны интерферируют, образуя стоячую структуру вдоль нормали и бегущую волну вдоль поверхности.`,
++    descKey: "emwave.info.reflection",
 +    formulas: [
 +      "E_inc = E₀ e^{i(ωt−kᵢ·r)} ŷ",
 +      "E_ref = −E₀ e^{i(ωt−kᵣ·r)} ŷ",
@@ -1311,8 +1324,9 @@ index 0000000..12b20b1
 +    ],
 +  },
 +};
+\ No newline at end of file
 diff --git a/src/i18n.tsx b/src/i18n.tsx
-index 7d562f9..016ab69 100644
+index 7d562f9b9f80b1499d3a76dc2471f1ff9f01e675..997c2fc3630fe6bccbeef1a4af256287abe09946 100644
 --- a/src/i18n.tsx
 +++ b/src/i18n.tsx
 @@ -11,6 +11,9 @@ const ru = {
@@ -1325,7 +1339,58 @@ index 7d562f9..016ab69 100644
    "pet.panel": "Питомец",
    "pet.character": "Персонаж",
    "pet.size": "Размер",
-@@ -47,6 +50,9 @@ const en: Record<TranslationKey, string> = {
+@@ -33,7 +36,49 @@ const ru = {
+   "lens.noWebgl": "WebGL недоступен в этом браузере",
+   "lens.viewError": "Ошибка отрисовки сцены",
+   "lens.retry": "Повторить",
+-  "lens.useReflections": "Учитывать отражения"
++  "lens.useReflections": "Учитывать отражения",
++  "emwave.preset": "Пресет",
++  "emwave.amp": "Амплитуда",
++  "emwave.angle": "Угол падения",
++  "emwave.beam": "Гауссов пучок",
++  "emwave.beamWidth": "Ширина пучка",
++  "emwave.field": "Векторное поле",
++  "emwave.front": "Волновой фронт",
++  "emwave.lines": "Линии E/B",
++  "emwave.arrows": "Стрелки волны",
++  "emwave.k": "k-вектор",
++  "emwave.envelope": "Огибающая пучка",
++  "emwave.legend": "Обозначения",
++  "emwave.envelopeLegend": "Огибающая",
++  "emwave.physics": "Физика",
++  "emwave.badge.wave": "Волна",
++  "emwave.preset.linear": "Линейная поляризация",
++  "emwave.preset.circularR": "Круговая поляризация (R)",
++  "emwave.preset.circularL": "Круговая поляризация (L)",
++  "emwave.preset.elliptic": "Эллиптическая поляризация",
++  "emwave.preset.standing": "Стоячая волна",
++  "emwave.preset.interference": "2D Интерференция",
++  "emwave.preset.spherical": "Сферическая волна",
++  "emwave.preset.planeSpherical": "Плоская+Сферическая",
++  "emwave.preset.reflection": "Отражение от плоскости",
++  "emwave.badge.linear": "Плоская волна · Линейная поляризация",
++  "emwave.badge.circularR": "Плоская волна · Круговая поляризация (R)",
++  "emwave.badge.circularL": "Плоская волна · Круговая поляризация (L)",
++  "emwave.badge.elliptic": "Плоская волна · Эллиптическая поляризация",
++  "emwave.badge.standing": "Стоячая волна",
++  "emwave.badge.interference": "Интерференция плоских волн",
++  "emwave.badge.spherical": "Сферическая волна",
++  "emwave.badge.planeSpherical": "Рассеяние: плоская + сферическая",
++  "emwave.badge.reflection": "Отражение от плоскости",
++  "emwave.info.linear": "Бегущая плоская волна с линейной поляризацией. Векторы E, B и k образуют правую тройку.",
++  "emwave.info.circularR": "Правая круговая поляризация (R). Конец вектора E описывает круг по часовой стрелке при взгляде навстречу волне.",
++  "emwave.info.circularL": "Левая круговая поляризация (L). Конец вектора E описывает круг против часовой стрелки при взгляде навстречу волне.",
++  "emwave.info.elliptic": "Эллиптическая поляризация. Амплитуды по осям x и y различны, конец вектора E описывает эллипс.",
++  "emwave.info.standing": "Стоячая волна. Узлы E совпадают с пучностями B. Поля сдвинуты по фазе на π/2 в пространстве и времени.",
++  "emwave.info.interference": "Интерференция двух плоских волн с углом 60° между волновыми векторами. Образуется пространственно-временная картина биений.",
++  "emwave.info.spherical": "Сферическая волна от точечного источника. Поля затухают как 1/r. E ⊥ r, B ⊥ r, E ⊥ B.",
++  "emwave.info.planeSpherical": "Суперпозиция плоской волны и сферической (модель рассеяния). Векторное поле показывает интерференцию падающей и рассеянной волн.",
++  "emwave.info.reflection": "Отражение s-поляризованной волны от идеальной плоской поверхности под углом {angle}°. В первой среде падающая и отражённая волны интерферируют, образуя стоячую структуру вдоль нормали и бегущую волну вдоль поверхности."
+ } as const;
+ 
+ export type TranslationKey = keyof typeof ru;
+@@ -47,6 +92,9 @@ const en: Record<TranslationKey, string> = {
    "card.pet.title": "Interactive 3D pet",
    "card.pet.desc":
      "A fiery mascot that follows your cursor, blinks and chats with you. Pick one of four characters — Pip, Puff, Botty or Spook.",
@@ -1335,17 +1400,68 @@ index 7d562f9..016ab69 100644
    "pet.panel": "Pet",
    "pet.character": "Character",
    "pet.size": "Size",
+@@ -70,6 +118,48 @@ const en: Record<TranslationKey, string> = {
+   "lens.viewError": "Scene render error",
+   "lens.retry": "Retry",
+   "lens.useReflections": "Consider reflections",
++  "emwave.preset": "Preset",
++  "emwave.amp": "Amplitude",
++  "emwave.angle": "Incidence angle",
++  "emwave.beam": "Gaussian beam",
++  "emwave.beamWidth": "Beam width",
++  "emwave.field": "Vector field",
++  "emwave.front": "Wave front",
++  "emwave.lines": "E/B field lines",
++  "emwave.arrows": "Wave arrows",
++  "emwave.k": "k-vector",
++  "emwave.envelope": "Beam envelope",
++  "emwave.legend": "Legend",
++  "emwave.envelopeLegend": "Envelope",
++  "emwave.physics": "Physics",
++  "emwave.badge.wave": "Wave",
++  "emwave.preset.linear": "Linear polarization",
++  "emwave.preset.circularR": "Circular polarization (R)",
++  "emwave.preset.circularL": "Circular polarization (L)",
++  "emwave.preset.elliptic": "Elliptic polarization",
++  "emwave.preset.standing": "Standing wave",
++  "emwave.preset.interference": "2D Interference",
++  "emwave.preset.spherical": "Spherical wave",
++  "emwave.preset.planeSpherical": "Plane+Spherical",
++  "emwave.preset.reflection": "Reflection from a plane",
++  "emwave.badge.linear": "Plane wave · Linear polarization",
++  "emwave.badge.circularR": "Plane wave · Circular polarization (R)",
++  "emwave.badge.circularL": "Plane wave · Circular polarization (L)",
++  "emwave.badge.elliptic": "Plane wave · Elliptic polarization",
++  "emwave.badge.standing": "Standing wave",
++  "emwave.badge.interference": "Interference of plane waves",
++  "emwave.badge.spherical": "Spherical wave",
++  "emwave.badge.planeSpherical": "Scattering: plane + spherical",
++  "emwave.badge.reflection": "Reflection from a plane",
++  "emwave.info.linear": "A traveling plane wave with linear polarization. Vectors E, B and k form a right-handed triple.",
++  "emwave.info.circularR": "Right circular polarization (R). The tip of E traces a circle clockwise when viewed toward the wave.",
++  "emwave.info.circularL": "Left circular polarization (L). The tip of E traces a circle counterclockwise when viewed toward the wave.",
++  "emwave.info.elliptic": "Elliptic polarization. The amplitudes along the x and y axes differ, the tip of E traces an ellipse.",
++  "emwave.info.standing": "Standing wave. The nodes of E coincide with the antinodes of B. The fields are phase-shifted by π/2 in space and time.",
++  "emwave.info.interference": "Interference of two plane waves with a 60° angle between the wave vectors. A spatiotemporal beating pattern forms.",
++  "emwave.info.spherical": "Spherical wave from a point source. The fields decay as 1/r. E ⊥ r, B ⊥ r, E ⊥ B.",
++  "emwave.info.planeSpherical": "Superposition of a plane wave and a spherical wave (scattering model). The vector field shows interference of the incident and scattered waves.",
++  "emwave.info.reflection": "Reflection of an s-polarized wave from an ideal plane surface at an angle of {angle}°. In the first medium the incident and reflected waves interfere, forming a standing structure along the normal and a traveling wave along the surface.",
+ };
+ 
+ const dictionaries: Record<Language, Record<TranslationKey, string>> = { ru, en };
 diff --git a/src/pages/cards.tsx b/src/pages/cards.tsx
-index 2407233..344c33a 100644
+index 2407233a895e1ff26f4ca7d06f3beafbc3c2e3b0..21ffe532b65f932b7d4f6091f4a4aa336189ffb9 100644
 --- a/src/pages/cards.tsx
 +++ b/src/pages/cards.tsx
-@@ -21,4 +21,12 @@ export const cards = [
+@@ -21,4 +21,14 @@ export const cards = [
      readmeUrl: "https://github.com/MikhailGovgolenko/Pet-projects/tree/main/src/pet#readme",
      component: lazy(() => import("../pet/PetPage")),
    },
 +  {
 +    id: "EMWave",
 +    icon: "⚡",
++    previewLight: "emwave-preview-light.png",
++    previewDark: "emwave-preview-dark.png",
 +    titleKey: "card.emwave.title" as TranslationKey,
 +    descKey: "card.emwave.desc" as TranslationKey,
 +    readmeUrl: "https://github.com/MikhailGovgolenko/Pet-projects/tree/main/src/emwave#readme",
