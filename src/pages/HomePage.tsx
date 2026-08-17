@@ -91,6 +91,7 @@ export default function HomePage({ onNavigate }) {
           position: relative;
           margin: -29px -29px 0;
           overflow: hidden;
+          border-radius: 24px 24px 0 0;
         }
         .card-hero picture {
           display: block;
@@ -101,6 +102,10 @@ export default function HomePage({ onNavigate }) {
           height: 200px;
           object-fit: cover;
           object-position: center;
+        }
+        .card-hero picture {
+          -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
+          mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
         }
         .card-preview-canvas {
           background: radial-gradient(
@@ -119,13 +124,23 @@ export default function HomePage({ onNavigate }) {
           left: 0;
           right: 0;
           bottom: 0;
-          height: 72px;
+          height: 110px;
           pointer-events: none;
-          background: linear-gradient(to bottom, rgba(7, 7, 10, 0), rgba(16, 19, 23, 1));
+          background: linear-gradient(
+            to bottom,
+            rgba(0, 0, 0, 0),
+            rgba(0, 0, 0, 0.22) 55%,
+            var(--card-fade) 100%
+          );
         }
         @media (prefers-color-scheme: light) {
           .card-hero-fade {
-            background: linear-gradient(to bottom, rgba(244, 246, 250, 0), rgba(250, 252, 253, 1));
+            background: linear-gradient(
+              to bottom,
+              rgba(255, 255, 255, 0),
+              rgba(255, 255, 255, 0.3) 55%,
+              var(--card-fade) 100%
+            );
           }
         }
 
@@ -185,9 +200,9 @@ export default function HomePage({ onNavigate }) {
           .home-card { padding: 22px; }
           .home-card h2 { font-size: 18px; }
           .card-icon { width: 42px; height: 42px; font-size: 19px; }
-          .card-hero { margin: -23px -23px 0; }
+          .card-hero { margin: -23px -23px 0; border-radius: 18px 18px 0 0; }
           .card-preview { height: 150px; }
-          .card-hero-fade { height: 56px; }
+          .card-hero-fade { height: 84px; }
         }
       `}</style>
 

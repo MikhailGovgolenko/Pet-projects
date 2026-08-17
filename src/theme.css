@@ -15,6 +15,7 @@
   --card-hover: rgba(255, 255, 255, 0.06);
   --select-bg: rgba(20, 20, 30, 0.92);
   --danger: #ff5f6d;
+  --card-fade: rgba(16, 17, 20, 1);
 }
 
 @media (prefers-color-scheme: light) {
@@ -35,6 +36,7 @@
     --card-hover: rgba(0, 0, 0, 0.04);
     --select-bg: rgba(245, 245, 250, 0.95);
     --danger: #e03448;
+    --card-fade: rgba(250, 251, 253, 1);
   }
 }
 
