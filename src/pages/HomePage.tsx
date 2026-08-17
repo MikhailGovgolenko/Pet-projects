@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { cards } from "./cards";
 import { useI18n } from "../i18n";
 
@@ -100,6 +101,18 @@ export default function HomePage({ onNavigate }) {
           height: 200px;
           object-fit: cover;
           object-position: center;
+        }
+        .card-preview-canvas {
+          background: radial-gradient(
+            ellipse at 50% 42%,
+            rgba(0, 212, 255, 0.1),
+            transparent 72%
+          );
+          display: block;
+        }
+        .card-preview-canvas canvas {
+          touch-action: pan-y !important;
+          cursor: pointer;
         }
         .card-hero-fade {
           position: absolute;
@@ -229,6 +242,25 @@ export default function HomePage({ onNavigate }) {
                         draggable={false}
                       />
                     </picture>
+                    <div className="card-hero-fade"></div>
+                  </div>
+                ) : card.hero ? (
+                  <div className="card-hero">
+                    <div className="card-preview card-preview-canvas">
+                      <Suspense
+                        fallback={
+                          <div
+                            className="card-preview"
+                            style={{
+                              background:
+                                "radial-gradient(ellipse at 50% 42%, rgba(0,212,255,0.1), transparent 72%)",
+                            }}
+                          />
+                        }
+                      >
+                        {card.hero ? <card.hero /> : null}
+                      </Suspense>
+                    </div>
                     <div className="card-hero-fade"></div>
                   </div>
                 ) : (

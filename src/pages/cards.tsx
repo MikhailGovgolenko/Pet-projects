@@ -12,4 +12,13 @@ export const cards = [
     readmeUrl: "https://github.com/MikhailGovgolenko/Pet-projects/tree/main/src/lens#readme",
     component: lazy(() => import("../lens/LensPage")),
   },
+  {
+    id: "pet",
+    icon: "🐱",
+    hero: lazy(() => import("../pet/PetCardPreview")),
+    titleKey: "card.pet.title" as TranslationKey,
+    descKey: "card.pet.desc" as TranslationKey,
+    readmeUrl: "https://github.com/MikhailGovgolenko/Pet-projects/tree/main/src/pet#readme",
+    component: lazy(() => import("../pet/PetPage")),
+  },
 ];
