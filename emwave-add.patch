@@ -1093,66 +1093,57 @@ index 0000000000000000000000000000000000000000..68f46850b54972ec6050280aeb2c9bb4
 +}
 diff --git a/src/emwave/wavePhysics.ts b/src/emwave/wavePhysics.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..056b08bf8b38bc38e9f41013dd418a8541f5ce60
+index 0000000000000000000000000000000000000000..95327b4571048c9ac6d536e8e86fadda898cabe9
 --- /dev/null
 +++ b/src/emwave/wavePhysics.ts
-@@ -0,0 +1,167 @@
+@@ -0,0 +1,158 @@
 +export const presets = {
 +  linear: {
-+    label: "Линейная поляризация",
 +    build: (kVal, omegaVal) => [
 +      { A: [1, 0, 0], K: [0, 0, kVal], omega: omegaVal, phase: 0 },
 +    ],
 +  },
 +  circularR: {
-+    label: "Круговая поляризация (R)",
 +    build: (kVal, omegaVal) => [
 +      { A: [1, 0, 0], K: [0, 0, kVal], omega: omegaVal, phase: 0 },
 +      { A: [0, 1, 0], K: [0, 0, kVal], omega: omegaVal, phase: -Math.PI / 2 },
 +    ],
 +  },
 +  circularL: {
-+    label: "Круговая поляризация (L)",
 +    build: (kVal, omegaVal) => [
 +      { A: [1, 0, 0], K: [0, 0, kVal], omega: omegaVal, phase: 0 },
 +      { A: [0, 1, 0], K: [0, 0, kVal], omega: omegaVal, phase: Math.PI / 2 },
 +    ],
 +  },
 +  elliptic: {
-+    label: "Эллиптическая поляризация",
 +    build: (kVal, omegaVal) => [
 +      { A: [2, 0, 0], K: [0, 0, kVal], omega: omegaVal, phase: 0 },
 +      { A: [0, 1, 0], K: [0, 0, kVal], omega: omegaVal, phase: -Math.PI / 2 },
 +    ],
 +  },
 +  standing: {
-+    label: "Стоячая волна",
 +    build: (kVal, omegaVal) => [
 +      { A: [1, 0, 0], K: [0, 0, kVal], omega: omegaVal, phase: 0 },
 +      { A: [1, 0, 0], K: [0, 0, -kVal], omega: omegaVal, phase: 0 },
 +    ],
 +  },
 +  interference: {
-+    label: "2D Интерференция",
 +    build: (kVal, omegaVal) => [
 +      { A: [1, 0, 0], K: [0, 0, kVal], omega: omegaVal, phase: 0 },
 +      { A: [1, 0, 0], K: [kVal * 0.5, 0, kVal * 0.866], omega: omegaVal, phase: 0 },
 +    ],
 +  },
 +  spherical: {
-+    label: "Сферическая волна",
 +    build: () => [],
 +    isSpherical: true,
 +  },
 +  plane_spherical: {
-+    label: "Плоская + Сферическая",
 +    build: (kVal, omegaVal) => [
 +      { A: [0.5, 0, 0], K: [0, 0, kVal], omega: omegaVal, phase: 0 },
 +    ],
 +    hasSpherical: true,
 +  },
 +  reflection: {
-+    label: "Отражение от плоскости",
 +    build: (kVal, omegaVal, angle) => [
 +      { A: [0, 1, 0], K: [kVal * Math.sin(angle), 0, -kVal * Math.cos(angle)], omega: omegaVal, phase: 0 },
 +      { A: [0, -1, 0], K: [kVal * Math.sin(angle), 0, kVal * Math.cos(angle)], omega: omegaVal, phase: 0 },
