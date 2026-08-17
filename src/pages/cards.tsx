@@ -21,4 +21,12 @@ export const cards = [
     readmeUrl: "https://github.com/MikhailGovgolenko/Pet-projects/tree/main/src/pet#readme",
     component: lazy(() => import("../pet/PetPage")),
   },
+  {
+    id: "EMWave",
+    icon: "⚡",
+    titleKey: "card.emwave.title" as TranslationKey,
+    descKey: "card.emwave.desc" as TranslationKey,
+    readmeUrl: "https://github.com/MikhailGovgolenko/Pet-projects/tree/main/src/emwave#readme",
+    component: lazy(() => import("../emwave/WavePage")),
+  },
 ];

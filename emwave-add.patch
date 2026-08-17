@@ -1,0 +1,1354 @@
+diff --git a/src/components/CustomSelect.tsx b/src/components/CustomSelect.tsx
+new file mode 100644
+index 0000000..95a5c6f
+--- /dev/null
++++ b/src/components/CustomSelect.tsx
+@@ -0,0 +1,127 @@
++import { useState, useRef, useEffect } from "react";
++
++export default function CustomSelect({ value, options, onChange }) {
++  const [open, setOpen] = useState(false);
++  const ref = useRef(null);
++
++  useEffect(() => {
++    function onClick(e) {
++      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
++    }
++    document.addEventListener("mousedown", onClick);
++    return () => document.removeEventListener("mousedown", onClick);
++  }, []);
++
++  var label = (options.find(function (o) { return o.value === value; }) || {}).label || value;
++
++  return (
++    <div
++      ref={ref}
++      className={"custom-select" + (open ? " open" : "")}
++      style={{
++        position: "relative",
++        width: "100%",
++        fontSize: 13,
++        fontWeight: 500,
++        zIndex: 50,
++      }}
++    >
++      <div
++        className="select-trigger"
++        onClick={() => setOpen(!open)}
++        style={{
++          padding: "9px 14px",
++          borderRadius: 14,
++          background: "var(--input-bg)",
++          border: "1px solid var(--glass-border)",
++          cursor: "pointer",
++          display: "flex",
++          justifyContent: "space-between",
++          alignItems: "center",
++          transition: "background 0.2s",
++          fontSize: 13,
++        }}
++      >
++        {label}
++        <span
++          style={{
++            width: 6,
++            height: 6,
++            borderRight: "2px solid currentColor",
++            borderBottom: "2px solid currentColor",
++            transform: open ? "rotate(-135deg)" : "rotate(45deg)",
++            transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
++            opacity: 0.55,
++            marginRight: 2,
++            marginTop: open ? 2 : 0,
++          }}
++        />
++      </div>
++      <div
++        className="select-options"
++        style={{
++          position: "absolute",
++          top: "calc(100% + 6px)",
++          left: 0,
++          right: 0,
++          background: "var(--select-bg, var(--glass-bg))",
++          backdropFilter: "blur(16px)",
++          WebkitBackdropFilter: "blur(16px)",
++          border: "1px solid var(--glass-border)",
++          boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
++          borderRadius: 18,
++          zIndex: 100,
++          opacity: open ? 1 : 0,
++          transform: open ? "translateY(0) scale(1)" : "translateY(-8px) scale(0.96)",
++          pointerEvents: open ? "auto" : "none",
++          transition: "opacity 0.2s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
++          overflow: "hidden",
++          padding: 4,
++        }}
++      >
++        <div
++          className="select-list"
++          style={{
++            maxHeight: 272,
++            overflowY: "auto",
++            overscrollBehavior: "contain",
++            borderRadius: 14,
++            padding: "6px 2px",
++          }}
++        >
++          {options.map(function (o) {
++            var selected = o.value === value;
++            return (
++              <div
++                key={o.value}
++                className={selected ? "selected" : ""}
++                onClick={function () {
++                  onChange(o.value);
++                  setOpen(false);
++                }}
++                style={{
++                  padding: "10px 16px",
++                  cursor: "pointer",
++                  transition: "background 0.1s ease",
++                  fontSize: 13,
++                  color: selected ? "var(--accent)" : "var(--text)",
++                  fontWeight: selected ? 700 : 400,
++                  margin: "2px 0",
++                  borderRadius: 10,
++                }}
++                onMouseEnter={function (e) {
++                  e.currentTarget.style.background = "var(--card-hover)";
++                }}
++                onMouseLeave={function (e) {
++                  e.currentTarget.style.background = "transparent";
++                }}
++              >
++                {o.label}
++              </div>
++            );
++          })}
++        </div>
++      </div>
++    </div>
++  );
++}
+\ No newline at end of file
+diff --git a/src/emwave/README.md b/src/emwave/README.md
+new file mode 100644
+index 0000000..efded04
+--- /dev/null
++++ b/src/emwave/README.md
+@@ -0,0 +1 @@
++Анимация электромагнитной волны
+diff --git a/src/emwave/WaveControls.tsx b/src/emwave/WaveControls.tsx
+new file mode 100644
+index 0000000..85a02a1
+--- /dev/null
++++ b/src/emwave/WaveControls.tsx
+@@ -0,0 +1,123 @@
++import ToggleSwitch from "../components/ToggleSwitch";
++import RangeSlider from "../components/RangeSlider";
++import CustomSelect from "../components/CustomSelect";
++
++const presets = [
++  { value: "linear", label: "Линейная поляризация" },
++  { value: "circularR", label: "Круговая поляризация (R)" },
++  { value: "circularL", label: "Круговая поляризация (L)" },
++  { value: "elliptic", label: "Эллиптическая поляризация" },
++  { value: "standing", label: "Стоячая волна" },
++  { value: "interference", label: "2D Интерференция" },
++  { value: "spherical", label: "Сферическая волна" },
++  { value: "plane_spherical", label: "Плоская+Сферическая" },
++  { value: "reflection", label: "Отражение от плоскости" },
++];
++
++export default function WaveControls({ params, setParams, toggles, setToggles }) {
++  return (
++    <>
++      <div className="section">
++        <label
++          style={{
++            display: "block",
++            marginBottom: 4,
++            fontSize: 12,
++            fontWeight: 500,
++          }}
++        >
++          <span
++            style={{
++              display: "block",
++              marginBottom: 4,
++              color: "var(--text-sec)",
++              whiteSpace: "nowrap",
++            }}
++          >
++            Пресет
++          </span>
++          <CustomSelect
++            value={params.preset}
++            options={presets}
++            onChange={(v) => setParams((p) => ({ ...p, preset: v }))}
++          />
++        </label>
++      </div>
++
++      <div className="section">
++        <RangeSlider
++          label="k"
++          min={0.5} max={5} step={0.1} value={params.k}
++          onChange={(v) => setParams((p) => ({ ...p, k: v }))}
++          format={(v) => v.toFixed(1)}
++        />
++        <RangeSlider
++          label="ω"
++          min={0.5} max={8} step={0.1} value={params.omega}
++          onChange={(v) => setParams((p) => ({ ...p, omega: v }))}
++          format={(v) => v.toFixed(1)}
++        />
++        <RangeSlider
++          label="Амплитуда"
++          min={0.2} max={3} step={0.1} value={params.amp}
++          onChange={(v) => setParams((p) => ({ ...p, amp: v }))}
++          format={(v) => v.toFixed(1)}
++        />
++        {params.preset === "reflection" && (
++          <RangeSlider
++            label="Угол падения"
++            min={5} max={85} step={1} value={params.angle}
++            onChange={(v) => setParams((p) => ({ ...p, angle: v }))}
++            format={(v) => v.toFixed(0) + "°"}
++          />
++        )}
++      </div>
++
++      <div className="section">
++        <ToggleSwitch
++          label="Гауссов пучок"
++          checked={params.beamMode}
++          onChange={(v) => setParams((p) => ({ ...p, beamMode: v }))}
++        />
++        {params.beamMode && (
++          <RangeSlider
++            label="Ширина пучка"
++            min={0.6} max={5} step={0.1} value={params.beamWidth}
++            onChange={(v) => setParams((p) => ({ ...p, beamWidth: v }))}
++            format={(v) => v.toFixed(1)}
++          />
++        )}
++        <ToggleSwitch
++          label="Векторное поле"
++          checked={toggles.showField}
++          onChange={(v) => setToggles((t) => ({ ...t, showField: v }))}
++        />
++        <ToggleSwitch
++          label="Волновой фронт"
++          checked={toggles.showFront}
++          onChange={(v) => setToggles((t) => ({ ...t, showFront: v }))}
++        />
++        <ToggleSwitch
++          label="Линии E/B"
++          checked={toggles.showLines}
++          onChange={(v) => setToggles((t) => ({ ...t, showLines: v }))}
++        />
++        <ToggleSwitch
++          label="Стрелки волны"
++          checked={toggles.showWaveArrows}
++          onChange={(v) => setToggles((t) => ({ ...t, showWaveArrows: v }))}
++        />
++        <ToggleSwitch
++          label="k-вектор"
++          checked={toggles.showK}
++          onChange={(v) => setToggles((t) => ({ ...t, showK: v }))}
++        />
++        <ToggleSwitch
++          label="Огибающая пучка"
++          checked={toggles.showEnvelope}
++          onChange={(v) => setToggles((t) => ({ ...t, showEnvelope: v }))}
++        />
++      </div>
++    </>
++  );
++}
+diff --git a/src/emwave/WavePage.tsx b/src/emwave/WavePage.tsx
+new file mode 100644
+index 0000000..5c80ba2
+--- /dev/null
++++ b/src/emwave/WavePage.tsx
+@@ -0,0 +1,287 @@
++import { useState } from "react";
++import GlassPanel from "../components/GlassPanel";
++import WaveScene from "./WaveScene";
++import WaveControls from "./WaveControls";
++import { badgeNames, presetInfo } from "./wavePresets";
++
++export default function WavePage() {
++  const [params, setParams] = useState({
++    preset: "linear",
++    k: 2.0,
++    omega: 3.0,
++    amp: 1.0,
++    angle: 45,
++    beamMode: false,
++    beamWidth: 1.5,
++  });
++
++  const [toggles, setToggles] = useState({
++    showField: true,
++    showFront: true,
++    showLines: true,
++    showWaveArrows: true,
++    showK: true,
++    showEnvelope: false,
++  });
++
++  var info = presetInfo[params.preset];
++  var badgeText = badgeNames[params.preset] || "Волна";
++
++  return (
++    <div
++      style={{
++        minHeight: "100dvh",
++        width: "100%",
++        overflow: "hidden",
++        position: "relative",
++      }}
++    >
++      <style>{`
++        .wave-badge {
++          position: absolute;
++          left: 50%;
++          transform: translateX(-50%);
++          top: calc(68px + env(safe-area-inset-top));
++          padding: 10px 26px;
++          border-radius: 100px;
++          font-size: 13.5px;
++          font-weight: 700;
++          letter-spacing: 0.2px;
++          z-index: 10;
++          pointer-events: none;
++          white-space: nowrap;
++          max-width: calc(100vw - 24px);
++          overflow: hidden;
++          text-overflow: ellipsis;
++        }
++        .wave-legend {
++          position: absolute;
++          right: 20px;
++          top: 20px;
++          padding: 14px 18px;
++          z-index: 10;
++          font-size: 12.5px;
++          font-weight: 500;
++        }
++        .wave-info {
++          right: 20px;
++          bottom: 20px;
++          width: min(300px, calc(100vw - 40px));
++          max-height: 40vh;
++          overflow-y: auto;
++          overscroll-behavior: contain;
++        }
++        @media (max-width: 640px) {
++          .wave-badge {
++            top: calc(64px + env(safe-area-inset-top));
++            padding: 8px 18px;
++            font-size: 12.5px;
++          }
++          .wave-legend {
++            left: 50%;
++            right: auto;
++            top: calc(118px + env(safe-area-inset-top));
++            transform: translateX(-50%);
++            display: flex;
++            flex-direction: row;
++            align-items: center;
++            gap: 12px;
++            padding: 8px 14px;
++            border-radius: 100px;
++          }
++          .wave-legend h4 { display: none; }
++          .wave-legend .legend-item { margin: 0 !important; }
++          .wave-info {
++            display: none;
++          }
++        }
++        @media (max-width: 380px) {
++          .wave-legend { gap: 10px; padding: 7px 12px; font-size: 11.5px; }
++        }
++      `}</style>
++
++      <div
++        id="canvas-container"
++        style={{
++          position: "absolute",
++          inset: 0,
++          width: "100%",
++          height: "100%",
++          zIndex: 0,
++        }}
++      >
++        <WaveScene params={params} toggles={toggles} />
++      </div>
++
++      {/* Wave badge — center top */}
++      <div className="glass wave-badge">
++        {badgeText}
++      </div>
++
++      {/* Legend — right top */}
++      <div className="glass wave-legend">
++        <h4
++          style={{
++            margin: "0 0 10px 0",
++            fontSize: 14,
++            fontWeight: 700,
++            opacity: 0.9,
++          }}
++        >
++          Обозначения
++        </h4>
++        <div
++          className="legend-item"
++          style={{
++            display: "flex",
++            alignItems: "center",
++            gap: 10,
++            margin: "7px 0",
++          }}
++        >
++          <span
++            style={{
++              width: 11,
++              height: 11,
++              borderRadius: "50%",
++              background: "#00d4ff",
++              boxShadow: "0 0 6px #00d4ff",
++              flexShrink: 0,
++            }}
++          />
++          E
++        </div>
++        <div
++          className="legend-item"
++          style={{
++            display: "flex",
++            alignItems: "center",
++            gap: 10,
++            margin: "7px 0",
++          }}
++        >
++          <span
++            style={{
++              width: 11,
++              height: 11,
++              borderRadius: "50%",
++              background: "#ff3366",
++              boxShadow: "0 0 6px #ff3366",
++              flexShrink: 0,
++            }}
++          />
++          B
++        </div>
++        <div
++          className="legend-item"
++          style={{
++            display: "flex",
++            alignItems: "center",
++            gap: 10,
++            margin: "7px 0",
++          }}
++        >
++          <span
++            style={{
++              width: 11,
++              height: 11,
++              borderRadius: "50%",
++              background: "#ffd700",
++              boxShadow: "0 0 6px #ffd700",
++              flexShrink: 0,
++            }}
++          />
++          k
++        </div>
++        <div
++          className="legend-item"
++          style={{
++            display: "flex",
++            alignItems: "center",
++            gap: 10,
++            margin: "7px 0",
++          }}
++        >
++          <span
++            style={{
++              width: 11,
++              height: 11,
++              borderRadius: "50%",
++              background: "#00ff88",
++              boxShadow: "0 0 6px #00ff88",
++              flexShrink: 0,
++            }}
++          />
++          Огибающая
++        </div>
++      </div>
++
++      {/* Info panel — right bottom */}
++      <div
++        className="glass wave-info"
++        style={{
++          position: "absolute",
++          padding: 16,
++          zIndex: 10,
++          fontSize: 12.5,
++          lineHeight: 1.5,
++        }}
++      >
++        <h4
++          style={{
++            margin: "0 0 8px 0",
++            fontSize: 11,
++            color: "var(--accent)",
++            textTransform: "uppercase",
++            letterSpacing: "0.8px",
++            fontWeight: 700,
++          }}
++        >
++          Физика
++        </h4>
++        {info &&
++          info.formulas.map(function (f, i) {
++            return (
++              <div
++                key={i}
++                className="formula"
++                style={{
++                  fontFamily: '"Times New Roman", Times, serif',
++                  fontStyle: "italic",
++                  fontSize: 14,
++                  margin: "6px 0",
++                  opacity: 0.95,
++                }}
++              >
++                {f}
++              </div>
++            );
++          })}
++        {info && (
++          <div
++            className="desc"
++            style={{
++              color: "var(--text-sec)",
++              marginTop: 6,
++              fontSize: 12,
++              lineHeight: 1.4,
++            }}
++          >
++            {typeof info.desc === "function"
++              ? info.desc(params.angle)
++              : info.desc}
++          </div>
++        )}
++      </div>
++
++      <GlassPanel title="EM Wave">
++        <WaveControls
++          params={params}
++          setParams={setParams}
++          toggles={toggles}
++          setToggles={setToggles}
++        />
++      </GlassPanel>
++    </div>
++  );
++}
+diff --git a/src/emwave/WaveScene.tsx b/src/emwave/WaveScene.tsx
+new file mode 100644
+index 0000000..68f4685
+--- /dev/null
++++ b/src/emwave/WaveScene.tsx
+@@ -0,0 +1,510 @@
++import { useRef, useMemo, useEffect } from "react";
++import { Canvas, useFrame, useThree } from "@react-three/fiber";
++import { OrbitControls } from "@react-three/drei";
++import * as THREE from "three";
++import ThemeUpdater from "../components/ThemeUpdater";
++import { presets, getFields, normalize, len } from "./wavePhysics";
++
++function V(x, y, z) { return new THREE.Vector3(x, y, z); }
++
++interface SceneRefs {
++  arrowsGroup: THREE.Group | null;
++  linesGroup: THREE.Group | null;
++  kArrow: THREE.ArrowHelper | null;
++  waGroup: THREE.Group | null;
++  frontGroup: THREE.Group | null;
++  envGroup: THREE.Group | null;
++  standingGroup: THREE.Group | null;
++  reflector: THREE.Mesh | null;
++  source: THREE.Mesh | null;
++  grid: THREE.GridHelper | null;
++  arrowsList: { pos: number[]; eArrow: THREE.ArrowHelper; bArrow: THREE.ArrowHelper }[];
++  waList: { pos: number[]; eArrow: THREE.ArrowHelper; bArrow: THREE.ArrowHelper }[];
++  lineData: any;
++}
++
++function AnimatedScene({ params, toggles }) {
++  var { scene } = useThree();
++  var clockRef = useRef(new THREE.Clock());
++  var allRef = useRef<SceneRefs>({
++    arrowsGroup: null,
++    linesGroup: null,
++    kArrow: null,
++    waGroup: null,
++    frontGroup: null,
++    envGroup: null,
++    standingGroup: null,
++    reflector: null,
++    source: null,
++    grid: null,
++    arrowsList: [],
++    waList: [],
++    lineData: {},
++  });
++  var paramsRef = useRef(params);
++  paramsRef.current = params;
++  var togglesRef = useRef(toggles);
++  togglesRef.current = toggles;
++
++  var kVal = params.k;
++  var omegaVal = params.omega;
++  var ampVal = params.amp;
++  var preset = params.preset;
++
++  var waves = useMemo(function () {
++    var def = presets[preset];
++    if (!def) return [];
++    if (preset === "reflection") {
++      return def.build(kVal, omegaVal, params.angle * Math.PI / 180);
++    }
++    return def.build(kVal, omegaVal);
++  }, [preset, params.angle, kVal, omegaVal]);
++
++  useEffect(function () {
++    var r = allRef.current;
++
++    if (r.arrowsGroup) { scene.remove(r.arrowsGroup); r.arrowsGroup = null; }
++    if (r.linesGroup) { scene.remove(r.linesGroup); r.linesGroup = null; }
++    if (r.kArrow) { scene.remove(r.kArrow); r.kArrow = null; }
++    if (r.waGroup) { scene.remove(r.waGroup); r.waGroup = null; }
++    if (r.frontGroup) { scene.remove(r.frontGroup); r.frontGroup = null; }
++    if (r.envGroup) { scene.remove(r.envGroup); r.envGroup = null; }
++    if (r.standingGroup) { scene.remove(r.standingGroup); r.standingGroup = null; }
++    if (r.reflector) { scene.remove(r.reflector); r.reflector = null; }
++    if (r.source) { scene.remove(r.source); r.source = null; }
++    if (r.grid) { scene.remove(r.grid); r.grid = null; }
++    r.arrowsList = [];
++    r.waList = [];
++    r.lineData = {};
++
++    var isLight = window.matchMedia("(prefers-color-scheme: light)").matches;
++
++    // --- Grid ---
++    var gridColor = isLight ? 0xd0d4dc : 0x2a2a35;
++    var gridSub = isLight ? 0xe8ebf0 : 0x15151c;
++    var grid = new THREE.GridHelper(20, 20, gridColor, gridSub);
++    scene.add(grid);
++    r.grid = grid;
++
++    // --- Field arrows (both E and B) ---
++    if (toggles.showField) {
++      var ag = new THREE.Group();
++      r.arrowsList = [];
++      for (var x = -4; x <= 4; x += 1.2) {
++        for (var y = -4; y <= 4; y += 1.2) {
++          for (var z = -4; z <= 4; z += 1.2) {
++            var p = [x, y, z];
++            var eArrow = new THREE.ArrowHelper(V(1, 0, 0), V(x, y, z), 0.1, 0x00d4ff, 0.12, 0.06);
++            var bArrow = new THREE.ArrowHelper(V(0, 1, 0), V(x, y, z), 0.1, 0xff3366, 0.12, 0.06);
++            ag.add(eArrow);
++            ag.add(bArrow);
++            r.arrowsList.push({ pos: p, eArrow, bArrow });
++          }
++        }
++      }
++      scene.add(ag);
++      r.arrowsGroup = ag;
++    }
++
++    // --- Field lines ---
++    var N = 300, L = 10;
++    if (toggles.showLines) {
++      var lg = new THREE.Group();
++      r.lineData = { type: "plane", N, L, km: [0, 0, 1] };
++
++      if (preset === "spherical") {
++        var dirs = [
++          [1,0,0],[0,1,0],[0,0,1],[-1,0,0],[0,-1,0],[0,0,-1],
++          [0.707,0.707,0],[0.707,-0.707,0],[-0.707,0.707,0],[-0.707,-0.707,0],
++          [0.707,0,0.707],[0.707,0,-0.707],[0,0.707,0.707],[0,0.707,-0.707],
++        ];
++        var normDirs = [];
++        for (var di = 0; di < dirs.length; di++) {
++          var l = Math.sqrt(dirs[di][0]*dirs[di][0] + dirs[di][1]*dirs[di][1] + dirs[di][2]*dirs[di][2]);
++          normDirs.push([dirs[di][0]/l, dirs[di][1]/l, dirs[di][2]/l]);
++        }
++        r.lineData = { type: "spherical", dirs: normDirs, N, L };
++        lg.add(new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0x00d4ff, transparent: true, opacity: 0.9 })));
++        lg.add(new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xff3366, transparent: true, opacity: 0.9 })));
++      } else if (preset === "reflection") {
++        r.lineData = { type: "reflection", N, L };
++        lg.add(new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0x00d4ff, transparent: true, opacity: 0.9 })));
++        lg.add(new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xff3366, transparent: true, opacity: 0.9 })));
++      } else {
++        var km = [0, 0, 1];
++        if (waves.length > 0) km = normalize(waves[0].K);
++        r.lineData = { type: "plane", km, N, L };
++        lg.add(new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0x00d4ff, transparent: true, opacity: 0.9 })));
++        lg.add(new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xff3366, transparent: true, opacity: 0.9 })));
++      }
++      scene.add(lg);
++      r.linesGroup = lg;
++    }
++
++    // --- k arrow ---
++    if (toggles.showK && waves.length > 0 && preset !== "spherical" && preset !== "reflection") {
++      var kDir = normalize(waves[0].K);
++      var kArr = new THREE.ArrowHelper(V(kDir[0], kDir[1], kDir[2]), V(0, 0, 0), 2.8, 0xffd700, 0.5, 0.3);
++      scene.add(kArr);
++      r.kArrow = kArr;
++    }
++
++    // --- Wave arrows (both E and B) ---
++    if (toggles.showWaveArrows) {
++      var wg = new THREE.Group();
++      r.waList = [];
++      var L = 10;
++
++      if (preset === "spherical") {
++        var dirs = [
++          [1,0,0],[0,1,0],[0,0,1],[-1,0,0],[0,-1,0],[0,0,-1],
++          [0.707,0.707,0],[0.707,-0.707,0],
++        ];
++        var normDirs = [];
++        for (var di = 0; di < dirs.length; di++) {
++          var l = Math.sqrt(dirs[di][0]*dirs[di][0] + dirs[di][1]*dirs[di][1] + dirs[di][2]*dirs[di][2]);
++          normDirs.push([dirs[di][0]/l, dirs[di][1]/l, dirs[di][2]/l]);
++        }
++        for (var di = 0; di < normDirs.length; di++) {
++          for (var ri = 0; ri < 4; ri++) {
++            var radius = 0.8 + 1.4 * ri;
++            var pos = V(normDirs[di][0] * radius, normDirs[di][1] * radius, normDirs[di][2] * radius);
++            var eArr = new THREE.ArrowHelper(V(1, 0, 0), pos, 0.35, 0x00d4ff, 0.18, 0.1);
++            var bArr = new THREE.ArrowHelper(V(0, 1, 0), pos, 0.35, 0xff3366, 0.18, 0.1);
++            wg.add(eArr);
++            wg.add(bArr);
++            r.waList.push({ pos: [pos.x, pos.y, pos.z], eArrow: eArr, bArrow: bArr });
++          }
++        }
++      } else if (preset === "reflection") {
++        var angRad = params.angle * Math.PI / 180;
++        var kDir = [Math.sin(angRad), 0, -Math.cos(angRad)];
++        for (var i = 0; i < 12; i++) {
++          var frac = (i / 11) * 8 - 4;
++          var pos = V(kDir[0] * frac, 0, kDir[2] * frac);
++          pos.add(V(0, 0, -0.5));
++          var eArr = new THREE.ArrowHelper(V(1, 0, 0), pos, 0.4, 0x00d4ff, 0.2, 0.12);
++          var bArr = new THREE.ArrowHelper(V(0, 1, 0), pos, 0.4, 0xff3366, 0.2, 0.12);
++          wg.add(eArr);
++          wg.add(bArr);
++          r.waList.push({ pos: [pos.x, pos.y, pos.z], eArrow: eArr, bArrow: bArr });
++        }
++      } else if (preset !== "plane_spherical") {
++        var km = [0, 0, 1];
++        if (waves.length > 0) km = normalize(waves[0].K);
++        for (var i = 0; i < 12; i++) {
++          var s = (i / 11 - 0.5) * L;
++          var pos = V(km[0] * s, km[1] * s, km[2] * s);
++          var eArr = new THREE.ArrowHelper(V(1, 0, 0), pos, 0.4, 0x00d4ff, 0.2, 0.12);
++          var bArr = new THREE.ArrowHelper(V(0, 1, 0), pos, 0.4, 0xff3366, 0.2, 0.12);
++          wg.add(eArr);
++          wg.add(bArr);
++          r.waList.push({ pos: [pos.x, pos.y, pos.z], eArrow: eArr, bArrow: bArr });
++        }
++      }
++      scene.add(wg);
++      r.waGroup = wg;
++    }
++
++    // --- Wave fronts (original style) ---
++    if (toggles.showFront) {
++      var fg = new THREE.Group();
++      var v = omegaVal / kVal;
++      var frontColor = isLight ? 0x0066cc : 0x66bbff;
++      var cycle = 20;
++
++      if (preset === "spherical") {
++        var mat = new THREE.MeshBasicMaterial({ color: frontColor, transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false });
++        var mesh = new THREE.Mesh(new THREE.SphereGeometry(1, 64, 64), mat);
++        mesh.userData = { type: "sphere", v, maxR: 12 };
++        fg.add(mesh);
++      } else if (preset === "standing") {
++        // no traveling fronts
++      } else if (preset === "interference") {
++        var wavesData = waves.length > 1 ? waves : [{ K: [0, 0, 1] }, { K: [0.5, 0, 0.866] }];
++        for (var wi = 0; wi < 2; wi++) {
++          let kDir = normalize(wavesData[wi].K);
++          var col = wi === 0 ? frontColor : (isLight ? 0xcc0055 : 0xff88bb);
++          let mat = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false });
++          let plane = new THREE.Mesh(new THREE.PlaneGeometry(16, 16), mat);
++          plane.userData = { type: "plane", kDir, v, offset: wi * 6.66 };
++          fg.add(plane);
++        }
++      } else if (preset === "plane_spherical") {
++        let km = waves.length > 0 ? normalize(waves[0].K) : [0, 0, 1];
++        var pMat = new THREE.MeshBasicMaterial({ color: frontColor, transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false });
++        var pMesh = new THREE.Mesh(new THREE.PlaneGeometry(16, 16), pMat);
++        pMesh.userData = { type: "plane", kDir: km, v, offset: 0 };
++        fg.add(pMesh);
++        var sMat = new THREE.MeshBasicMaterial({ color: isLight ? 0xcc8800 : 0xffcc44, transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false });
++        var sMesh = new THREE.Mesh(new THREE.SphereGeometry(1, 64, 64), sMat);
++        sMesh.userData = { type: "sphere", v, maxR: 12 };
++        fg.add(sMesh);
++      } else if (preset === "reflection") {
++        var angRad = params.angle * Math.PI / 180;
++        for (var wi = 0; wi < 2; wi++) {
++          let kDir = [Math.sin(angRad), 0, wi === 0 ? -Math.cos(angRad) : Math.cos(angRad)];
++          var col = wi === 0 ? frontColor : (isLight ? 0xcc6600 : 0xffaa44);
++          let mat = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false });
++          let plane = new THREE.Mesh(new THREE.PlaneGeometry(16, 16), mat);
++          plane.userData = { type: "plane", kDir, v, offset: 0 };
++          fg.add(plane);
++        }
++      } else {
++        let km = [0, 0, 1];
++        if (waves.length > 0) km = normalize(waves[0].K);
++        let geom = params.beamMode
++          ? new THREE.CircleGeometry(params.beamWidth * 2.2, 64)
++          : new THREE.PlaneGeometry(16, 16);
++        let mat = new THREE.MeshBasicMaterial({ color: frontColor, transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false });
++        let mesh = new THREE.Mesh(geom, mat);
++        mesh.userData = { type: "plane", kDir: km, v, offset: 0 };
++        fg.add(mesh);
++      }
++      scene.add(fg);
++      r.frontGroup = fg;
++    }
++
++    // --- Beam envelope ---
++    if (toggles.showEnvelope && preset !== "spherical" && preset !== "plane_spherical" && preset !== "reflection") {
++      var eg = new THREE.Group();
++      var km = [0, 0, 1];
++      if (waves.length > 0) km = normalize(waves[0].K);
++      for (var i = 0; i < 7; i++) {
++        var dist = (i / 6 - 0.5) * 8;
++        var geo = new THREE.RingGeometry(params.beamWidth * 0.92, params.beamWidth, 32);
++        var mat = new THREE.MeshBasicMaterial({ color: 0x00ff88, transparent: true, opacity: 0.25, side: THREE.DoubleSide, depthWrite: false });
++        var ring = new THREE.Mesh(geo, mat);
++        ring.position.set(km[0] * dist, km[1] * dist, km[2] * dist);
++        ring.quaternion.setFromUnitVectors(V(0, 0, 1), V(km[0], km[1], km[2]));
++        eg.add(ring);
++      }
++      scene.add(eg);
++      r.envGroup = eg;
++    }
++
++    // --- Standing nodes ---
++    if (preset === "standing" && toggles.showFront) {
++      var sg = new THREE.Group();
++      for (var i = 0; i < 8; i++) {
++        var z = (Math.PI / 2 + i * Math.PI) / kVal;
++        var geo = new THREE.RingGeometry(0.08, 0.18, 32);
++        var mat = new THREE.MeshBasicMaterial({ color: 0x00d4ff, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false });
++        var ring = new THREE.Mesh(geo, mat);
++        ring.position.set(0, 0, z);
++        ring.rotation.x = -Math.PI / 2;
++        sg.add(ring);
++      }
++      scene.add(sg);
++      r.standingGroup = sg;
++    }
++
++    // --- Reflector ---
++    if (preset === "reflection") {
++      var refl = new THREE.Mesh(new THREE.PlaneGeometry(24, 24), new THREE.MeshBasicMaterial({ color: isLight ? 0xffffff : 0x444455, transparent: true, opacity: 0.12, side: THREE.DoubleSide, depthWrite: false }));
++      scene.add(refl);
++      r.reflector = refl;
++    }
++
++    // --- Source ---
++    if (preset === "spherical" || preset === "plane_spherical") {
++      var src = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 16), new THREE.MeshBasicMaterial({ color: 0xffaa00 }));
++      scene.add(src);
++      r.source = src;
++    }
++
++    return function () {
++      if (r.arrowsGroup) { scene.remove(r.arrowsGroup); r.arrowsGroup = null; }
++      if (r.linesGroup) { scene.remove(r.linesGroup); r.linesGroup = null; }
++      if (r.kArrow) { scene.remove(r.kArrow); r.kArrow = null; }
++      if (r.waGroup) { scene.remove(r.waGroup); r.waGroup = null; }
++      if (r.frontGroup) { scene.remove(r.frontGroup); r.frontGroup = null; }
++      if (r.envGroup) { scene.remove(r.envGroup); r.envGroup = null; }
++      if (r.standingGroup) { scene.remove(r.standingGroup); r.standingGroup = null; }
++      if (r.reflector) { scene.remove(r.reflector); r.reflector = null; }
++      if (r.source) { scene.remove(r.source); r.source = null; }
++      if (r.grid) { scene.remove(r.grid); r.grid = null; }
++      r.arrowsList = [];
++      r.waList = [];
++      r.lineData = {};
++    };
++  }, [preset, params.angle, kVal, omegaVal, params.beamMode, params.beamWidth, toggles.showField, toggles.showLines, toggles.showK, toggles.showWaveArrows, toggles.showFront, toggles.showEnvelope, waves, scene]);
++
++  // Rebuild the grid when the theme changes (grid colors are theme-dependent)
++  useEffect(function () {
++    var r = allRef.current;
++    function updateTheme() {
++      if (!r.grid) return;
++      var isLight = window.matchMedia("(prefers-color-scheme: light)").matches;
++      var gridColor = isLight ? 0xd0d4dc : 0x2a2a35;
++      var gridSub = isLight ? 0xe8ebf0 : 0x15151c;
++      scene.remove(r.grid);
++      var grid = new THREE.GridHelper(20, 20, gridColor, gridSub);
++      scene.add(grid);
++      r.grid = grid;
++    }
++    var mql = window.matchMedia("(prefers-color-scheme: light)");
++    mql.addEventListener("change", updateTheme);
++    return function () { mql.removeEventListener("change", updateTheme); };
++  }, [scene]);
++
++  useFrame(function () {
++    var r = allRef.current;
++    var t = clockRef.current.getElapsedTime();
++    var p = paramsRef.current;
++    var tg = togglesRef.current;
++    var kw = p.k, ow = p.omega, aw = p.amp, pr = p.preset;
++
++    // Field arrows
++    if (r.arrowsGroup) {
++      for (var ai = 0; ai < r.arrowsList.length; ai++) {
++        var d = r.arrowsList[ai];
++        var fields = getFields(d.pos, t, pr, waves, kw, ow, aw, p.beamMode, p.beamWidth);
++        var eLen = len(fields.E);
++        var bLen = len(fields.B);
++        if (eLen > 0.001) {
++          d.eArrow.setDirection(V(fields.E[0] / eLen, fields.E[1] / eLen, fields.E[2] / eLen));
++          d.eArrow.setLength(eLen, 0.15, 0.08);
++        } else {
++          d.eArrow.setLength(0.05);
++        }
++        if (bLen > 0.001) {
++          d.bArrow.setDirection(V(fields.B[0] / bLen, fields.B[1] / bLen, fields.B[2] / bLen));
++          d.bArrow.setLength(bLen, 0.15, 0.08);
++        } else {
++          d.bArrow.setLength(0.05);
++        }
++      }
++    }
++
++    // Field lines
++    var ld = r.lineData;
++    var lg = r.linesGroup;
++    if (lg && ld.type) {
++      var N = ld.N, L = ld.L;
++      if (ld.type === "plane") {
++        var ePos = new Float32Array(N * 3);
++        var bPos = new Float32Array(N * 3);
++        var km = ld.km;
++        for (var i = 0; i < N; i++) {
++          var frac = (i / (N - 1) - 0.5) * L;
++          var rp = [km[0] * frac, km[1] * frac, km[2] * frac];
++          var fields = getFields(rp, t, pr, waves, kw, ow, aw, p.beamMode, p.beamWidth);
++          ePos[i * 3] = rp[0] + fields.E[0];
++          ePos[i * 3 + 1] = rp[1] + fields.E[1];
++          ePos[i * 3 + 2] = rp[2] + fields.E[2];
++          bPos[i * 3] = rp[0] + fields.B[0];
++          bPos[i * 3 + 1] = rp[1] + fields.B[1];
++          bPos[i * 3 + 2] = rp[2] + fields.B[2];
++        }
++        (lg.children[0] as THREE.Line).geometry.setAttribute("position", new THREE.BufferAttribute(ePos, 3));
++        (lg.children[0] as THREE.Line).geometry.attributes.position.needsUpdate = true;
++        (lg.children[1] as THREE.Line).geometry.setAttribute("position", new THREE.BufferAttribute(bPos, 3));
++        (lg.children[1] as THREE.Line).geometry.attributes.position.needsUpdate = true;
++      } else if (ld.type === "spherical") {
++        var dirs = ld.dirs;
++        for (var di = 0; di < dirs.length; di++) {
++          var eArr = [], bArr = [];
++          for (var i = 0; i < N; i++) {
++            var frac = 0.3 + (i / N) * 7;
++            var rp = [dirs[di][0] * frac, dirs[di][1] * frac, dirs[di][2] * frac];
++            var fields = getFields(rp, t, pr, waves, kw, ow, aw, p.beamMode, p.beamWidth);
++            eArr.push(rp[0] + fields.E[0], rp[1] + fields.E[1], rp[2] + fields.E[2]);
++            bArr.push(rp[0] + fields.B[0], rp[1] + fields.B[1], rp[2] + fields.B[2]);
++          }
++          if (lg.children.length <= di * 2) {
++            lg.add(new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0x00d4ff, transparent: true, opacity: 0.9 })));
++            lg.add(new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xff3366, transparent: true, opacity: 0.9 })));
++          }
++          (lg.children[di * 2] as THREE.Line).geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(eArr), 3));
++          (lg.children[di * 2] as THREE.Line).geometry.attributes.position.needsUpdate = true;
++          (lg.children[di * 2 + 1] as THREE.Line).geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(bArr), 3));
++          (lg.children[di * 2 + 1] as THREE.Line).geometry.attributes.position.needsUpdate = true;
++        }
++      } else if (ld.type === "reflection") {
++        var angRad = p.angle * Math.PI / 180;
++        var kDir = [Math.sin(angRad), 0, -Math.cos(angRad)];
++        var ePos = new Float32Array(N * 3);
++        var bPos = new Float32Array(N * 3);
++        for (var i = 0; i < N; i++) {
++          var frac = (i / (N - 1)) * L;
++          var rp = [kDir[0] * frac, 0, kDir[2] * frac];
++          var fields = getFields(rp, t, pr, waves, kw, ow, aw, p.beamMode, p.beamWidth);
++          ePos[i * 3] = rp[0] + fields.E[0] * 0.5;
++          ePos[i * 3 + 1] = rp[1] + fields.E[1] * 0.5;
++          ePos[i * 3 + 2] = rp[2] + fields.E[2] * 0.5;
++          bPos[i * 3] = rp[0] + fields.B[0] * 0.5;
++          bPos[i * 3 + 1] = rp[1] + fields.B[1] * 0.5;
++          bPos[i * 3 + 2] = rp[2] + fields.B[2] * 0.5;
++        }
++        (lg.children[0] as THREE.Line).geometry.setAttribute("position", new THREE.BufferAttribute(ePos, 3));
++        (lg.children[0] as THREE.Line).geometry.attributes.position.needsUpdate = true;
++        (lg.children[1] as THREE.Line).geometry.setAttribute("position", new THREE.BufferAttribute(bPos, 3));
++        (lg.children[1] as THREE.Line).geometry.attributes.position.needsUpdate = true;
++      }
++    }
++
++    // Wave arrows (both E and B)
++    for (var wi = 0; wi < r.waList.length; wi++) {
++      var wa = r.waList[wi];
++      var fields = getFields(wa.pos, t, pr, waves, kw, ow, aw, p.beamMode, p.beamWidth);
++      var eLen = len(fields.E);
++      var bLen = len(fields.B);
++      if (eLen > 0.001) {
++        wa.eArrow.setDirection(V(fields.E[0] / eLen, fields.E[1] / eLen, fields.E[2] / eLen));
++        wa.eArrow.setLength(eLen, 0.15, 0.08);
++      } else {
++        wa.eArrow.setLength(0.05);
++      }
++      if (bLen > 0.001) {
++        wa.bArrow.setDirection(V(fields.B[0] / bLen, fields.B[1] / bLen, fields.B[2] / bLen));
++        wa.bArrow.setLength(bLen, 0.15, 0.08);
++      } else {
++        wa.bArrow.setLength(0.05);
++      }
++    }
++
++    // Wave fronts (original animation)
++    var fg = r.frontGroup;
++    if (fg) {
++      for (var fi = 0; fi < fg.children.length; fi++) {
++        var child = fg.children[fi];
++        let d = child.userData;
++        if (d.type === "plane") {
++          var dist = ((d.v * t + (d.offset || 0)) % 20) - 10;
++          child.position.set(d.kDir[0] * dist, d.kDir[1] * dist, d.kDir[2] * dist);
++          child.lookAt(child.position.clone().add(V(d.kDir[0], d.kDir[1], d.kDir[2])));
++        } else if (d.type === "sphere") {
++          var rsc = (d.v * t) % d.maxR;
++          child.scale.set(rsc, rsc, rsc);
++          child.visible = rsc > 0.1;
++        }
++      }
++    }
++  });
++
++  return null;
++}
++
++export default function WaveScene({ params, toggles }) {
++  return (
++    <Canvas
++      camera={{ position: [10, 8, 10], fov: 45, near: 0.1, far: 100 }}
++      gl={{ antialias: true }}
++      style={{
++        width: "100%",
++        height: "100%",
++        position: "absolute",
++        inset: 0,
++        cursor: "grab",
++      }}
++    >
++      <ambientLight intensity={1.0} color={0x404060} />
++      <directionalLight position={[15, 30, 15]} intensity={1.5} color={0xffffff} />
++      <directionalLight position={[-15, -10, -15]} intensity={0.5} color={0x4488ff} />
++      <ThemeUpdater />
++      <AnimatedScene params={params} toggles={toggles} />
++      <OrbitControls enableDamping dampingFactor={0.08} minDistance={2} maxDistance={25} />
++    </Canvas>
++  );
++}
+diff --git a/src/emwave/wavePhysics.ts b/src/emwave/wavePhysics.ts
+new file mode 100644
+index 0000000..056b08b
+--- /dev/null
++++ b/src/emwave/wavePhysics.ts
+@@ -0,0 +1,167 @@
++export const presets = {
++  linear: {
++    label: "Линейная поляризация",
++    build: (kVal, omegaVal) => [
++      { A: [1, 0, 0], K: [0, 0, kVal], omega: omegaVal, phase: 0 },
++    ],
++  },
++  circularR: {
++    label: "Круговая поляризация (R)",
++    build: (kVal, omegaVal) => [
++      { A: [1, 0, 0], K: [0, 0, kVal], omega: omegaVal, phase: 0 },
++      { A: [0, 1, 0], K: [0, 0, kVal], omega: omegaVal, phase: -Math.PI / 2 },
++    ],
++  },
++  circularL: {
++    label: "Круговая поляризация (L)",
++    build: (kVal, omegaVal) => [
++      { A: [1, 0, 0], K: [0, 0, kVal], omega: omegaVal, phase: 0 },
++      { A: [0, 1, 0], K: [0, 0, kVal], omega: omegaVal, phase: Math.PI / 2 },
++    ],
++  },
++  elliptic: {
++    label: "Эллиптическая поляризация",
++    build: (kVal, omegaVal) => [
++      { A: [2, 0, 0], K: [0, 0, kVal], omega: omegaVal, phase: 0 },
++      { A: [0, 1, 0], K: [0, 0, kVal], omega: omegaVal, phase: -Math.PI / 2 },
++    ],
++  },
++  standing: {
++    label: "Стоячая волна",
++    build: (kVal, omegaVal) => [
++      { A: [1, 0, 0], K: [0, 0, kVal], omega: omegaVal, phase: 0 },
++      { A: [1, 0, 0], K: [0, 0, -kVal], omega: omegaVal, phase: 0 },
++    ],
++  },
++  interference: {
++    label: "2D Интерференция",
++    build: (kVal, omegaVal) => [
++      { A: [1, 0, 0], K: [0, 0, kVal], omega: omegaVal, phase: 0 },
++      { A: [1, 0, 0], K: [kVal * 0.5, 0, kVal * 0.866], omega: omegaVal, phase: 0 },
++    ],
++  },
++  spherical: {
++    label: "Сферическая волна",
++    build: () => [],
++    isSpherical: true,
++  },
++  plane_spherical: {
++    label: "Плоская + Сферическая",
++    build: (kVal, omegaVal) => [
++      { A: [0.5, 0, 0], K: [0, 0, kVal], omega: omegaVal, phase: 0 },
++    ],
++    hasSpherical: true,
++  },
++  reflection: {
++    label: "Отражение от плоскости",
++    build: (kVal, omegaVal, angle) => [
++      { A: [0, 1, 0], K: [kVal * Math.sin(angle), 0, -kVal * Math.cos(angle)], omega: omegaVal, phase: 0 },
++      { A: [0, -1, 0], K: [kVal * Math.sin(angle), 0, kVal * Math.cos(angle)], omega: omegaVal, phase: 0 },
++    ],
++  },
++};
++
++export function normalize(v) {
++  var len = Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
++  if (len === 0) return [0, 0, 0];
++  return [v[0] / len, v[1] / len, v[2] / len];
++}
++
++export function cross(a, b) {
++  return [
++    a[1] * b[2] - a[2] * b[1],
++    a[2] * b[0] - a[0] * b[2],
++    a[0] * b[1] - a[1] * b[0],
++  ];
++}
++
++export function dot(a, b) {
++  return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
++}
++
++export function scale(v, s) {
++  return [v[0] * s, v[1] * s, v[2] * s];
++}
++
++export function add(a, b) {
++  return [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
++}
++
++export function sub(a, b) {
++  return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
++}
++
++export function len(v) {
++  return Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
++}
++
++export function getPlaneFields(r, t, waves, kVal, omegaVal, ampVal, beamMode, beamWidth) {
++  var E = [0, 0, 0];
++  var B = [0, 0, 0];
++  var avgK = [0, 0, 0];
++
++  for (var wi = 0; wi < waves.length; wi++) {
++    var w = waves[wi];
++    var phase = dot(w.K, r) - omegaVal * t + w.phase;
++    var kDir = normalize(w.K);
++    avgK[0] += kDir[0];
++    avgK[1] += kDir[1];
++    avgK[2] += kDir[2];
++
++    var env = 1;
++    if (beamMode) {
++      var perpDist = Math.sqrt(
++        (r[0] - kDir[0] * dot(r, kDir)) ** 2 +
++        (r[1] - kDir[1] * dot(r, kDir)) ** 2 +
++        (r[2] - kDir[2] * dot(r, kDir)) ** 2
++      );
++      env = Math.exp(-(perpDist * perpDist) / (beamWidth * beamWidth));
++    }
++
++    var Ei = scale(w.A, ampVal * Math.cos(phase) * env);
++    E = add(E, Ei);
++
++    var kCrossE = cross(kDir, Ei);
++    B = add(B, kCrossE);
++  }
++
++  if (waves.length > 0) {
++    avgK = normalize(avgK);
++  }
++
++  return { E, B, avgK };
++}
++
++export function getSphericalFields(r, t, kVal, omegaVal, ampVal) {
++  var posLen = len(r);
++  if (posLen < 0.01) return { E: [0, 0, 0], B: [0, 0, 0], avgK: [0, 0, 1] };
++
++  var phase = kVal * posLen - omegaVal * t;
++  var amplitude = ampVal * Math.sin(phase) / posLen;
++
++  var eR = normalize(r);
++  var eTheta, ePhi;
++
++  var up = [0, 1, 0];
++  if (Math.abs(dot(eR, up)) > 0.99) up = [1, 0, 0];
++  ePhi = normalize(cross(eR, up));
++  eTheta = cross(ePhi, eR);
++
++  var E = scale(eTheta, amplitude);
++  var B = scale(ePhi, amplitude);
++
++  return { E, B, avgK: eR };
++}
++
++export function getFields(r, t, preset, waves, kVal, omegaVal, ampVal, beamMode, beamWidth) {
++  if (preset === "spherical") {
++    return getSphericalFields(r, t, kVal, omegaVal, ampVal);
++  }
++  var fields = getPlaneFields(r, t, waves, kVal, omegaVal, ampVal, beamMode, beamWidth);
++  if (preset === "plane_spherical") {
++    var sph = getSphericalFields(r, t, kVal, omegaVal, ampVal * 0.6);
++    fields.E = add(fields.E, sph.E);
++    fields.B = add(fields.B, sph.B);
++  }
++  return fields;
++}
+diff --git a/src/emwave/wavePresets.ts b/src/emwave/wavePresets.ts
+new file mode 100644
+index 0000000..12b20b1
+--- /dev/null
++++ b/src/emwave/wavePresets.ts
+@@ -0,0 +1,55 @@
++export const badgeNames = {
++  linear: "Плоская волна · Линейная поляризация",
++  circularR: "Плоская волна · Круговая поляризация (R)",
++  circularL: "Плоская волна · Круговая поляризация (L)",
++  elliptic: "Плоская волна · Эллиптическая поляризация",
++  standing: "Стоячая волна",
++  interference: "Интерференция плоских волн",
++  spherical: "Сферическая волна",
++  plane_spherical: "Рассеяние: плоская + сферическая",
++  reflection: "Отражение от плоскости",
++};
++
++export const presetInfo = {
++  linear: {
++    desc: "Бегущая плоская волна с линейной поляризацией. Векторы E, B и k образуют правую тройку.",
++    formulas: ["E = E₀ cos(kz − ωt) x̂", "B = k̂ × E"],
++  },
++  circularR: {
++    desc: "Правая круговая поляризация (R). Конец вектора E описывает круг по часовой стрелке при взгляде навстречу волне.",
++    formulas: ["E = E₀[cos(kz−ωt) x̂ + sin(kz−ωt) ŷ]", "B = k̂ × E"],
++  },
++  circularL: {
++    desc: "Левая круговая поляризация (L). Конец вектора E описывает круг против часовой стрелки при взгляде навстречу волне.",
++    formulas: ["E = E₀[cos(kz−ωt) x̂ − sin(kz−ωt) ŷ]", "B = k̂ × E"],
++  },
++  elliptic: {
++    desc: "Эллиптическая поляризация. Амплитуды по осям x и y различны, конец вектора E описывает эллипс.",
++    formulas: ["Eₓ = 2E₀ cos(kz−ωt)", "Eᵧ = E₀ sin(kz−ωt)"],
++  },
++  standing: {
++    desc: "Стоячая волна. Узлы E совпадают с пучностями B. Поля сдвинуты по фазе на π/2 в пространстве и времени.",
++    formulas: ["E = 2E₀ cos(kz) cos(ωt) x̂", "B = (2E₀/c) sin(kz) sin(ωt) ŷ"],
++  },
++  interference: {
++    desc: "Интерференция двух плоских волн с углом 60° между волновыми векторами. Образуется пространственно-временная картина биений.",
++    formulas: ["E = E₁ + E₂", "k₁ · k₂ = |k|² cos 60°"],
++  },
++  spherical: {
++    desc: "Сферическая волна от точечного источника. Поля затухают как 1/r. E ⊥ r, B ⊥ r, E ⊥ B.",
++    formulas: ["E = E₀ (sin(kr−ωt)/r) θ̂", "B = E₀ (sin(kr−ωt)/r) φ̂"],
++  },
++  plane_spherical: {
++    desc: "Суперпозиция плоской волны и сферической (модель рассеяния). Векторное поле показывает интерференцию падающей и рассеянной волн.",
++    formulas: ["E = E_plane + E_sphere", "B = B_plane + B_sphere"],
++  },
++  reflection: {
++    desc: (angle) =>
++      `Отражение s-поляризованной волны от идеальной плоской поверхности под углом ${angle}°. В первой среде падающая и отражённая волны интерферируют, образуя стоячую структуру вдоль нормали и бегущую волну вдоль поверхности.`,
++    formulas: [
++      "E_inc = E₀ e^{i(ωt−kᵢ·r)} ŷ",
++      "E_ref = −E₀ e^{i(ωt−kᵣ·r)} ŷ",
++      "E = −2E₀ sin(kz cosθ) sin(ωt−kx sinθ) ŷ",
++    ],
++  },
++};
+diff --git a/src/i18n.tsx b/src/i18n.tsx
+index 7d562f9..016ab69 100644
+--- a/src/i18n.tsx
++++ b/src/i18n.tsx
+@@ -11,6 +11,9 @@ const ru = {
+   "card.pet.title": "Интерактивный 3D-питомец",
+   "card.pet.desc":
+     "Огненный маскот, который следит за курсором, моргает и болтает с вами. Выбирайте одного из четырёх персонажей — Pip, Puff, Botty или Spook.",
++  "card.emwave.title": "Электромагнитная волна",
++  "card.emwave.desc":
++    "Плоские и сферические электромагнитные волны. Поляризация, стоячие волны, интерференция и гауссовы пучки.",
+   "pet.panel": "Питомец",
+   "pet.character": "Персонаж",
+   "pet.size": "Размер",
+@@ -47,6 +50,9 @@ const en: Record<TranslationKey, string> = {
+   "card.pet.title": "Interactive 3D pet",
+   "card.pet.desc":
+     "A fiery mascot that follows your cursor, blinks and chats with you. Pick one of four characters — Pip, Puff, Botty or Spook.",
++  "card.emwave.title": "Electromagnetic wave",
++  "card.emwave.desc":
++    "Plane and spherical electromagnetic waves. Polarization, standing waves, interference and Gaussian beams.",
+   "pet.panel": "Pet",
+   "pet.character": "Character",
+   "pet.size": "Size",
+diff --git a/src/pages/cards.tsx b/src/pages/cards.tsx
+index 2407233..344c33a 100644
+--- a/src/pages/cards.tsx
++++ b/src/pages/cards.tsx
+@@ -21,4 +21,12 @@ export const cards = [
+     readmeUrl: "https://github.com/MikhailGovgolenko/Pet-projects/tree/main/src/pet#readme",
+     component: lazy(() => import("../pet/PetPage")),
+   },
++  {
++    id: "EMWave",
++    icon: "⚡",
++    titleKey: "card.emwave.title" as TranslationKey,
++    descKey: "card.emwave.desc" as TranslationKey,
++    readmeUrl: "https://github.com/MikhailGovgolenko/Pet-projects/tree/main/src/emwave#readme",
++    component: lazy(() => import("../emwave/WavePage")),
++  },
+ ];
