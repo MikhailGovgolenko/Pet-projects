@@ -24,6 +24,8 @@ export const cards = [
   {
     id: "EMWave",
     icon: "⚡",
+    previewLight: "emwave-preview-light.png",
+    previewDark: "emwave-preview-dark.png",
     titleKey: "card.emwave.title" as TranslationKey,
     descKey: "card.emwave.desc" as TranslationKey,
     readmeUrl: "https://github.com/MikhailGovgolenko/Pet-projects/tree/main/src/emwave#readme",

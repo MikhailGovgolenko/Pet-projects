@@ -2,9 +2,11 @@ import { useState } from "react";
 import GlassPanel from "../components/GlassPanel";
 import WaveScene from "./WaveScene";
 import WaveControls from "./WaveControls";
-import { badgeNames, presetInfo } from "./wavePresets";
+import { badgeKeys, presetInfo } from "./wavePresets";
+import { useI18n } from "../i18n";
 
 export default function WavePage() {
+  const { t } = useI18n();
   const [params, setParams] = useState({
     preset: "linear",
     k: 2.0,
@@ -25,7 +27,7 @@ export default function WavePage() {
   });
 
   var info = presetInfo[params.preset];
-  var badgeText = badgeNames[params.preset] || "Волна";
+  var badgeText = t(badgeKeys[params.preset] || "emwave.badge.wave");
 
   return (
     <div
@@ -128,7 +130,7 @@ export default function WavePage() {
             opacity: 0.9,
           }}
         >
-          Обозначения
+          {t("emwave.legend")}
         </h4>
         <div
           className="legend-item"
@@ -212,7 +214,7 @@ export default function WavePage() {
               flexShrink: 0,
             }}
           />
-          Огибающая
+          {t("emwave.envelopeLegend")}
         </div>
       </div>
 
@@ -237,7 +239,7 @@ export default function WavePage() {
             fontWeight: 700,
           }}
         >
-          Физика
+          {t("emwave.physics")}
         </h4>
         {info &&
           info.formulas.map(function (f, i) {
@@ -267,9 +269,7 @@ export default function WavePage() {
               lineHeight: 1.4,
             }}
           >
-            {typeof info.desc === "function"
-              ? info.desc(params.angle)
-              : info.desc}
+            {t(info.descKey).replace("{angle}", String(params.angle))}
           </div>
         )}
       </div>
