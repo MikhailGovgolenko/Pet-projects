@@ -1,51 +1,50 @@
-export const badgeNames = {
-  linear: "Плоская волна · Линейная поляризация",
-  circularR: "Плоская волна · Круговая поляризация (R)",
-  circularL: "Плоская волна · Круговая поляризация (L)",
-  elliptic: "Плоская волна · Эллиптическая поляризация",
-  standing: "Стоячая волна",
-  interference: "Интерференция плоских волн",
-  spherical: "Сферическая волна",
-  plane_spherical: "Рассеяние: плоская + сферическая",
-  reflection: "Отражение от плоскости",
+export const badgeKeys = {
+  linear: "emwave.badge.linear",
+  circularR: "emwave.badge.circularR",
+  circularL: "emwave.badge.circularL",
+  elliptic: "emwave.badge.elliptic",
+  standing: "emwave.badge.standing",
+  interference: "emwave.badge.interference",
+  spherical: "emwave.badge.spherical",
+  plane_spherical: "emwave.badge.planeSpherical",
+  reflection: "emwave.badge.reflection",
 };
 
 export const presetInfo = {
   linear: {
-    desc: "Бегущая плоская волна с линейной поляризацией. Векторы E, B и k образуют правую тройку.",
+    descKey: "emwave.info.linear",
     formulas: ["E = E₀ cos(kz − ωt) x̂", "B = k̂ × E"],
   },
   circularR: {
-    desc: "Правая круговая поляризация (R). Конец вектора E описывает круг по часовой стрелке при взгляде навстречу волне.",
+    descKey: "emwave.info.circularR",
     formulas: ["E = E₀[cos(kz−ωt) x̂ + sin(kz−ωt) ŷ]", "B = k̂ × E"],
   },
   circularL: {
-    desc: "Левая круговая поляризация (L). Конец вектора E описывает круг против часовой стрелки при взгляде навстречу волне.",
+    descKey: "emwave.info.circularL",
     formulas: ["E = E₀[cos(kz−ωt) x̂ − sin(kz−ωt) ŷ]", "B = k̂ × E"],
   },
   elliptic: {
-    desc: "Эллиптическая поляризация. Амплитуды по осям x и y различны, конец вектора E описывает эллипс.",
+    descKey: "emwave.info.elliptic",
     formulas: ["Eₓ = 2E₀ cos(kz−ωt)", "Eᵧ = E₀ sin(kz−ωt)"],
   },
   standing: {
-    desc: "Стоячая волна. Узлы E совпадают с пучностями B. Поля сдвинуты по фазе на π/2 в пространстве и времени.",
+    descKey: "emwave.info.standing",
     formulas: ["E = 2E₀ cos(kz) cos(ωt) x̂", "B = (2E₀/c) sin(kz) sin(ωt) ŷ"],
   },
   interference: {
-    desc: "Интерференция двух плоских волн с углом 60° между волновыми векторами. Образуется пространственно-временная картина биений.",
+    descKey: "emwave.info.interference",
     formulas: ["E = E₁ + E₂", "k₁ · k₂ = |k|² cos 60°"],
   },
   spherical: {
-    desc: "Сферическая волна от точечного источника. Поля затухают как 1/r. E ⊥ r, B ⊥ r, E ⊥ B.",
+    descKey: "emwave.info.spherical",
     formulas: ["E = E₀ (sin(kr−ωt)/r) θ̂", "B = E₀ (sin(kr−ωt)/r) φ̂"],
   },
   plane_spherical: {
-    desc: "Суперпозиция плоской волны и сферической (модель рассеяния). Векторное поле показывает интерференцию падающей и рассеянной волн.",
+    descKey: "emwave.info.planeSpherical",
     formulas: ["E = E_plane + E_sphere", "B = B_plane + B_sphere"],
   },
   reflection: {
-    desc: (angle) =>
-      `Отражение s-поляризованной волны от идеальной плоской поверхности под углом ${angle}°. В первой среде падающая и отражённая волны интерферируют, образуя стоячую структуру вдоль нормали и бегущую волну вдоль поверхности.`,
+    descKey: "emwave.info.reflection",
     formulas: [
       "E_inc = E₀ e^{i(ωt−kᵢ·r)} ŷ",
       "E_ref = −E₀ e^{i(ωt−kᵣ·r)} ŷ",
