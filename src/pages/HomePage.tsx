@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import { cards } from "./cards";
 import { useI18n } from "../i18n";
 
@@ -103,10 +102,7 @@ export default function HomePage({ onNavigate }) {
           object-fit: cover;
           object-position: center;
         }
-        .card-hero picture {
-          -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
-          mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
-        }
+
         .card-preview-canvas {
           background: radial-gradient(
             ellipse at 50% 42%,
@@ -115,21 +111,16 @@ export default function HomePage({ onNavigate }) {
           );
           display: block;
         }
-        .card-preview-canvas canvas {
-          touch-action: pan-y !important;
-          cursor: pointer;
-        }
         .card-hero-fade {
           position: absolute;
           left: 0;
           right: 0;
-          bottom: 0;
-          height: 110px;
+          bottom: 0px;
+          height: 60px;
           pointer-events: none;
           background: linear-gradient(
             to bottom,
-            rgba(0, 0, 0, 0),
-            rgba(0, 0, 0, 0.22) 55%,
+            rgba(0, 0, 0, 0) 0%,
             var(--card-fade) 100%
           );
         }
@@ -138,7 +129,6 @@ export default function HomePage({ onNavigate }) {
             background: linear-gradient(
               to bottom,
               rgba(255, 255, 255, 0),
-              rgba(255, 255, 255, 0.3) 55%,
               var(--card-fade) 100%
             );
           }
@@ -257,25 +247,6 @@ export default function HomePage({ onNavigate }) {
                         draggable={false}
                       />
                     </picture>
-                    <div className="card-hero-fade"></div>
-                  </div>
-                ) : card.hero ? (
-                  <div className="card-hero">
-                    <div className="card-preview card-preview-canvas">
-                      <Suspense
-                        fallback={
-                          <div
-                            className="card-preview"
-                            style={{
-                              background:
-                                "radial-gradient(ellipse at 50% 42%, rgba(0,212,255,0.1), transparent 72%)",
-                            }}
-                          />
-                        }
-                      >
-                        {card.hero ? <card.hero /> : null}
-                      </Suspense>
-                    </div>
                     <div className="card-hero-fade"></div>
                   </div>
                 ) : (
