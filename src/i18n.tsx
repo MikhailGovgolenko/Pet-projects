@@ -11,6 +11,9 @@ const ru = {
   "card.pet.title": "Интерактивный 3D-питомец",
   "card.pet.desc":
     "Огненный маскот, который следит за курсором, моргает и болтает с вами. Выбирайте одного из четырёх персонажей — Pip, Puff, Botty или Spook.",
+  "card.emwave.title": "Электромагнитная волна",
+  "card.emwave.desc":
+    "Плоские и сферические электромагнитные волны. Поляризация, стоячие волны, интерференция и гауссовы пучки.",
   "pet.panel": "Питомец",
   "pet.character": "Персонаж",
   "pet.size": "Размер",
@@ -47,6 +50,9 @@ const en: Record<TranslationKey, string> = {
   "card.pet.title": "Interactive 3D pet",
   "card.pet.desc":
     "A fiery mascot that follows your cursor, blinks and chats with you. Pick one of four characters — Pip, Puff, Botty or Spook.",
+  "card.emwave.title": "Electromagnetic wave",
+  "card.emwave.desc":
+    "Plane and spherical electromagnetic waves. Polarization, standing waves, interference and Gaussian beams.",
   "pet.panel": "Pet",
   "pet.character": "Character",
   "pet.size": "Size",
