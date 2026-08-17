@@ -1,59 +1,50 @@
 export const presets = {
   linear: {
-    label: "Линейная поляризация",
     build: (kVal, omegaVal) => [
       { A: [1, 0, 0], K: [0, 0, kVal], omega: omegaVal, phase: 0 },
     ],
   },
   circularR: {
-    label: "Круговая поляризация (R)",
     build: (kVal, omegaVal) => [
       { A: [1, 0, 0], K: [0, 0, kVal], omega: omegaVal, phase: 0 },
       { A: [0, 1, 0], K: [0, 0, kVal], omega: omegaVal, phase: -Math.PI / 2 },
     ],
   },
   circularL: {
-    label: "Круговая поляризация (L)",
     build: (kVal, omegaVal) => [
       { A: [1, 0, 0], K: [0, 0, kVal], omega: omegaVal, phase: 0 },
       { A: [0, 1, 0], K: [0, 0, kVal], omega: omegaVal, phase: Math.PI / 2 },
     ],
   },
   elliptic: {
-    label: "Эллиптическая поляризация",
     build: (kVal, omegaVal) => [
       { A: [2, 0, 0], K: [0, 0, kVal], omega: omegaVal, phase: 0 },
       { A: [0, 1, 0], K: [0, 0, kVal], omega: omegaVal, phase: -Math.PI / 2 },
     ],
   },
   standing: {
-    label: "Стоячая волна",
     build: (kVal, omegaVal) => [
       { A: [1, 0, 0], K: [0, 0, kVal], omega: omegaVal, phase: 0 },
       { A: [1, 0, 0], K: [0, 0, -kVal], omega: omegaVal, phase: 0 },
     ],
   },
   interference: {
-    label: "2D Интерференция",
     build: (kVal, omegaVal) => [
       { A: [1, 0, 0], K: [0, 0, kVal], omega: omegaVal, phase: 0 },
       { A: [1, 0, 0], K: [kVal * 0.5, 0, kVal * 0.866], omega: omegaVal, phase: 0 },
     ],
   },
   spherical: {
-    label: "Сферическая волна",
     build: () => [],
     isSpherical: true,
   },
   plane_spherical: {
-    label: "Плоская + Сферическая",
     build: (kVal, omegaVal) => [
       { A: [0.5, 0, 0], K: [0, 0, kVal], omega: omegaVal, phase: 0 },
     ],
     hasSpherical: true,
   },
   reflection: {
-    label: "Отражение от плоскости",
     build: (kVal, omegaVal, angle) => [
       { A: [0, 1, 0], K: [kVal * Math.sin(angle), 0, -kVal * Math.cos(angle)], omega: omegaVal, phase: 0 },
       { A: [0, -1, 0], K: [kVal * Math.sin(angle), 0, kVal * Math.cos(angle)], omega: omegaVal, phase: 0 },
