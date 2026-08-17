@@ -28,8 +28,10 @@ export default function HomePage({ onNavigate }) {
           min-height: 100vh;
           min-height: 100dvh;
           background: var(--bg);
-          padding: calc(48px + env(safe-area-inset-top)) 20px
-            calc(32px + env(safe-area-inset-bottom));
+          padding: calc(48px + env(safe-area-inset-top))
+            calc(20px + env(safe-area-inset-right))
+            calc(32px + env(safe-area-inset-bottom))
+            calc(20px + env(safe-area-inset-left));
           overflow-x: hidden;
           overflow-y: auto;
         }
