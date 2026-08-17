@@ -1,10 +1,10 @@
 diff --git a/public/emwave-preview-dark.png b/public/emwave-preview-dark.png
 new file mode 100644
-index 0000000000000000000000000000000000000000..b273209ade624aaabb175be128e554ebfa203354
+index 0000000000000000000000000000000000000000..3ab25e53f97ffa0f4daa6031ca8d6b5db0758754
 Binary files /dev/null and b/public/emwave-preview-dark.png differ
 diff --git a/public/emwave-preview-light.png b/public/emwave-preview-light.png
 new file mode 100644
-index 0000000000000000000000000000000000000000..df3032974efbf6d3c39440273bb693b40c2732d1
+index 0000000000000000000000000000000000000000..4ae1ddabd280e1382da5bc7d50c27565bae0b16f
 Binary files /dev/null and b/public/emwave-preview-light.png differ
 diff --git a/src/components/CustomSelect.tsx b/src/components/CustomSelect.tsx
 new file mode 100644
@@ -1317,7 +1317,7 @@ index 0000000000000000000000000000000000000000..0bea954a5c03a85832e270beea4f9194
 +};
 \ No newline at end of file
 diff --git a/src/i18n.tsx b/src/i18n.tsx
-index 7d562f9b9f80b1499d3a76dc2471f1ff9f01e675..997c2fc3630fe6bccbeef1a4af256287abe09946 100644
+index 7d562f9b9f80b1499d3a76dc2471f1ff9f01e675..73108f92e356a5a4a08c547f66a1f57a4f63fc06 100644
 --- a/src/i18n.tsx
 +++ b/src/i18n.tsx
 @@ -11,6 +11,9 @@ const ru = {
@@ -1342,12 +1342,12 @@ index 7d562f9b9f80b1499d3a76dc2471f1ff9f01e675..997c2fc3630fe6bccbeef1a4af256287
 +  "emwave.beam": "Гауссов пучок",
 +  "emwave.beamWidth": "Ширина пучка",
 +  "emwave.field": "Векторное поле",
-+  "emwave.front": "Волновой фронт",
-+  "emwave.lines": "Линии E/B",
++  "emwave.front": "Фронт волны",
++  "emwave.lines": "Силовые линии E/B",
 +  "emwave.arrows": "Стрелки волны",
-+  "emwave.k": "k-вектор",
++  "emwave.k": "Вектор k",
 +  "emwave.envelope": "Огибающая пучка",
-+  "emwave.legend": "Обозначения",
++  "emwave.legend": "Легенда",
 +  "emwave.envelopeLegend": "Огибающая",
 +  "emwave.physics": "Физика",
 +  "emwave.badge.wave": "Волна",
@@ -1358,7 +1358,7 @@ index 7d562f9b9f80b1499d3a76dc2471f1ff9f01e675..997c2fc3630fe6bccbeef1a4af256287
 +  "emwave.preset.standing": "Стоячая волна",
 +  "emwave.preset.interference": "2D Интерференция",
 +  "emwave.preset.spherical": "Сферическая волна",
-+  "emwave.preset.planeSpherical": "Плоская+Сферическая",
++  "emwave.preset.planeSpherical": "Плоская + Сферическая",
 +  "emwave.preset.reflection": "Отражение от плоскости",
 +  "emwave.badge.linear": "Плоская волна · Линейная поляризация",
 +  "emwave.badge.circularR": "Плоская волна · Круговая поляризация (R)",
@@ -1370,14 +1370,14 @@ index 7d562f9b9f80b1499d3a76dc2471f1ff9f01e675..997c2fc3630fe6bccbeef1a4af256287
 +  "emwave.badge.planeSpherical": "Рассеяние: плоская + сферическая",
 +  "emwave.badge.reflection": "Отражение от плоскости",
 +  "emwave.info.linear": "Бегущая плоская волна с линейной поляризацией. Векторы E, B и k образуют правую тройку.",
-+  "emwave.info.circularR": "Правая круговая поляризация (R). Конец вектора E описывает круг по часовой стрелке при взгляде навстречу волне.",
-+  "emwave.info.circularL": "Левая круговая поляризация (L). Конец вектора E описывает круг против часовой стрелки при взгляде навстречу волне.",
-+  "emwave.info.elliptic": "Эллиптическая поляризация. Амплитуды по осям x и y различны, конец вектора E описывает эллипс.",
++  "emwave.info.circularR": "Правая круговая поляризация (R). Конец вектора E описывает окружность по часовой стрелке, если смотреть навстречу волне.",
++  "emwave.info.circularL": "Левая круговая поляризация (L). Конец вектора E описывает окружность против часовой стрелки, если смотреть навстречу волне.",
++  "emwave.info.elliptic": "Эллиптическая поляризация. Амплитуды вдоль осей x и y различаются, конец вектора E описывает эллипс.",
 +  "emwave.info.standing": "Стоячая волна. Узлы E совпадают с пучностями B. Поля сдвинуты по фазе на π/2 в пространстве и времени.",
-+  "emwave.info.interference": "Интерференция двух плоских волн с углом 60° между волновыми векторами. Образуется пространственно-временная картина биений.",
-+  "emwave.info.spherical": "Сферическая волна от точечного источника. Поля затухают как 1/r. E ⊥ r, B ⊥ r, E ⊥ B.",
-+  "emwave.info.planeSpherical": "Суперпозиция плоской волны и сферической (модель рассеяния). Векторное поле показывает интерференцию падающей и рассеянной волн.",
-+  "emwave.info.reflection": "Отражение s-поляризованной волны от идеальной плоской поверхности под углом {angle}°. В первой среде падающая и отражённая волны интерферируют, образуя стоячую структуру вдоль нормали и бегущую волну вдоль поверхности."
++  "emwave.info.interference": "Интерференция двух плоских волн с углом 60° между волновыми векторами. Образуется пространственно-временная биения.",
++  "emwave.info.spherical": "Сферическая волна от точечного источника. Поля убывают как 1/r. E ⊥ r, B ⊥ r, E ⊥ B.",
++  "emwave.info.planeSpherical": "Суперпозиция плоской и сферической волны (модель рассеяния). Векторное поле показывает интерференцию падающей и рассеянной волн.",
++  "emwave.info.reflection": "Отражение s-поляризованной волны от идеальной плоской поверхности под углом {angle}°. В первой среде падающая и отражённая волны интерферируют, образуя стоячую структуру вдоль нормали и бегущую волну вдоль поверхности.",
  } as const;
  
  export type TranslationKey = keyof typeof ru;
