@@ -1,41 +1,24 @@
-import { useMemo, useRef, useState, type CSSProperties, type ChangeEvent } from "react";
+import { useRef, useState, type CSSProperties, type ChangeEvent } from "react";
 import RangeSlider from "../components/RangeSlider";
 import ToggleSwitch from "../components/ToggleSwitch";
+import CustomSelect from "../components/CustomSelect";
 import DitherEngine, {
   DITHER_PRESETS,
   DITHER_ALGORITHMS,
   DITHER_SHAPES,
   DITHER_ANIMATIONS,
   DITHER_CURSOR_EFFECTS,
-  DITHER_PALETTES,
-  DEFAULT_DITHER_CONFIG,
-  type DitherConfig,
+  DITHER_COLOR_PRESETS,
+  type DitherPreset,
   type DitherAlgorithm,
   type DitherShape,
+  type DitherColorMode,
   type DitherAnimation,
   type DitherCursorEffect,
+  type DitherMediaPosition,
 } from "./DitherEngine";
 import { DITHER_TSX_SOURCE } from "./code";
 import { useI18n } from "../i18n";
-
-const selectStyle: CSSProperties = {
-  width: "100%",
-  background: "var(--select-bg)",
-  border: "1px solid var(--glass-border)",
-  borderRadius: 9,
-  padding: "6px 9px",
-  color: "inherit",
-  fontSize: 11.5,
-  fontWeight: 600,
-  outline: "none",
-  cursor: "pointer",
-  appearance: "none",
-};
-
-const selectWrapStyle: CSSProperties = {
-  position: "relative",
-  display: "block",
-};
 
 const microLabel: CSSProperties = {
   display: "block",
@@ -93,21 +76,156 @@ function Chip({
   );
 }
 
+function Seg({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      style={{
+        flex: 1,
+        width: "auto",
+        margin: 0,
+        padding: "5px 8px",
+        borderRadius: 9,
+        border: "1px solid " + (active ? "var(--accent)" : "var(--glass-border)"),
+        background: active ? "var(--accent-soft)" : "var(--input-bg)",
+        color: active ? "var(--accent)" : "var(--text-sec)",
+        fontSize: 10.5,
+        fontWeight: 700,
+        cursor: "pointer",
+        transition: "color 0.15s, border-color 0.15s, background 0.15s",
+      }}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}
+
+const PRESET_ORDER: Exclude<DitherPreset, "custom">[] = [
+  "statue",
+  "monoPrint",
+  "amberLed",
+  "crt",
+  "newsprint",
+  "blueprint",
+];
+
+const MEDIA_POSITIONS: { value: DitherMediaPosition; label: string }[] = [
+  { value: "center", label: "Center" },
+  { value: "top", label: "Top" },
+  { value: "bottom", label: "Bottom" },
+  { value: "left", label: "Left" },
+  { value: "right", label: "Right" },
+  { value: "top-left", label: "Top Left" },
+  { value: "top-right", label: "Top Right" },
+  { value: "bottom-left", label: "Bottom Left" },
+  { value: "bottom-right", label: "Bottom Right" },
+];
+
+const COLOR_MODE_OPTIONS = [
+  { value: "solid", label: "Solid" },
+  { value: "linear", label: "Linear" },
+  { value: "source", label: "Source" },
+];
+
+const ANIM_OPTIONS = Object.entries(DITHER_ANIMATIONS).map(([value, label]) => ({ value, label }));
+const CURSOR_OPTIONS = Object.entries(DITHER_CURSOR_EFFECTS).map(([value, label]) => ({ value, label }));
+const ALGO_OPTIONS = Object.entries(DITHER_ALGORITHMS).map(([value, label]) => ({ value, label }));
+const SHAPE_OPTIONS = Object.entries(DITHER_SHAPES).map(([value, label]) => ({ value, label }));
+
 export default function DitherPage() {
   const { t } = useI18n();
-  const [cfg, setCfg] = useState<DitherConfig>({ ...DEFAULT_DITHER_CONFIG });
+  const [preset, setPreset] = useState<DitherPreset>("statue");
+  const [algorithm, setAlgorithm] = useState<DitherAlgorithm>("bayer4");
+  const [shape, setShape] = useState<DitherShape>("dot");
+  const [levels, setLevels] = useState(2);
+  const [spacing, setSpacing] = useState(0.25);
+  const [brightness, setBrightness] = useState(5);
+  const [contrast, setContrast] = useState(20);
+  const [fg, setFg] = useState<string | undefined>(undefined);
+  const [bg, setBg] = useState<string | undefined>(undefined);
+  const [pixel, setPixel] = useState<number | undefined>(undefined);
+  const [invert, setInvert] = useState<boolean | undefined>(undefined);
+  const [colorMode, setColorMode] = useState<DitherColorMode>("solid");
+  const [gradientStart, setGradientStart] = useState("#4DA6FF");
+  const [gradientEnd, setGradientEnd] = useState("#FF4DD2");
+  const [gradientAngle, setGradientAngle] = useState(90);
+  const [animMode, setAnimMode] = useState<DitherAnimation>("none");
+  const [animSpeed, setAnimSpeed] = useState(1);
+  const [motionArea, setMotionArea] = useState<"full" | "image">("full");
+  const [mouseMode, setMouseMode] = useState<DitherCursorEffect>("trail");
+  const [mouseRadius, setMouseRadius] = useState(180);
+  const [mouseStrength, setMouseStrength] = useState(0.6);
+  const [radius, setRadius] = useState(0);
+  const [sourceType, setSourceType] = useState<"image" | "video">("image");
+  const [fit, setFit] = useState<"cover" | "contain">("cover");
+  const [mediaPosition, setMediaPosition] = useState<DitherMediaPosition>("center");
   const [sourceUrl, setSourceUrl] = useState<string | undefined>(undefined);
   const [sourceIsVideo, setSourceIsVideo] = useState(false);
   const [copyState, setCopyState] = useState<"idle" | "ok" | "error">("idle");
   const [collapsed, setCollapsed] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const set = <K extends keyof DitherConfig>(key: K, value: DitherConfig[K]) =>
-    setCfg((c) => ({ ...c, [key]: value }));
+  const presetCfg =
+    preset !== "custom"
+      ? DITHER_PRESETS[preset].config
+      : {
+          algorithm,
+          shape,
+          pixelSize: pixel ?? 5,
+          levels,
+          spacing,
+          brightness,
+          contrast,
+          invert: invert ?? false,
+          foreground: fg ?? "#F4F4F0",
+          background: bg ?? "#050505",
+        };
 
-  const applyPreset = (key: string) => {
-    const p = DITHER_PRESETS[key];
-    if (p) setCfg((c) => ({ ...c, ...p.config }));
+  const effCfg =
+    fg || bg || pixel !== undefined || invert !== undefined
+      ? {
+          ...presetCfg,
+          foreground: fg ?? presetCfg.foreground,
+          background: bg ?? presetCfg.background,
+          pixelSize: pixel ?? presetCfg.pixelSize,
+          invert: invert ?? presetCfg.invert,
+        }
+      : presetCfg;
+
+  const applyPreset = (key: Exclude<DitherPreset, "custom">) => {
+    const p = DITHER_PRESETS[key].config;
+    setPreset(key);
+    setAlgorithm(p.algorithm);
+    setShape(p.shape);
+    setLevels(p.levels);
+    setSpacing(p.spacing);
+    setBrightness(p.brightness);
+    setContrast(p.contrast);
+  };
+
+  const tweak = <K extends "algorithm" | "shape" | "levels" | "spacing" | "brightness" | "contrast">(
+    key: K,
+    value: number | string
+  ) => {
+    const setters = {
+      algorithm: setAlgorithm,
+      shape: setShape,
+      levels: setLevels,
+      spacing: setSpacing,
+      brightness: setBrightness,
+      contrast: setContrast,
+    } as Record<K, (v: never) => void>;
+    (setters[key] as (v: typeof value) => void)(value as never);
+    setPreset("custom");
   };
 
   const copyCode = async () => {
@@ -131,36 +249,12 @@ export default function DitherPage() {
     });
   };
 
-  const algoOptions = useMemo(
-    () => Object.entries(DITHER_ALGORITHMS) as [DitherAlgorithm, string][],
-    []
-  );
-  const shapeOptions = useMemo(
-    () => Object.entries(DITHER_SHAPES) as [DitherShape, string][],
-    []
-  );
-  const animOptions = useMemo(
-    () => Object.entries(DITHER_ANIMATIONS) as [DitherAnimation, string][],
-    []
-  );
-  const cursorOptions = useMemo(
-    () => Object.entries(DITHER_CURSOR_EFFECTS) as [DitherCursorEffect, string][],
-    []
-  );
-
-  const sameAsPreset = (key: string) => {
-    const p = DITHER_PRESETS[key]?.config;
-    if (!p) return false;
-    return (
-      cfg.algorithm === p.algorithm &&
-      cfg.shape === p.shape &&
-      cfg.fg === p.fg &&
-      cfg.bg === p.bg &&
-      cfg.pixel === p.pixel &&
-      cfg.levels === p.levels &&
-      cfg.contrast === p.contrast &&
-      cfg.invert === p.invert
-    );
+  const clearMedia = () => {
+    setSourceUrl((old) => {
+      if (old) URL.revokeObjectURL(old);
+      return undefined;
+    });
+    setSourceIsVideo(false);
   };
 
   return (
@@ -232,16 +326,9 @@ export default function DitherPage() {
           margin-right: 2px;
           opacity: 0.8;
         }
-        .de-select-arrow {
-          position: absolute;
-          right: 10px;
-          top: 50%;
-          width: 6px;
-          height: 6px;
-          border-right: 1.5px solid var(--text-sec);
-          border-bottom: 1.5px solid var(--text-sec);
-          transform: translateY(-70%) rotate(45deg);
-          pointer-events: none;
+        .de-seg-row {
+          display: flex;
+          gap: 5;
         }
         @media (max-width: 640px) {
           .de-panel {
@@ -268,7 +355,35 @@ export default function DitherPage() {
           zIndex: 0,
         }}
       >
-        <DitherEngine config={cfg} sourceUrl={sourceUrl} sourceIsVideo={sourceIsVideo} interactive />
+        <DitherEngine
+          preset={preset}
+          algorithm={algorithm}
+          shape={shape}
+          levels={levels}
+          spacing={spacing}
+          brightness={brightness}
+          contrast={contrast}
+          foreground={fg}
+          background={bg}
+          pixelSize={pixel}
+          invert={invert}
+          colorMode={colorMode}
+          gradientStart={gradientStart}
+          gradientEnd={gradientEnd}
+          gradientAngle={gradientAngle}
+          sourceType={sourceType}
+          image={sourceUrl && !sourceIsVideo ? { src: sourceUrl } : undefined}
+          video={sourceUrl && sourceIsVideo ? sourceUrl : undefined}
+          fit={fit}
+          mediaPosition={mediaPosition}
+          animMode={animMode}
+          animSpeed={animSpeed}
+          motionArea={motionArea}
+          mouseMode={mouseMode}
+          mouseRadius={mouseRadius}
+          mouseStrength={mouseStrength}
+          radius={radius}
+        />
       </div>
 
       <div className={"de-panel" + (collapsed ? " collapsed" : "")}>
@@ -321,246 +436,19 @@ export default function DitherPage() {
         <div className="de-section">
           <span style={microLabel}>{t("dither.preset")}</span>
           <div style={chipRow}>
-            {Object.entries(DITHER_PRESETS).map(([key, p]) => (
-              <Chip key={key} active={sameAsPreset(key)} onClick={() => applyPreset(key)}>
-                {p.label}
+            {PRESET_ORDER.map((key) => (
+              <Chip key={key} active={preset === key} onClick={() => applyPreset(key)}>
+                {DITHER_PRESETS[key].label}
               </Chip>
             ))}
+            <Chip active={preset === "custom"} onClick={() => setPreset("custom")}>
+              {t("dither.custom")}
+            </Chip>
           </div>
         </div>
 
         <div className="de-section">
-          <span style={microLabel}>{t("dither.algorithm")}</span>
-          <label style={selectWrapStyle}>
-            <select
-              value={cfg.algorithm}
-              onChange={(e) => set("algorithm", e.target.value as DitherAlgorithm)}
-              style={selectStyle}
-            >
-              {algoOptions.map(([k, label]) => (
-                <option key={k} value={k}>{label}</option>
-              ))}
-            </select>
-            <span className="de-select-arrow" />
-          </label>
-
-          <span style={{ ...microLabel, marginTop: 10 }}>{t("dither.shape")}</span>
-          <label style={selectWrapStyle}>
-            <select
-              value={cfg.shape}
-              onChange={(e) => set("shape", e.target.value as DitherShape)}
-              style={selectStyle}
-            >
-              {shapeOptions.map(([k, label]) => (
-                <option key={k} value={k}>{label}</option>
-              ))}
-            </select>
-            <span className="de-select-arrow" />
-          </label>
-        </div>
-
-        <div className="de-section">
-          <span style={microLabel}>{t("dither.colors")}</span>
-          <div style={{ display: "flex", gap: 10, marginBottom: 8 }}>
-            <label
-              style={{
-                flex: 1,
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                fontSize: 11.5,
-                fontWeight: 600,
-              }}
-            >
-              <input
-                type="color"
-                value={cfg.fg}
-                onChange={(e) => set("fg", e.target.value)}
-                style={{
-                  width: 32,
-                  height: 24,
-                  border: "none",
-                  background: "none",
-                  padding: 0,
-                  cursor: "pointer",
-                }}
-              />
-              <span style={{ color: "var(--text-sec)" }}>{t("dither.fg")}</span>
-            </label>
-            <label
-              style={{
-                flex: 1,
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                fontSize: 11.5,
-                fontWeight: 600,
-              }}
-            >
-              <input
-                type="color"
-                value={cfg.bg}
-                onChange={(e) => set("bg", e.target.value)}
-                style={{
-                  width: 32,
-                  height: 24,
-                  border: "none",
-                  background: "none",
-                  padding: 0,
-                  cursor: "pointer",
-                }}
-              />
-              <span style={{ color: "var(--text-sec)" }}>{t("dither.bg")}</span>
-            </label>
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {DITHER_PALETTES.map((p) => (
-              <button
-                key={p.name}
-                title={p.name}
-                aria-label={p.name}
-                onClick={() => setCfg((c) => ({ ...c, fg: p.fg, bg: p.bg }))}
-                style={{
-                  width: 38,
-                  height: 22,
-                  margin: 0,
-                  padding: 0,
-                  borderRadius: 7,
-                  border:
-                    cfg.fg === p.fg && cfg.bg === p.bg
-                      ? "1px solid var(--accent)"
-                      : "1px solid var(--glass-border)",
-                  background: `linear-gradient(90deg, ${p.fg} 50%, ${p.bg} 50%)`,
-                  cursor: "pointer",
-                }}
-              />
-            ))}
-          </div>
-        </div>
-
-        <div className="de-section">
-          <RangeSlider
-            name="pixel"
-            label={t("dither.pixel")}
-            min={1}
-            max={14}
-            step={0.5}
-            value={cfg.pixel}
-            onChange={(v) => set("pixel", v)}
-            format={(v) => v.toFixed(1).replace(/\.0$/, "") + "px"}
-          />
-          <RangeSlider
-            name="levels"
-            label={t("dither.levels")}
-            min={2}
-            max={8}
-            step={1}
-            value={cfg.levels}
-            onChange={(v) => set("levels", Math.round(v))}
-            format={(v) => String(Math.round(v))}
-          />
-          <RangeSlider
-            name="contrast"
-            label={t("dither.contrast")}
-            min={-100}
-            max={100}
-            step={1}
-            value={cfg.contrast}
-            onChange={(v) => set("contrast", v)}
-            format={(v) => (v > 0 ? "+" : "") + v}
-          />
-          {cfg.shape === "dot" && (
-            <RangeSlider
-              name="spacing"
-              label={t("dither.spacing")}
-              min={0.3}
-              max={1.2}
-              step={0.02}
-              value={cfg.spacing}
-              onChange={(v) => set("spacing", v)}
-              format={(v) => v.toFixed(2)}
-            />
-          )}
-          <ToggleSwitch
-            name="invert"
-            label={t("dither.invert")}
-            checked={cfg.invert}
-            onChange={(v) => set("invert", v)}
-          />
-        </div>
-
-        <div className="de-section">
-          <span style={microLabel}>{t("dither.animation")}</span>
-          <label style={selectWrapStyle}>
-            <select
-              value={cfg.animation}
-              onChange={(e) => set("animation", e.target.value as DitherAnimation)}
-              style={selectStyle}
-            >
-              {animOptions.map(([k, label]) => (
-                <option key={k} value={k}>{label}</option>
-              ))}
-            </select>
-            <span className="de-select-arrow" />
-          </label>
-
-          <span style={{ ...microLabel, marginTop: 10 }}>{t("dither.cursor")}</span>
-          <label style={selectWrapStyle}>
-            <select
-              value={cfg.cursorEffect}
-              onChange={(e) => set("cursorEffect", e.target.value as DitherCursorEffect)}
-              style={selectStyle}
-            >
-              {cursorOptions.map(([k, label]) => (
-                <option key={k} value={k}>{label}</option>
-              ))}
-            </select>
-            <span className="de-select-arrow" />
-          </label>
-
-          <ToggleSwitch
-            name="animate"
-            label={t("dither.animate")}
-            checked={cfg.animate}
-            onChange={(v) => set("animate", v)}
-          />
-        </div>
-
-        <div className="de-section">
-          <span style={microLabel}>{t("dither.fit")}</span>
-          <RangeSlider
-            name="zoom"
-            label={t("dither.zoom")}
-            min={0.5}
-            max={3}
-            step={0.01}
-            value={cfg.zoom}
-            onChange={(v) => set("zoom", v)}
-            format={(v) => v.toFixed(2) + "×"}
-          />
-          <RangeSlider
-            name="offsetX"
-            label={t("dither.offsetX")}
-            min={-1}
-            max={1}
-            step={0.01}
-            value={cfg.offsetX}
-            onChange={(v) => set("offsetX", v)}
-            format={(v) => v.toFixed(2)}
-          />
-          <RangeSlider
-            name="offsetY"
-            label={t("dither.offsetY")}
-            min={-1}
-            max={1}
-            step={0.01}
-            value={cfg.offsetY}
-            onChange={(v) => set("offsetY", v)}
-            format={(v) => v.toFixed(2)}
-          />
-        </div>
-
-        <div className="de-section" style={{ paddingTop: 12 }}>
+          <span style={microLabel}>{t("dither.media")}</span>
           <input
             ref={fileRef}
             type="file"
@@ -575,6 +463,340 @@ export default function DitherPage() {
             >
               {t("dither.upload")}
             </button>
+            {sourceUrl && (
+              <button onClick={clearMedia} style={{ width: "auto", margin: 0, padding: "8px 10px" }}>
+                ✕
+              </button>
+            )}
+          </div>
+          <div style={{ ...chipRow, marginTop: 8 }}>
+            <Seg active={sourceType === "image"} onClick={() => setSourceType("image")}>
+              {t("dither.image")}
+            </Seg>
+            <Seg active={sourceType === "video"} onClick={() => setSourceType("video")}>
+              {t("dither.video")}
+            </Seg>
+            <Seg active={fit === "cover"} onClick={() => setFit("cover")}>
+              {t("dither.fill")}
+            </Seg>
+            <Seg active={fit === "contain"} onClick={() => setFit("contain")}>
+              {t("dither.fitOption")}
+            </Seg>
+          </div>
+          <div style={{ marginTop: 8 }}>
+            <CustomSelect
+              value={mediaPosition}
+              options={MEDIA_POSITIONS}
+              onChange={(v) => setMediaPosition(v as DitherMediaPosition)}
+            />
+          </div>
+        </div>
+
+        <div className="de-section">
+          <span style={microLabel}>{t("dither.colors")}</span>
+          <CustomSelect
+            value={colorMode}
+            options={COLOR_MODE_OPTIONS}
+            onChange={(v) => setColorMode(v as DitherColorMode)}
+          />
+          {colorMode === "solid" && (
+            <>
+              <div style={{ display: "flex", gap: 10, marginTop: 9 }}>
+                <label
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    fontSize: 11.5,
+                    fontWeight: 600,
+                  }}
+                >
+                  <input
+                    type="color"
+                    value={effCfg.foreground}
+                    onChange={(e) => setFg(e.target.value)}
+                    style={{
+                      width: 32,
+                      height: 24,
+                      border: "none",
+                      background: "none",
+                      padding: 0,
+                      cursor: "pointer",
+                    }}
+                  />
+                  <span style={{ color: "var(--text-sec)" }}>{t("dither.fg")}</span>
+                </label>
+                <label
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    fontSize: 11.5,
+                    fontWeight: 600,
+                  }}
+                >
+                  <input
+                    type="color"
+                    value={effCfg.background}
+                    onChange={(e) => setBg(e.target.value)}
+                    style={{
+                      width: 32,
+                      height: 24,
+                      border: "none",
+                      background: "none",
+                      padding: 0,
+                      cursor: "pointer",
+                    }}
+                  />
+                  <span style={{ color: "var(--text-sec)" }}>{t("dither.bg")}</span>
+                </label>
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+                {Object.entries(DITHER_COLOR_PRESETS).map(([key, p]) => (
+                  <button
+                    key={key}
+                    title={p.label}
+                    aria-label={p.label}
+                    onClick={() => {
+                      setFg(p.fg);
+                      setBg(p.bg);
+                    }}
+                    style={{
+                      width: 38,
+                      height: 22,
+                      margin: 0,
+                      padding: 0,
+                      borderRadius: 7,
+                      border:
+                        fg === p.fg && bg === p.bg
+                          ? "1px solid var(--accent)"
+                          : "1px solid var(--glass-border)",
+                      background: `linear-gradient(90deg, ${p.fg} 50%, ${p.bg} 50%)`,
+                      cursor: "pointer",
+                    }}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+          {colorMode === "linear" && (
+            <>
+              <div style={{ display: "flex", gap: 10, marginTop: 9 }}>
+                <label
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    fontSize: 11.5,
+                    fontWeight: 600,
+                  }}
+                >
+                  <input
+                    type="color"
+                    value={gradientStart}
+                    onChange={(e) => setGradientStart(e.target.value)}
+                    style={{
+                      width: 32,
+                      height: 24,
+                      border: "none",
+                      background: "none",
+                      padding: 0,
+                      cursor: "pointer",
+                    }}
+                  />
+                  <span style={{ color: "var(--text-sec)" }}>{t("dither.gradientA")}</span>
+                </label>
+                <label
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    fontSize: 11.5,
+                    fontWeight: 600,
+                  }}
+                >
+                  <input
+                    type="color"
+                    value={gradientEnd}
+                    onChange={(e) => setGradientEnd(e.target.value)}
+                    style={{
+                      width: 32,
+                      height: 24,
+                      border: "none",
+                      background: "none",
+                      padding: 0,
+                      cursor: "pointer",
+                    }}
+                  />
+                  <span style={{ color: "var(--text-sec)" }}>{t("dither.gradientB")}</span>
+                </label>
+              </div>
+              <RangeSlider
+                name="angle"
+                label={t("dither.angle")}
+                min={0}
+                max={360}
+                step={5}
+                value={gradientAngle}
+                onChange={setGradientAngle}
+                format={(v) => v.toFixed(0) + "°"}
+              />
+            </>
+          )}
+        </div>
+
+        <div className="de-section">
+          <span style={microLabel}>{t("dither.settings")}</span>
+          <CustomSelect
+            value={preset === "custom" ? algorithm : effCfg.algorithm}
+            options={ALGO_OPTIONS}
+            onChange={(v) => tweak("algorithm", v as DitherAlgorithm)}
+          />
+          <div style={{ marginTop: 8 }}>
+            <CustomSelect
+              value={preset === "custom" ? shape : effCfg.shape}
+              options={SHAPE_OPTIONS}
+              onChange={(v) => tweak("shape", v as DitherShape)}
+            />
+          </div>
+          <RangeSlider
+            name="pixel"
+            label={t("dither.pixel")}
+            min={2}
+            max={24}
+            step={1}
+            value={effCfg.pixelSize}
+            onChange={(v) => setPixel(Math.round(v))}
+            format={(v) => v.toFixed(0) + "px"}
+          />
+          <RangeSlider
+            name="levels"
+            label={t("dither.levels")}
+            min={2}
+            max={6}
+            step={1}
+            value={preset === "custom" ? levels : effCfg.levels}
+            onChange={(v) => tweak("levels", Math.round(v))}
+            format={(v) => String(Math.round(v))}
+          />
+          <RangeSlider
+            name="spacing"
+            label={t("dither.spacing")}
+            min={0}
+            max={0.7}
+            step={0.05}
+            value={preset === "custom" ? spacing : effCfg.spacing}
+            onChange={(v) => tweak("spacing", Math.round(v * 100) / 100)}
+            format={(v) => v.toFixed(2)}
+          />
+          <RangeSlider
+            name="brightness"
+            label={t("dither.brightness")}
+            min={-100}
+            max={100}
+            step={1}
+            value={preset === "custom" ? brightness : effCfg.brightness}
+            onChange={(v) => tweak("brightness", Math.round(v))}
+            format={(v) => (v > 0 ? "+" : "") + v}
+          />
+          <RangeSlider
+            name="contrast"
+            label={t("dither.contrast")}
+            min={-100}
+            max={100}
+            step={1}
+            value={preset === "custom" ? contrast : effCfg.contrast}
+            onChange={(v) => tweak("contrast", Math.round(v))}
+            format={(v) => (v > 0 ? "+" : "") + v}
+          />
+        </div>
+
+        <div className="de-section">
+          <span style={microLabel}>{t("dither.animation")}</span>
+          <CustomSelect
+            value={animMode}
+            options={ANIM_OPTIONS}
+            onChange={(v) => setAnimMode(v as DitherAnimation)}
+          />
+          {animMode !== "none" && (
+            <>
+              <RangeSlider
+                name="speed"
+                label={t("dither.speed")}
+                min={0.1}
+                max={3}
+                step={0.1}
+                value={animSpeed}
+                onChange={(v) => setAnimSpeed(Math.round(v * 10) / 10)}
+                format={(v) => v.toFixed(1) + "×"}
+              />
+              <div style={chipRow}>
+                <Seg active={motionArea === "full"} onClick={() => setMotionArea("full")}>
+                  {t("dither.motionFull")}
+                </Seg>
+                <Seg active={motionArea === "image"} onClick={() => setMotionArea("image")}>
+                  {t("dither.motionImage")}
+                </Seg>
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="de-section">
+          <span style={microLabel}>{t("dither.cursor")}</span>
+          <CustomSelect
+            value={mouseMode}
+            options={CURSOR_OPTIONS}
+            onChange={(v) => setMouseMode(v as DitherCursorEffect)}
+          />
+          {mouseMode !== "none" && (
+            <>
+              <RangeSlider
+                name="cursorRange"
+                label={t("dither.cursorRange")}
+                min={40}
+                max={500}
+                step={10}
+                value={mouseRadius}
+                onChange={(v) => setMouseRadius(Math.round(v / 10) * 10)}
+                format={(v) => v.toFixed(0) + "px"}
+              />
+              <RangeSlider
+                name="strength"
+                label={t("dither.strength")}
+                min={0.1}
+                max={1}
+                step={0.05}
+                value={mouseStrength}
+                onChange={(v) => setMouseStrength(Math.round(v * 100) / 100)}
+                format={(v) => v.toFixed(2)}
+              />
+            </>
+          )}
+          <ToggleSwitch
+            name="invert"
+            label={t("dither.invert")}
+            checked={effCfg.invert}
+            onChange={(v) => setInvert(v)}
+          />
+          <RangeSlider
+            name="radius"
+            label={t("dither.radius")}
+            min={0}
+            max={64}
+            step={1}
+            value={radius}
+            onChange={(v) => setRadius(Math.round(v))}
+            format={(v) => v.toFixed(0) + "px"}
+          />
+        </div>
+
+        <div className="de-section" style={{ paddingTop: 12 }}>
+          <div style={{ display: "flex", gap: 8 }}>
             <button
               onClick={copyCode}
               style={{ flex: 1, width: "auto", margin: 0, padding: "8px 10px" }}
