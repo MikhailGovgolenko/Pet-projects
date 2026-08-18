@@ -44,6 +44,9 @@ export interface DitherConfig {
   animation: DitherAnimation;
   cursorEffect: DitherCursorEffect;
   animate: boolean;
+  zoom: number;
+  offsetX: number;
+  offsetY: number;
 }
 
 export const DEFAULT_DITHER_CONFIG: DitherConfig = {
@@ -59,6 +62,9 @@ export const DEFAULT_DITHER_CONFIG: DitherConfig = {
   animation: "none",
   cursorEffect: "none",
   animate: true,
+  zoom: 1,
+  offsetX: 0,
+  offsetY: 0,
 };
 
 export const DITHER_PRESETS: Record<
@@ -179,19 +185,18 @@ export const DITHER_SHAPES: Record<DitherShape, string> = {
 };
 
 export const DITHER_ANIMATIONS: Record<DitherAnimation, string> = {
-  none: "Static",
+  dissolve: "Dissolve",
   scan: "Scan",
+  jitter: "Jitter",
   flow: "Flow",
   wave: "Wave",
-  jitter: "Jitter",
   glitch: "Glitch",
   melt: "Melt",
   rain: "Rain",
-  dissolve: "Dissolve",
+  none: "Static",
 };
 
 export const DITHER_CURSOR_EFFECTS: Record<DitherCursorEffect, string> = {
-  none: "Off",
   reveal: "Reveal",
   trail: "Trail",
   ripple: "Ripple",
@@ -199,6 +204,7 @@ export const DITHER_CURSOR_EFFECTS: Record<DitherCursorEffect, string> = {
   pinch: "Pinch",
   twist: "Twist",
   scatter: "Scatter",
+  none: "Off",
 };
 
 export const DITHER_PALETTES: { name: string; fg: string; bg: string }[] = [
@@ -491,16 +497,19 @@ function renderDither(
   const bg = parseColor(cfg.bg);
 
   const sample = (i: number, j: number) => {
-    const x = (i * cell + cell * 0.5) / w;
-    const y = (j * cell + cell * 0.5) / h;
-    const sx = clamp(Math.floor(x * SW), 0, SW - 1);
-    const sy = clamp(Math.floor(y * SH), 0, SH - 1);
+    const u = (i * cell + cell * 0.5) / w;
+    const v = (j * cell + cell * 0.5) / h;
+    const uu = (u - 0.5) / cfg.zoom + 0.5 + cfg.offsetX * 0.5;
+    const vv = (v - 0.5) / cfg.zoom + 0.5 + cfg.offsetY * 0.5;
+    if (uu < 0 || uu > 1 || vv < 0 || vv > 1) return 0;
+    const sx = clamp(Math.floor(uu * SW), 0, SW - 1);
+    const sy = clamp(Math.floor(vv * SH), 0, SH - 1);
     const o = (sy * SW + sx) * 4;
-    let v =
+    let l =
       (0.299 * srcData.data[o] + 0.587 * srcData.data[o + 1] + 0.114 * srcData.data[o + 2]) / 255;
-    v = (v - 0.5) * (1 + cont) + 0.5;
-    if (cfg.invert) v = 1 - v;
-    return clamp(v, 0, 1);
+    l = (l - 0.5) * (1 + cont) + 0.5;
+    if (cfg.invert) l = 1 - l;
+    return clamp(l, 0, 1);
   };
 
   const isDiffusion = cfg.algorithm === "floyd" || cfg.algorithm === "atkinson";

@@ -26,7 +26,7 @@ const ru = {
   "card.dither.title": "Dither Engine — 1-битное дизеринг-изображение",
   "card.dither.desc":
     "Живой дизеринг изображений и видео: Bayer, Флойд–Стейнберг, Аткинсон, газетный халфтон, LED-панели, CRT-сканлайны.",
-  "card.dither.copyHint": "Скопировать ссылку на компонент во Framer",
+  "card.dither.copyHint": "Скопировать TSX-код эффекта в буфер",
   "dither.panel": "Dither Engine",
   "dither.preset": "Пресеты",
   "dither.algorithm": "Алгоритм",
@@ -42,13 +42,16 @@ const ru = {
   "dither.animation": "Анимация",
   "dither.cursor": "Эффект курсора",
   "dither.animate": "Анимировать",
+  "dither.fit": "Кадрирование",
+  "dither.zoom": "Масштаб",
+  "dither.offsetX": "Сдвиг X",
+  "dither.offsetY": "Сдвиг Y",
   "dither.upload": "Загрузить фото/видео",
-  "dither.copyFramer": "Скопировать ссылку Framer",
-  "dither.copiedLink": "Ссылка Framer в буфере",
-  "dither.copiedTsx": "TSX-код в буфере",
+  "dither.copyCode": "Код эффекта",
+  "dither.copiedCode": "Код в буфере",
   "dither.copyError": "Не удалось скопировать",
   "dither.copyHint":
-    "Копирует ссылку на компонент в маркетплейсе Framer. Если скопировать ссылку не получится, в буфер попадёт весь TSX-код эффекта."
+    "Кнопка кладёт в буфер обмена весь TSX-код эффекта — один файл без зависимостей."
 } as const;
 
 export type TranslationKey = keyof typeof ru;
@@ -77,7 +80,7 @@ const en: Record<TranslationKey, string> = {
   "card.dither.title": "Dither Engine — 1-bit dithered image",
   "card.dither.desc":
     "Live dithering for images and video: Bayer, Floyd–Steinberg, Atkinson, newspaper halftone, LED walls, CRT scanlines.",
-  "card.dither.copyHint": "Copy link to the Framer component",
+  "card.dither.copyHint": "Copy the effect's TSX code to the clipboard",
   "dither.panel": "Dither Engine",
   "dither.preset": "Presets",
   "dither.algorithm": "Algorithm",
@@ -93,13 +96,16 @@ const en: Record<TranslationKey, string> = {
   "dither.animation": "Animation",
   "dither.cursor": "Cursor effect",
   "dither.animate": "Animate",
+  "dither.fit": "Fit & crop",
+  "dither.zoom": "Zoom",
+  "dither.offsetX": "Offset X",
+  "dither.offsetY": "Offset Y",
   "dither.upload": "Upload photo/video",
-  "dither.copyFramer": "Copy Framer link",
-  "dither.copiedLink": "Framer link copied",
-  "dither.copiedTsx": "TSX code copied",
+  "dither.copyCode": "Copy code",
+  "dither.copiedCode": "Code copied",
   "dither.copyError": "Copy failed",
   "dither.copyHint":
-    "Copies the link to the component on the Framer marketplace. If the link can't be copied, the full TSX source of the effect goes into the clipboard instead.",
+    "Puts the entire TSX source of the effect into the clipboard — a single dependency-free file.",
 };
 
 const dictionaries: Record<Language, Record<TranslationKey, string>> = { ru, en };
