@@ -1,8 +1,26 @@
+import { useState } from "react";
 import { cards } from "./cards";
 import { useI18n } from "../i18n";
+import { FRAMER_COMPONENT_URL, DITHER_TSX_SOURCE } from "../dither/framer";
 
 export default function HomePage({ onNavigate }) {
   const { t } = useI18n();
+  const [copyState, setCopyState] = useState<"idle" | "link" | "tsx" | "error">("idle");
+
+  const copyFramer = async () => {
+    try {
+      await navigator.clipboard.writeText(FRAMER_COMPONENT_URL);
+      setCopyState("link");
+    } catch {
+      try {
+        await navigator.clipboard.writeText(DITHER_TSX_SOURCE);
+        setCopyState("tsx");
+      } catch {
+        setCopyState("error");
+      }
+    }
+    setTimeout(() => setCopyState("idle"), 2500);
+  };
   return (
     <div
       className="home-page"
@@ -177,6 +195,9 @@ export default function HomePage({ onNavigate }) {
           background: rgba(128, 128, 128, 0.12);
           border: 1px solid var(--glass-border);
           flex-shrink: 0;
+          width: auto;
+          margin: 0;
+          cursor: pointer;
           transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
         }
         .readme-link:hover {
@@ -233,7 +254,12 @@ export default function HomePage({ onNavigate }) {
                 className="glass home-card"
                 onClick={() => onNavigate(card.id)}
               >
-                {card.previewLight || card.previewDark ? (
+                {card.preview ? (
+                  <div className="card-hero">
+                    {card.preview}
+                    <div className="card-hero-fade"></div>
+                  </div>
+                ) : card.previewLight || card.previewDark ? (
                   <div className="card-hero">
                     <picture>
                       {card.previewLight && (
@@ -258,15 +284,35 @@ export default function HomePage({ onNavigate }) {
                 <p>{t(card.descKey)}</p>
                 <div className="card-footer">
                   <span className="card-action">{t("home.open")}</span>
-                  <a
-                    className="readme-link"
-                    href={card.readmeUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    📄 Readme
-                  </a>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    {card.id === "dither" && (
+                      <button
+                        className="readme-link"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          copyFramer();
+                        }}
+                        title={t("card.dither.copyHint")}
+                      >
+                        {copyState === "link"
+                          ? "✓"
+                          : copyState === "tsx"
+                          ? "🧬"
+                          : copyState === "error"
+                          ? "✗"
+                          : "↗ Framer"}
+                      </button>
+                    )}
+                    <a
+                      className="readme-link"
+                      href={card.readmeUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      📄 Readme
+                    </a>
+                  </div>
                 </div>
               </div>
             </div>

@@ -22,7 +22,33 @@ const ru = {
   "lens.noWebgl": "WebGL недоступен в этом браузере",
   "lens.viewError": "Ошибка отрисовки сцены",
   "lens.retry": "Повторить",
-  "lens.useReflections": "Учитывать отражения"
+  "lens.useReflections": "Учитывать отражения",
+  "card.dither.title": "Dither Engine — 1-битное дизеринг-изображение",
+  "card.dither.desc":
+    "Живой дизеринг изображений и видео: Bayer, Флойд–Стейнберг, Аткинсон, газетный халфтон, LED-панели, CRT-сканлайны.",
+  "card.dither.copyHint": "Скопировать ссылку на компонент во Framer",
+  "dither.panel": "Dither Engine",
+  "dither.preset": "Пресеты",
+  "dither.algorithm": "Алгоритм",
+  "dither.shape": "Форма пикселя",
+  "dither.colors": "Цвета",
+  "dither.fg": "Передний",
+  "dither.bg": "Фон",
+  "dither.pixel": "Размер пикселя",
+  "dither.levels": "Уровни тона",
+  "dither.contrast": "Контраст",
+  "dither.spacing": "Интервал точек",
+  "dither.invert": "Инверсия",
+  "dither.animation": "Анимация",
+  "dither.cursor": "Эффект курсора",
+  "dither.animate": "Анимировать",
+  "dither.upload": "Загрузить фото/видео",
+  "dither.copyFramer": "Скопировать ссылку Framer",
+  "dither.copiedLink": "Ссылка Framer в буфере",
+  "dither.copiedTsx": "TSX-код в буфере",
+  "dither.copyError": "Не удалось скопировать",
+  "dither.copyHint":
+    "Копирует ссылку на компонент в маркетплейсе Framer. Если скопировать ссылку не получится, в буфер попадёт весь TSX-код эффекта."
 } as const;
 
 export type TranslationKey = keyof typeof ru;
@@ -48,6 +74,32 @@ const en: Record<TranslationKey, string> = {
   "lens.viewError": "Scene render error",
   "lens.retry": "Retry",
   "lens.useReflections": "Consider reflections",
+  "card.dither.title": "Dither Engine — 1-bit dithered image",
+  "card.dither.desc":
+    "Live dithering for images and video: Bayer, Floyd–Steinberg, Atkinson, newspaper halftone, LED walls, CRT scanlines.",
+  "card.dither.copyHint": "Copy link to the Framer component",
+  "dither.panel": "Dither Engine",
+  "dither.preset": "Presets",
+  "dither.algorithm": "Algorithm",
+  "dither.shape": "Pixel shape",
+  "dither.colors": "Colors",
+  "dither.fg": "Foreground",
+  "dither.bg": "Background",
+  "dither.pixel": "Pixel size",
+  "dither.levels": "Tone levels",
+  "dither.contrast": "Contrast",
+  "dither.spacing": "Dot spacing",
+  "dither.invert": "Invert",
+  "dither.animation": "Animation",
+  "dither.cursor": "Cursor effect",
+  "dither.animate": "Animate",
+  "dither.upload": "Upload photo/video",
+  "dither.copyFramer": "Copy Framer link",
+  "dither.copiedLink": "Framer link copied",
+  "dither.copiedTsx": "TSX code copied",
+  "dither.copyError": "Copy failed",
+  "dither.copyHint":
+    "Copies the link to the component on the Framer marketplace. If the link can't be copied, the full TSX source of the effect goes into the clipboard instead.",
 };
 
 const dictionaries: Record<Language, Record<TranslationKey, string>> = { ru, en };
