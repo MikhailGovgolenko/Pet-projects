@@ -28,19 +28,11 @@ export const cards: {
     icon: "🧊",
     preview: (
       <DitherEngine
-        config={{
-          algorithm: "bayer8",
-          shape: "square",
-          fg: "#f2e9d8",
-          bg: "#0c0a08",
-          pixel: 3,
-          levels: 2,
-          contrast: 18,
-          invert: false,
-          animation: "none",
-          cursorEffect: "reveal",
-          animate: true,
-        }}
+        preset="monoPrint"
+        animMode="none"
+        mouseMode="trail"
+        mouseRadius={180}
+        mouseStrength={0.6}
         autoCursor
         style={{ height: 200 }}
       />
