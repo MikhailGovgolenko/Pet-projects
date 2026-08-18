@@ -1,23 +1,18 @@
 import { useState } from "react";
 import { cards } from "./cards";
 import { useI18n } from "../i18n";
-import { FRAMER_COMPONENT_URL, DITHER_TSX_SOURCE } from "../dither/framer";
+import { DITHER_TSX_SOURCE } from "../dither/code";
 
 export default function HomePage({ onNavigate }) {
   const { t } = useI18n();
-  const [copyState, setCopyState] = useState<"idle" | "link" | "tsx" | "error">("idle");
+  const [copyState, setCopyState] = useState<"idle" | "ok" | "error">("idle");
 
-  const copyFramer = async () => {
+  const copyCode = async () => {
     try {
-      await navigator.clipboard.writeText(FRAMER_COMPONENT_URL);
-      setCopyState("link");
+      await navigator.clipboard.writeText(DITHER_TSX_SOURCE);
+      setCopyState("ok");
     } catch {
-      try {
-        await navigator.clipboard.writeText(DITHER_TSX_SOURCE);
-        setCopyState("tsx");
-      } catch {
-        setCopyState("error");
-      }
+      setCopyState("error");
     }
     setTimeout(() => setCopyState("idle"), 2500);
   };
@@ -290,17 +285,15 @@ export default function HomePage({ onNavigate }) {
                         className="readme-link"
                         onClick={(e) => {
                           e.stopPropagation();
-                          copyFramer();
+                          copyCode();
                         }}
                         title={t("card.dither.copyHint")}
                       >
-                        {copyState === "link"
+                        {copyState === "ok"
                           ? "✓"
-                          : copyState === "tsx"
-                          ? "🧬"
                           : copyState === "error"
                           ? "✗"
-                          : "↗ Framer"}
+                          : "⎘ Code"}
                       </button>
                     )}
                     <a
