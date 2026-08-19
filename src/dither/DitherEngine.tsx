@@ -802,6 +802,9 @@ export default function DitherEngine(props: DitherProps) {
     let lastPointer = 0;
     let blackSm = -1;
     let whiteSm = -1;
+    let cellsVersion = 0;
+    let renderedVersion = -1;
+    let trailHasContent = false;
 
     const [fgRgb, bgRgb] = [parseColor(config.foreground), parseColor(config.background)];
     const [g0Rgb, g1Rgb] = [parseColor(gradientStart), parseColor(gradientEnd)];
@@ -864,6 +867,7 @@ export default function DitherEngine(props: DitherProps) {
             gradientCells[r * cols + c] = (255 << 24) | (bb << 16) | (gg << 8) | rr;
           }
       }
+      cellsVersion++;
     }
 
     function computeCells() {
@@ -899,6 +903,7 @@ export default function DitherEngine(props: DitherProps) {
         data = imgBufCtx.getImageData(0, 0, cols, rows).data;
       } catch {
         cells.fill(0.5);
+        cellsVersion++;
         return;
       }
 
@@ -958,6 +963,7 @@ export default function DitherEngine(props: DitherProps) {
           if (invCfg) v = 1 - v;
           cells[idx] = v < 0 ? 0 : v > 1 ? 1 : v;
         }
+      cellsVersion++;
     }
 
     function frame(ts: number) {
@@ -985,8 +991,17 @@ export default function DitherEngine(props: DitherProps) {
       const cursorOn = cursor !== "none" && cursorActive > 0.01;
 
       if (cursor === "trail") {
-        for (let i = 0; i < trailCells.length; i++) trailCells[i] *= 0.9;
+        if (trailHasContent) {
+          let alive = false;
+          for (let i = 0; i < trailCells.length; i++) {
+            const d = trailCells[i] * 0.9;
+            trailCells[i] = d;
+            if (d > 0.01) alive = true;
+          }
+          if (!alive) trailHasContent = false;
+        }
         if (cursorOn) {
+          trailHasContent = true;
           const brush = mousePower * cursorActive;
           const radius = Math.max(1, cursorRange * 0.5);
           const r2 = Math.ceil(radius);
@@ -1015,87 +1030,97 @@ export default function DitherEngine(props: DitherProps) {
       const midC = cols / 2;
       const midR = rows / 2;
 
-      for (let r = 0; r < rows; r++) {
-        let rowShift = 0;
-        let rowDrop = false;
-        if (anim === "glitch") {
-          const h = hash(Math.floor(r / 6), 11, glitchFrame);
-          if (h > 0.8) rowShift = (h - 0.9) * 34;
-          if (h > 0.94) rowDrop = true;
-        }
-        for (let c = 0; c < cols; c++) {
-          let sx = c + rowShift;
-          let sy = r;
-          let boost = 0;
-          let light = 0;
-
-          if (anim === "flow") sx += Math.sin(r * 0.13 + t * 1.6) * 1.8;
-          if (anim === "melt") {
-            const n = 0.4 + hash(c, 7, 0) * 0.9;
-            sy = r - t * 7 * n;
-            sy = ((sy % rows) + rows) % rows;
-          } else if (anim === "wave") {
-            const d = Math.sqrt((c - midC) * (c - midC) + (r - midR) * (r - midR));
-            light += Math.sin(d * 0.35 - t * 3) * 0.22;
-          } else if (anim === "rain") {
-            const n = 8 + hash(c, 3, 0) * 14;
-            const span = rows * 1.4;
-            const i = ((t * n + hash(c, 5, 0) * span) % span) - r;
-            if (i > 0 && i < 9) light += (1 - i / 9) * 0.55;
+      if (anim !== "none" || cursorOn) {
+        let changed = false;
+        for (let r = 0; r < rows; r++) {
+          let rowShift = 0;
+          let rowDrop = false;
+          if (anim === "glitch") {
+            const h = hash(Math.floor(r / 6), 11, glitchFrame);
+            if (h > 0.8) rowShift = (h - 0.9) * 34;
+            if (h > 0.94) rowDrop = true;
           }
+          for (let c = 0; c < cols; c++) {
+            let sx = c + rowShift;
+            let sy = r;
+            let boost = 0;
+            let light = 0;
 
-          if (cursorOn) {
-            const dcx = c + 0.5 - cellCX;
-            const dcy = r + 0.5 - cellCY;
-            const dist = Math.sqrt(dcx * dcx + dcy * dcy);
-            const strength = mousePower * cursorActive;
-            if (cursor === "trail") {
-              boost += trailCells[r * cols + c];
-            } else if (dist < cursorRange) {
-              const f = 1 - dist / cursorRange;
-              if (cursor === "reveal") boost += f * f * strength * 0.7;
-              else if (cursor === "ripple") boost += Math.sin(dist * 0.9 - t * 5) * f * strength * 0.45;
-              else if (cursor === "warp" && dist > 0.001) {
-                const push = f * f * strength * cursorRange * 0.35;
-                sx += (dcx / dist) * push;
-                sy += (dcy / dist) * push;
-              } else if (cursor === "pinch" && dist > 0.001) {
-                const push = f * f * strength * cursorRange * 0.35;
-                sx -= (dcx / dist) * push;
-                sy -= (dcy / dist) * push;
-              } else if (cursor === "twist") {
-                const ang = f * f * strength * 3;
-                const cosA = Math.cos(ang);
-                const sinA = Math.sin(ang);
-                sx = cellCX + dcx * cosA - dcy * sinA;
-                sy = cellCY + dcx * sinA + dcy * cosA;
-              } else if (cursor === "scatter") {
-                const n = f * f * strength * 10;
-                const seed = Math.floor(t * 20);
-                sx += (hash(c, r, seed) - 0.5) * n;
-                sy += (hash(c, r, seed + 7) - 0.5) * n;
+            if (anim === "flow") sx += Math.sin(r * 0.13 + t * 1.6) * 1.8;
+            if (anim === "melt") {
+              const n = 0.4 + hash(c, 7, 0) * 0.9;
+              sy = r - t * 7 * n;
+              sy = ((sy % rows) + rows) % rows;
+            } else if (anim === "wave") {
+              const d = Math.sqrt((c - midC) * (c - midC) + (r - midR) * (r - midR));
+              light += Math.sin(d * 0.35 - t * 3) * 0.22;
+            } else if (anim === "rain") {
+              const n = 8 + hash(c, 3, 0) * 14;
+              const span = rows * 1.4;
+              const i = ((t * n + hash(c, 5, 0) * span) % span) - r;
+              if (i > 0 && i < 9) light += (1 - i / 9) * 0.55;
+            }
+
+            if (cursorOn) {
+              const dcx = c + 0.5 - cellCX;
+              const dcy = r + 0.5 - cellCY;
+              const dist = Math.sqrt(dcx * dcx + dcy * dcy);
+              const strength = mousePower * cursorActive;
+              if (cursor === "trail") {
+                boost += trailCells[r * cols + c];
+              } else if (dist < cursorRange) {
+                const f = 1 - dist / cursorRange;
+                if (cursor === "reveal") boost += f * f * strength * 0.7;
+                else if (cursor === "ripple") boost += Math.sin(dist * 0.9 - t * 5) * f * strength * 0.45;
+                else if (cursor === "warp" && dist > 0.001) {
+                  const push = f * f * strength * cursorRange * 0.35;
+                  sx += (dcx / dist) * push;
+                  sy += (dcy / dist) * push;
+                } else if (cursor === "pinch" && dist > 0.001) {
+                  const push = f * f * strength * cursorRange * 0.35;
+                  sx -= (dcx / dist) * push;
+                  sy -= (dcy / dist) * push;
+                } else if (cursor === "twist") {
+                  const ang = f * f * strength * 3;
+                  const cosA = Math.cos(ang);
+                  const sinA = Math.sin(ang);
+                  sx = cellCX + dcx * cosA - dcy * sinA;
+                  sy = cellCY + dcx * sinA + dcy * cosA;
+                } else if (cursor === "scatter") {
+                  const n = f * f * strength * 10;
+                  const seed = Math.floor(t * 20);
+                  sx += (hash(c, r, seed) - 0.5) * n;
+                  sy += (hash(c, r, seed + 7) - 0.5) * n;
+                }
               }
             }
+
+            const ix = Math.round(sx);
+            const iy = Math.round(sy);
+            const cxi = ix < 0 ? 0 : ix > cols - 1 ? cols - 1 : ix;
+            const cyi = iy < 0 ? 0 : iy > rows - 1 ? rows - 1 : iy;
+            let v = cells[cyi * cols + cxi];
+
+            if (rowDrop) v = 1 - v;
+
+            if (anim === "scan") {
+              const d = Math.abs(r / rows - scanOffset);
+              if (d < 0.09) light += (1 - d / 0.09) * 0.45;
+            }
+
+            const weight = motionArea === "image" ? (v < 0.03 ? 0 : v > 0.155 ? 1 : (v - 0.03) * 8) : 1;
+            const nv = v + (dissolvePulse + light) * weight + boost;
+            const oi = r * cols + c;
+            const clamped = nv < 0 ? 0 : nv > 1 ? 1 : nv;
+            if (clamped !== cells[oi]) changed = true;
+            cells[oi] = clamped;
           }
-
-          const ix = Math.round(sx);
-          const iy = Math.round(sy);
-          const cxi = ix < 0 ? 0 : ix > cols - 1 ? cols - 1 : ix;
-          const cyi = iy < 0 ? 0 : iy > rows - 1 ? rows - 1 : iy;
-          let v = cells[cyi * cols + cxi];
-
-          if (rowDrop) v = 1 - v;
-
-          if (anim === "scan") {
-            const d = Math.abs(r / rows - scanOffset);
-            if (d < 0.09) light += (1 - d / 0.09) * 0.45;
-          }
-
-          const weight = motionArea === "image" ? (v < 0.03 ? 0 : v > 0.155 ? 1 : (v - 0.03) * 8) : 1;
-          v = v + (dissolvePulse + light) * weight + boost;
-          cells[r * cols + c] = v < 0 ? 0 : v > 1 ? 1 : v;
         }
+        if (changed) cellsVersion++;
       }
+
+      const needDither = cellsVersion !== renderedVersion || anim === "jitter";
+      if (!needDither) return;
 
       const maxLevel = config.levels - 1;
       const jitter = anim === "jitter";
@@ -1198,6 +1223,7 @@ export default function DitherEngine(props: DitherProps) {
           ctx.drawImage(offCanvas, 0, 0, cols, rows, 0, 0, cssW, cssH);
           ctx.imageSmoothingEnabled = true;
         }
+        renderedVersion = cellsVersion;
         return;
       }
 
@@ -1287,6 +1313,7 @@ export default function DitherEngine(props: DitherProps) {
         ctx.fillRect(0, 0, cssW, cssH);
         ctx.globalCompositeOperation = "source-over";
       }
+      renderedVersion = cellsVersion;
     }
 
     const kick = () => {

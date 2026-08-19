@@ -3233,7 +3233,7 @@ index 50ba83d..3533191 100644
  
  const dictionaries: Record<Language, Record<TranslationKey, string>> = { ru, en };
 diff --git a/src/pages/HomePage.tsx b/src/pages/HomePage.tsx
-index efabb5b..d070257 100644
+index efabb5b..f12aef4 100644
 --- a/src/pages/HomePage.tsx
 +++ b/src/pages/HomePage.tsx
 @@ -1,8 +1,21 @@
@@ -3258,7 +3258,37 @@ index efabb5b..d070257 100644
    return (
      <div
        className="home-page"
-@@ -177,6 +190,9 @@ export default function HomePage({ onNavigate }) {
+@@ -118,22 +131,19 @@ export default function HomePage({ onNavigate }) {
+           left: 0;
+           right: 0;
+           bottom: 0px;
+-          height: 60px;
++          height: 100px;
+           pointer-events: none;
+           background: linear-gradient(
+             to bottom,
+             rgba(0, 0, 0, 0) 0%,
+             var(--card-fade) 100%
+           );
+-        }
+-        @media (prefers-color-scheme: light) {
+-          .card-hero-fade {
+-            background: linear-gradient(
+-              to bottom,
+-              rgba(255, 255, 255, 0),
+-              var(--card-fade) 100%
+-            );
+-          }
++          background: linear-gradient(
++            to bottom,
++            rgba(0, 0, 0, 0) 0%,
++            color-mix(in srgb, var(--card-fade) 55%, transparent) 55%,
++            var(--card-fade) 100%
++          );
+         }
+ 
+         .home-card h2 {
+@@ -177,6 +187,9 @@ export default function HomePage({ onNavigate }) {
            background: rgba(128, 128, 128, 0.12);
            border: 1px solid var(--glass-border);
            flex-shrink: 0;
@@ -3268,7 +3298,7 @@ index efabb5b..d070257 100644
            transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
          }
          .readme-link:hover {
-@@ -233,7 +249,12 @@ export default function HomePage({ onNavigate }) {
+@@ -233,7 +246,12 @@ export default function HomePage({ onNavigate }) {
                  className="glass home-card"
                  onClick={() => onNavigate(card.id)}
                >
@@ -3282,7 +3312,7 @@ index efabb5b..d070257 100644
                    <div className="card-hero">
                      <picture>
                        {card.previewLight && (
-@@ -258,15 +279,33 @@ export default function HomePage({ onNavigate }) {
+@@ -258,15 +276,33 @@ export default function HomePage({ onNavigate }) {
                  <p>{t(card.descKey)}</p>
                  <div className="card-footer">
                    <span className="card-action">{t("home.open")}</span>

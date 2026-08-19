@@ -1,6 +1,31 @@
-import { lazy, type ReactNode } from "react";
+import { lazy, useEffect, useState, type ReactNode } from "react";
 import type { TranslationKey } from "../i18n";
 import DitherEngine from "../dither/DitherEngine";
+
+function DitherCardPreview() {
+  const [light, setLight] = useState(
+    () => typeof window.matchMedia === "function" && window.matchMedia("(prefers-color-scheme: light)").matches
+  );
+  useEffect(() => {
+    const mql = window.matchMedia("(prefers-color-scheme: light)");
+    const onChange = (e: MediaQueryListEvent) => setLight(e.matches);
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
+  return (
+    <DitherEngine
+      preset="monoPrint"
+      animMode="none"
+      mouseMode="trail"
+      mouseRadius={180}
+      mouseStrength={0.6}
+      autoCursor
+      foreground={light ? "#111111" : "#FFFFFF"}
+      background={light ? "#F4F4F0" : "#0A0A0A"}
+      style={{ height: "var(--card-preview-h, 200px)" }}
+    />
+  );
+}
 
 export const cards: {
   id: string;
@@ -26,17 +51,7 @@ export const cards: {
   {
     id: "dither",
     icon: "🧊",
-    preview: (
-      <DitherEngine
-        preset="monoPrint"
-        animMode="none"
-        mouseMode="trail"
-        mouseRadius={180}
-        mouseStrength={0.6}
-        autoCursor
-        style={{ height: 200 }}
-      />
-    ),
+    preview: <DitherCardPreview />,
     titleKey: "card.dither.title" as TranslationKey,
     descKey: "card.dither.desc" as TranslationKey,
     readmeUrl: "https://github.com/MikhailGovgolenko/Pet-projects/tree/main/src/dither",
