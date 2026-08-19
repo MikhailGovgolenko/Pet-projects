@@ -191,10 +191,10 @@ index cbe652d..51ae83f 100644
 +declare module "*?raw";
 diff --git a/src/dither/DitherEngine.tsx b/src/dither/DitherEngine.tsx
 new file mode 100644
-index 0000000..8af1387
+index 0000000..3b2df7d
 --- /dev/null
 +++ b/src/dither/DitherEngine.tsx
-@@ -0,0 +1,2078 @@
+@@ -0,0 +1,2143 @@
 +import * as React from "react";
 +import { addPropertyControls, ControlType } from "framer";
 +
@@ -403,16 +403,23 @@ index 0000000..8af1387
 +  return (h >>> 0) / 4294967296;
 +}
 +
++const colorCache = new Map<string, [number, number, number]>();
 +function parseColor(css: string): [number, number, number] {
-+  if (typeof document === "undefined") return [255, 255, 255];
-+  const probe = document.createElement("span");
-+  probe.style.color = css;
-+  probe.style.display = "none";
-+  document.body.appendChild(probe);
-+  const rgb = getComputedStyle(probe).color;
-+  document.body.removeChild(probe);
-+  const m = rgb.match(/[\d.]+/g);
-+  return m ? [Number(m[0]), Number(m[1]), Number(m[2])] : [255, 255, 255];
++  const cached = colorCache.get(css);
++  if (cached) return cached;
++  let res: [number, number, number] = [255, 255, 255];
++  if (typeof document !== "undefined") {
++    const probe = document.createElement("span");
++    probe.style.color = css;
++    probe.style.display = "none";
++    document.body.appendChild(probe);
++    const rgb = getComputedStyle(probe).color;
++    document.body.removeChild(probe);
++    const m = rgb.match(/[\d.]+/g);
++    if (m) res = [Number(m[0]), Number(m[1]), Number(m[2])];
++  }
++  colorCache.set(css, res);
++  return res;
 +}
 +
 +function normalizeHex(css: string): string {
@@ -974,6 +981,11 @@ index 0000000..8af1387
 +    let levelsArr = new Uint8Array(0);
 +    let trailCells = new Float32Array(0);
 +    let diffCells = new Float32Array(0);
++    let waveDist = new Float32Array(0);
++    let flowPhase = new Float32Array(0);
++    let meltN = new Float32Array(0);
++    let rainN = new Float32Array(0);
++    let rainOff = new Float32Array(0);
 +    let rampCss: string[] = [];
 +    let rampABGR = new Uint32Array(0);
 +    let glowSprite: HTMLCanvasElement | null = null;
@@ -999,6 +1011,9 @@ index 0000000..8af1387
 +    let lastPointer = 0;
 +    let blackSm = -1;
 +    let whiteSm = -1;
++    let cellsVersion = 0;
++    let renderedVersion = -1;
++    let trailHasContent = false;
 +
 +    const [fgRgb, bgRgb] = [parseColor(config.foreground), parseColor(config.background)];
 +    const [g0Rgb, g1Rgb] = [parseColor(gradientStart), parseColor(gradientEnd)];
@@ -1061,6 +1076,35 @@ index 0000000..8af1387
 +            gradientCells[r * cols + c] = (255 << 24) | (bb << 16) | (gg << 8) | rr;
 +          }
 +      }
++      if (anim === "wave") {
++        if (waveDist.length !== cols * rows) waveDist = new Float32Array(cols * rows);
++        const mC = cols / 2;
++        const mR = rows / 2;
++        for (let r = 0; r < rows; r++)
++          for (let c = 0; c < cols; c++) {
++            const dc = c - mC;
++            const dr = r - mR;
++            waveDist[r * cols + c] = Math.sqrt(dc * dc + dr * dr);
++          }
++      }
++      if (anim === "flow") {
++        if (flowPhase.length !== rows) flowPhase = new Float32Array(rows);
++        for (let r = 0; r < rows; r++) flowPhase[r] = r * 0.13;
++      }
++      if (anim === "melt") {
++        if (meltN.length !== cols) meltN = new Float32Array(cols);
++        for (let c = 0; c < cols; c++) meltN[c] = 0.4 + hash(c, 7, 0) * 0.9;
++      }
++      if (anim === "rain") {
++        if (rainN.length !== cols) rainN = new Float32Array(cols);
++        if (rainOff.length !== cols) rainOff = new Float32Array(cols);
++        const span = rows * 1.4;
++        for (let c = 0; c < cols; c++) {
++          rainN[c] = 8 + hash(c, 3, 0) * 14;
++          rainOff[c] = hash(c, 5, 0) * span;
++        }
++      }
++      cellsVersion++;
 +    }
 +
 +    function computeCells() {
@@ -1096,6 +1140,7 @@ index 0000000..8af1387
 +        data = imgBufCtx.getImageData(0, 0, cols, rows).data;
 +      } catch {
 +        cells.fill(0.5);
++        cellsVersion++;
 +        return;
 +      }
 +
@@ -1155,6 +1200,7 @@ index 0000000..8af1387
 +          if (invCfg) v = 1 - v;
 +          cells[idx] = v < 0 ? 0 : v > 1 ? 1 : v;
 +        }
++      cellsVersion++;
 +    }
 +
 +    function frame(ts: number) {
@@ -1182,8 +1228,17 @@ index 0000000..8af1387
 +      const cursorOn = cursor !== "none" && cursorActive > 0.01;
 +
 +      if (cursor === "trail") {
-+        for (let i = 0; i < trailCells.length; i++) trailCells[i] *= 0.9;
++        if (trailHasContent) {
++          let alive = false;
++          for (let i = 0; i < trailCells.length; i++) {
++            const d = trailCells[i] * 0.9;
++            trailCells[i] = d;
++            if (d > 0.01) alive = true;
++          }
++          if (!alive) trailHasContent = false;
++        }
 +        if (cursorOn) {
++          trailHasContent = true;
 +          const brush = mousePower * cursorActive;
 +          const radius = Math.max(1, cursorRange * 0.5);
 +          const r2 = Math.ceil(radius);
@@ -1209,90 +1264,98 @@ index 0000000..8af1387
 +      const scanOffset = anim === "scan" ? (t * 0.22) % 1.3 - 0.15 : 0;
 +      const dissolvePulse = anim === "dissolve" ? Math.sin(t * 1.5) * 0.3 : 0;
 +      const glitchFrame = anim === "glitch" ? Math.floor(t * 2.5) : 0;
-+      const midC = cols / 2;
-+      const midR = rows / 2;
++      const strength = mousePower * cursorActive;
++      const warpPush = strength * cursorRange * 0.35;
 +
-+      for (let r = 0; r < rows; r++) {
-+        let rowShift = 0;
-+        let rowDrop = false;
-+        if (anim === "glitch") {
-+          const h = hash(Math.floor(r / 6), 11, glitchFrame);
-+          if (h > 0.8) rowShift = (h - 0.9) * 34;
-+          if (h > 0.94) rowDrop = true;
-+        }
-+        for (let c = 0; c < cols; c++) {
-+          let sx = c + rowShift;
-+          let sy = r;
-+          let boost = 0;
-+          let light = 0;
-+
-+          if (anim === "flow") sx += Math.sin(r * 0.13 + t * 1.6) * 1.8;
-+          if (anim === "melt") {
-+            const n = 0.4 + hash(c, 7, 0) * 0.9;
-+            sy = r - t * 7 * n;
-+            sy = ((sy % rows) + rows) % rows;
-+          } else if (anim === "wave") {
-+            const d = Math.sqrt((c - midC) * (c - midC) + (r - midR) * (r - midR));
-+            light += Math.sin(d * 0.35 - t * 3) * 0.22;
-+          } else if (anim === "rain") {
-+            const n = 8 + hash(c, 3, 0) * 14;
-+            const span = rows * 1.4;
-+            const i = ((t * n + hash(c, 5, 0) * span) % span) - r;
-+            if (i > 0 && i < 9) light += (1 - i / 9) * 0.55;
++      if (anim !== "none" || cursorOn) {
++        let changed = false;
++        for (let r = 0; r < rows; r++) {
++          let rowShift = 0;
++          let rowDrop = false;
++          if (anim === "glitch") {
++            const h = hash(Math.floor(r / 6), 11, glitchFrame);
++            if (h > 0.8) rowShift = (h - 0.9) * 34;
++            if (h > 0.94) rowDrop = true;
 +          }
++          for (let c = 0; c < cols; c++) {
++            let sx = c + rowShift;
++            let sy = r;
++            let boost = 0;
++            let light = 0;
 +
-+          if (cursorOn) {
-+            const dcx = c + 0.5 - cellCX;
-+            const dcy = r + 0.5 - cellCY;
-+            const dist = Math.sqrt(dcx * dcx + dcy * dcy);
-+            const strength = mousePower * cursorActive;
-+            if (cursor === "trail") {
-+              boost += trailCells[r * cols + c];
-+            } else if (dist < cursorRange) {
-+              const f = 1 - dist / cursorRange;
-+              if (cursor === "reveal") boost += f * f * strength * 0.7;
-+              else if (cursor === "ripple") boost += Math.sin(dist * 0.9 - t * 5) * f * strength * 0.45;
-+              else if (cursor === "warp" && dist > 0.001) {
-+                const push = f * f * strength * cursorRange * 0.35;
-+                sx += (dcx / dist) * push;
-+                sy += (dcy / dist) * push;
-+              } else if (cursor === "pinch" && dist > 0.001) {
-+                const push = f * f * strength * cursorRange * 0.35;
-+                sx -= (dcx / dist) * push;
-+                sy -= (dcy / dist) * push;
-+              } else if (cursor === "twist") {
-+                const ang = f * f * strength * 3;
-+                const cosA = Math.cos(ang);
-+                const sinA = Math.sin(ang);
-+                sx = cellCX + dcx * cosA - dcy * sinA;
-+                sy = cellCY + dcx * sinA + dcy * cosA;
-+              } else if (cursor === "scatter") {
-+                const n = f * f * strength * 10;
-+                const seed = Math.floor(t * 20);
-+                sx += (hash(c, r, seed) - 0.5) * n;
-+                sy += (hash(c, r, seed + 7) - 0.5) * n;
++            if (anim === "flow") sx += Math.sin(flowPhase[r] + t * 1.6) * 1.8;
++            if (anim === "melt") {
++              const n = meltN[c];
++              sy = r - t * 7 * n;
++              sy = ((sy % rows) + rows) % rows;
++            } else if (anim === "wave") {
++              light += Math.sin(waveDist[r * cols + c] * 0.35 - t * 3) * 0.22;
++            } else if (anim === "rain") {
++              const n = rainN[c];
++              const span = rows * 1.4;
++              const i = ((t * n + rainOff[c]) % span) - r;
++              if (i > 0 && i < 9) light += (1 - i / 9) * 0.55;
++            }
++
++            if (cursorOn) {
++              const dcx = c + 0.5 - cellCX;
++              const dcy = r + 0.5 - cellCY;
++              const dist = Math.sqrt(dcx * dcx + dcy * dcy);
++              if (cursor === "trail") {
++                boost += trailCells[r * cols + c];
++              } else if (dist < cursorRange) {
++                const f = 1 - dist / cursorRange;
++                if (cursor === "reveal") boost += f * f * strength * 0.7;
++                else if (cursor === "ripple") boost += Math.sin(dist * 0.9 - t * 5) * f * strength * 0.45;
++                else if (cursor === "warp" && dist > 0.001) {
++                  const push = f * f * warpPush;
++                  sx += (dcx / dist) * push;
++                  sy += (dcy / dist) * push;
++                } else if (cursor === "pinch" && dist > 0.001) {
++                  const push = f * f * warpPush;
++                  sx -= (dcx / dist) * push;
++                  sy -= (dcy / dist) * push;
++                } else if (cursor === "twist") {
++                  const ang = f * f * strength * 3;
++                  const cosA = Math.cos(ang);
++                  const sinA = Math.sin(ang);
++                  sx = cellCX + dcx * cosA - dcy * sinA;
++                  sy = cellCY + dcx * sinA + dcy * cosA;
++                } else if (cursor === "scatter") {
++                  const n = f * f * strength * 10;
++                  const seed = Math.floor(t * 20);
++                  sx += (hash(c, r, seed) - 0.5) * n;
++                  sy += (hash(c, r, seed + 7) - 0.5) * n;
++                }
 +              }
 +            }
++
++            const ix = Math.round(sx);
++            const iy = Math.round(sy);
++            const cxi = ix < 0 ? 0 : ix > cols - 1 ? cols - 1 : ix;
++            const cyi = iy < 0 ? 0 : iy > rows - 1 ? rows - 1 : iy;
++            let v = cells[cyi * cols + cxi];
++
++            if (rowDrop) v = 1 - v;
++
++            if (anim === "scan") {
++              const d = Math.abs(r / rows - scanOffset);
++              if (d < 0.09) light += (1 - d / 0.09) * 0.45;
++            }
++
++            const weight = motionArea === "image" ? (v < 0.03 ? 0 : v > 0.155 ? 1 : (v - 0.03) * 8) : 1;
++            const nv = v + (dissolvePulse + light) * weight + boost;
++            const oi = r * cols + c;
++            const clamped = nv < 0 ? 0 : nv > 1 ? 1 : nv;
++            if (clamped !== cells[oi]) changed = true;
++            cells[oi] = clamped;
 +          }
-+
-+          const ix = Math.round(sx);
-+          const iy = Math.round(sy);
-+          const cxi = ix < 0 ? 0 : ix > cols - 1 ? cols - 1 : ix;
-+          const cyi = iy < 0 ? 0 : iy > rows - 1 ? rows - 1 : iy;
-+          let v = cells[cyi * cols + cxi];
-+
-+          if (rowDrop) v = 1 - v;
-+
-+          if (anim === "scan") {
-+            const d = Math.abs(r / rows - scanOffset);
-+            if (d < 0.09) light += (1 - d / 0.09) * 0.45;
-+          }
-+
-+          const weight = motionArea === "image" ? (v < 0.03 ? 0 : v > 0.155 ? 1 : (v - 0.03) * 8) : 1;
-+          v = v + (dissolvePulse + light) * weight + boost;
-+          cells[r * cols + c] = v < 0 ? 0 : v > 1 ? 1 : v;
 +        }
++        if (changed) cellsVersion++;
 +      }
++
++      const needDither = cellsVersion !== renderedVersion || anim === "jitter";
++      if (!needDither) return;
 +
 +      const maxLevel = config.levels - 1;
 +      const jitter = anim === "jitter";
@@ -1395,6 +1458,7 @@ index 0000000..8af1387
 +          ctx.drawImage(offCanvas, 0, 0, cols, rows, 0, 0, cssW, cssH);
 +          ctx.imageSmoothingEnabled = true;
 +        }
++        renderedVersion = cellsVersion;
 +        return;
 +      }
 +
@@ -1484,6 +1548,7 @@ index 0000000..8af1387
 +        ctx.fillRect(0, 0, cssW, cssH);
 +        ctx.globalCompositeOperation = "source-over";
 +      }
++      renderedVersion = cellsVersion;
 +    }
 +
 +    const kick = () => {
@@ -3233,7 +3298,7 @@ index 50ba83d..3533191 100644
  
  const dictionaries: Record<Language, Record<TranslationKey, string>> = { ru, en };
 diff --git a/src/pages/HomePage.tsx b/src/pages/HomePage.tsx
-index efabb5b..f12aef4 100644
+index efabb5b..8b07db8 100644
 --- a/src/pages/HomePage.tsx
 +++ b/src/pages/HomePage.tsx
 @@ -1,8 +1,21 @@
@@ -3258,19 +3323,60 @@ index efabb5b..f12aef4 100644
    return (
      <div
        className="home-page"
-@@ -118,22 +131,19 @@ export default function HomePage({ onNavigate }) {
+@@ -37,11 +50,11 @@ export default function HomePage({ onNavigate }) {
+         }
+ 
+         .home-title { animation: fadeInDown 0.8s ease both; }
+-        .card-wrap {
++.card-wrap {
+           position: relative;
+-          animation: fadeInUp 0.7s ease both;
++          animation: fadeInUp 0.5s ease both;
+           border-radius: 28px;
+-          isolation: isolate;
++          --card-preview-h: 200px;
+         }
+         .card-wrap:nth-child(1) { animation-delay: 0.1s; }
+         .card-wrap:nth-child(2) { animation-delay: 0.2s; }
+@@ -91,6 +104,8 @@ export default function HomePage({ onNavigate }) {
+         .card-hero {
+           position: relative;
+           margin: -29px -29px 0;
++        }
++        .card-hero-clip {
+           overflow: hidden;
+           border-radius: 24px 24px 0 0;
+         }
+@@ -104,38 +119,20 @@ export default function HomePage({ onNavigate }) {
+           object-fit: cover;
+           object-position: center;
+         }
+-
+-        .card-preview-canvas {
+-          background: radial-gradient(
+-            ellipse at 50% 42%,
+-            rgba(0, 212, 255, 0.1),
+-            transparent 72%
+-          );
+-          display: block;
+-        }
+         .card-hero-fade {
+           position: absolute;
            left: 0;
            right: 0;
-           bottom: 0px;
+-          bottom: 0px;
 -          height: 60px;
-+          height: 100px;
++          bottom: 0;
++          height: 96px;
            pointer-events: none;
            background: linear-gradient(
              to bottom,
-             rgba(0, 0, 0, 0) 0%,
+-            rgba(0, 0, 0, 0) 0%,
++            rgba(0, 0, 0, 0),
              var(--card-fade) 100%
            );
--        }
++          z-index: 1;
+         }
 -        @media (prefers-color-scheme: light) {
 -          .card-hero-fade {
 -            background: linear-gradient(
@@ -3279,16 +3385,12 @@ index efabb5b..f12aef4 100644
 -              var(--card-fade) 100%
 -            );
 -          }
-+          background: linear-gradient(
-+            to bottom,
-+            rgba(0, 0, 0, 0) 0%,
-+            color-mix(in srgb, var(--card-fade) 55%, transparent) 55%,
-+            var(--card-fade) 100%
-+          );
-         }
- 
+-        }
+-
          .home-card h2 {
-@@ -177,6 +187,9 @@ export default function HomePage({ onNavigate }) {
+           font-size: 20px;
+           font-weight: 700;
+@@ -177,6 +174,9 @@ export default function HomePage({ onNavigate }) {
            background: rgba(128, 128, 128, 0.12);
            border: 1px solid var(--glass-border);
            flex-shrink: 0;
@@ -3298,21 +3400,70 @@ index efabb5b..f12aef4 100644
            transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
          }
          .readme-link:hover {
-@@ -233,7 +246,12 @@ export default function HomePage({ onNavigate }) {
+@@ -192,9 +192,11 @@ export default function HomePage({ onNavigate }) {
+           .home-card { padding: 22px; }
+           .home-card h2 { font-size: 18px; }
+           .card-icon { width: 42px; height: 42px; font-size: 19px; }
+-          .card-hero { margin: -23px -23px 0; border-radius: 18px 18px 0 0; }
++          .card-hero { margin: -23px -23px 0; }
++          .card-hero-clip { border-radius: 18px 18px 0 0; }
++          .card-wrap { --card-preview-h: 150px; }
+           .card-preview { height: 150px; }
+-          .card-hero-fade { height: 84px; }
++          .card-hero-fade { height: 72px; }
+         }
+       `}</style>
+ 
+@@ -233,40 +235,67 @@ export default function HomePage({ onNavigate }) {
                  className="glass home-card"
                  onClick={() => onNavigate(card.id)}
                >
 -                {card.previewLight || card.previewDark ? (
 +                {card.preview ? (
 +                  <div className="card-hero">
-+                    {card.preview}
++                    <div className="card-hero-clip">{card.preview}</div>
 +                    <div className="card-hero-fade"></div>
 +                  </div>
 +                ) : card.previewLight || card.previewDark ? (
                    <div className="card-hero">
-                     <picture>
-                       {card.previewLight && (
-@@ -258,15 +276,33 @@ export default function HomePage({ onNavigate }) {
+-                    <picture>
+-                      {card.previewLight && (
+-                        <source
+-                          media="(prefers-color-scheme: light)"
+-                          srcSet={card.previewLight}
++                    <div className="card-hero-clip">
++                      <picture>
++                        {card.previewLight && (
++                          <source
++                            media="(prefers-color-scheme: light)"
++                            srcSet={card.previewLight}
++                          />
++                        )}
++                        <img
++                          className="card-preview"
++                          src={card.previewDark || card.previewLight}
++                          alt=""
++                          draggable={false}
+                         />
+-                      )}
+-                      <img
+-                        className="card-preview"
+-                        src={card.previewDark || card.previewLight}
+-                        alt=""
+-                        draggable={false}
+-                      />
+-                    </picture>
++                      </picture>
++                    </div>
+                     <div className="card-hero-fade"></div>
+                   </div>
+                 ) : (
+-                  <div className="card-icon">{card.icon}</div>
++                  <div className="card-hero">
++                    <div className="card-icon">{card.icon}</div>
++                  </div>
+                 )}
+                 <h2>{t(card.titleKey)}</h2>
                  <p>{t(card.descKey)}</p>
                  <div className="card-footer">
                    <span className="card-action">{t("home.open")}</span>
@@ -3356,16 +3507,41 @@ index efabb5b..f12aef4 100644
                </div>
              </div>
 diff --git a/src/pages/cards.tsx b/src/pages/cards.tsx
-index ef185b4..9b4a032 100644
+index ef185b4..7e97e5f 100644
 --- a/src/pages/cards.tsx
 +++ b/src/pages/cards.tsx
-@@ -1,7 +1,18 @@
+@@ -1,7 +1,43 @@
 -import { lazy } from "react";
-+import { lazy, type ReactNode } from "react";
++import { lazy, useEffect, useState, type ReactNode } from "react";
  import type { TranslationKey } from "../i18n";
 +import DitherEngine from "../dither/DitherEngine";
  
 -export const cards = [
++function DitherCardPreview() {
++  const [light, setLight] = useState(
++    () => typeof window.matchMedia === "function" && window.matchMedia("(prefers-color-scheme: light)").matches
++  );
++  useEffect(() => {
++    const mql = window.matchMedia("(prefers-color-scheme: light)");
++    const onChange = (e: MediaQueryListEvent) => setLight(e.matches);
++    mql.addEventListener("change", onChange);
++    return () => mql.removeEventListener("change", onChange);
++  }, []);
++  return (
++    <DitherEngine
++      preset="monoPrint"
++      animMode="none"
++      mouseMode="trail"
++      mouseRadius={180}
++      mouseStrength={0.6}
++      autoCursor
++      foreground={light ? "#111111" : "#FFFFFF"}
++      background={light ? "#F4F4F0" : "#0A0A0A"}
++      style={{ height: "var(--card-preview-h, 200px)" }}
++    />
++  );
++}
++
 +export const cards: {
 +  id: string;
 +  icon: string;
@@ -3380,7 +3556,7 @@ index ef185b4..9b4a032 100644
    {
      id: "lens",
      icon: "🔍",
-@@ -12,4 +23,23 @@ export const cards = [
+@@ -12,4 +48,13 @@ export const cards = [
      readmeUrl: "https://github.com/MikhailGovgolenko/Pet-projects/tree/main/src/lens#readme",
      component: lazy(() => import("../lens/LensPage")),
    },
@@ -3388,17 +3564,7 @@ index ef185b4..9b4a032 100644
 +  {
 +    id: "dither",
 +    icon: "🧊",
-+    preview: (
-+      <DitherEngine
-+        preset="monoPrint"
-+        animMode="none"
-+        mouseMode="trail"
-+        mouseRadius={180}
-+        mouseStrength={0.6}
-+        autoCursor
-+        style={{ height: 200 }}
-+      />
-+    ),
++    preview: <DitherCardPreview />,
 +    titleKey: "card.dither.title" as TranslationKey,
 +    descKey: "card.dither.desc" as TranslationKey,
 +    readmeUrl: "https://github.com/MikhailGovgolenko/Pet-projects/tree/main/src/dither",
