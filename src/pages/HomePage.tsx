@@ -50,11 +50,11 @@ export default function HomePage({ onNavigate }) {
         }
 
         .home-title { animation: fadeInDown 0.8s ease both; }
-        .card-wrap {
+.card-wrap {
           position: relative;
-          animation: fadeInUp 0.7s ease both;
+          animation: fadeInUp 0.5s ease both;
           border-radius: 28px;
-          isolation: isolate;
+          --card-preview-h: 200px;
         }
         .card-wrap:nth-child(1) { animation-delay: 0.1s; }
         .card-wrap:nth-child(2) { animation-delay: 0.2s; }
@@ -104,6 +104,8 @@ export default function HomePage({ onNavigate }) {
         .card-hero {
           position: relative;
           margin: -29px -29px 0;
+        }
+        .card-hero-clip {
           overflow: hidden;
           border-radius: 24px 24px 0 0;
         }
@@ -117,38 +119,20 @@ export default function HomePage({ onNavigate }) {
           object-fit: cover;
           object-position: center;
         }
-
-        .card-preview-canvas {
-          background: radial-gradient(
-            ellipse at 50% 42%,
-            rgba(0, 212, 255, 0.1),
-            transparent 72%
-          );
-          display: block;
-        }
         .card-hero-fade {
           position: absolute;
           left: 0;
           right: 0;
-          bottom: 0px;
-          height: 60px;
+          bottom: 0;
+          height: 96px;
           pointer-events: none;
           background: linear-gradient(
             to bottom,
-            rgba(0, 0, 0, 0) 0%,
+            rgba(0, 0, 0, 0),
             var(--card-fade) 100%
           );
+          z-index: 1;
         }
-        @media (prefers-color-scheme: light) {
-          .card-hero-fade {
-            background: linear-gradient(
-              to bottom,
-              rgba(255, 255, 255, 0),
-              var(--card-fade) 100%
-            );
-          }
-        }
-
         .home-card h2 {
           font-size: 20px;
           font-weight: 700;
@@ -208,9 +192,11 @@ export default function HomePage({ onNavigate }) {
           .home-card { padding: 22px; }
           .home-card h2 { font-size: 18px; }
           .card-icon { width: 42px; height: 42px; font-size: 19px; }
-          .card-hero { margin: -23px -23px 0; border-radius: 18px 18px 0 0; }
+          .card-hero { margin: -23px -23px 0; }
+          .card-hero-clip { border-radius: 18px 18px 0 0; }
+          .card-wrap { --card-preview-h: 150px; }
           .card-preview { height: 150px; }
-          .card-hero-fade { height: 84px; }
+          .card-hero-fade { height: 72px; }
         }
       `}</style>
 
@@ -251,29 +237,33 @@ export default function HomePage({ onNavigate }) {
               >
                 {card.preview ? (
                   <div className="card-hero">
-                    {card.preview}
+                    <div className="card-hero-clip">{card.preview}</div>
                     <div className="card-hero-fade"></div>
                   </div>
                 ) : card.previewLight || card.previewDark ? (
                   <div className="card-hero">
-                    <picture>
-                      {card.previewLight && (
-                        <source
-                          media="(prefers-color-scheme: light)"
-                          srcSet={card.previewLight}
+                    <div className="card-hero-clip">
+                      <picture>
+                        {card.previewLight && (
+                          <source
+                            media="(prefers-color-scheme: light)"
+                            srcSet={card.previewLight}
+                          />
+                        )}
+                        <img
+                          className="card-preview"
+                          src={card.previewDark || card.previewLight}
+                          alt=""
+                          draggable={false}
                         />
-                      )}
-                      <img
-                        className="card-preview"
-                        src={card.previewDark || card.previewLight}
-                        alt=""
-                        draggable={false}
-                      />
-                    </picture>
+                      </picture>
+                    </div>
                     <div className="card-hero-fade"></div>
                   </div>
                 ) : (
-                  <div className="card-icon">{card.icon}</div>
+                  <div className="card-hero">
+                    <div className="card-icon">{card.icon}</div>
+                  </div>
                 )}
                 <h2>{t(card.titleKey)}</h2>
                 <p>{t(card.descKey)}</p>
