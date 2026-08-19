@@ -206,16 +206,23 @@ function hash(x: number, y: number, seed: number): number {
   return (h >>> 0) / 4294967296;
 }
 
+const colorCache = new Map<string, [number, number, number]>();
 function parseColor(css: string): [number, number, number] {
-  if (typeof document === "undefined") return [255, 255, 255];
-  const probe = document.createElement("span");
-  probe.style.color = css;
-  probe.style.display = "none";
-  document.body.appendChild(probe);
-  const rgb = getComputedStyle(probe).color;
-  document.body.removeChild(probe);
-  const m = rgb.match(/[\d.]+/g);
-  return m ? [Number(m[0]), Number(m[1]), Number(m[2])] : [255, 255, 255];
+  const cached = colorCache.get(css);
+  if (cached) return cached;
+  let res: [number, number, number] = [255, 255, 255];
+  if (typeof document !== "undefined") {
+    const probe = document.createElement("span");
+    probe.style.color = css;
+    probe.style.display = "none";
+    document.body.appendChild(probe);
+    const rgb = getComputedStyle(probe).color;
+    document.body.removeChild(probe);
+    const m = rgb.match(/[\d.]+/g);
+    if (m) res = [Number(m[0]), Number(m[1]), Number(m[2])];
+  }
+  colorCache.set(css, res);
+  return res;
 }
 
 function normalizeHex(css: string): string {
@@ -777,6 +784,11 @@ export default function DitherEngine(props: DitherProps) {
     let levelsArr = new Uint8Array(0);
     let trailCells = new Float32Array(0);
     let diffCells = new Float32Array(0);
+    let waveDist = new Float32Array(0);
+    let flowPhase = new Float32Array(0);
+    let meltN = new Float32Array(0);
+    let rainN = new Float32Array(0);
+    let rainOff = new Float32Array(0);
     let rampCss: string[] = [];
     let rampABGR = new Uint32Array(0);
     let glowSprite: HTMLCanvasElement | null = null;
@@ -866,6 +878,34 @@ export default function DitherEngine(props: DitherProps) {
             const bb = Math.round(g0Rgb[2] + (g1Rgb[2] - g0Rgb[2]) * t);
             gradientCells[r * cols + c] = (255 << 24) | (bb << 16) | (gg << 8) | rr;
           }
+      }
+      if (anim === "wave") {
+        if (waveDist.length !== cols * rows) waveDist = new Float32Array(cols * rows);
+        const mC = cols / 2;
+        const mR = rows / 2;
+        for (let r = 0; r < rows; r++)
+          for (let c = 0; c < cols; c++) {
+            const dc = c - mC;
+            const dr = r - mR;
+            waveDist[r * cols + c] = Math.sqrt(dc * dc + dr * dr);
+          }
+      }
+      if (anim === "flow") {
+        if (flowPhase.length !== rows) flowPhase = new Float32Array(rows);
+        for (let r = 0; r < rows; r++) flowPhase[r] = r * 0.13;
+      }
+      if (anim === "melt") {
+        if (meltN.length !== cols) meltN = new Float32Array(cols);
+        for (let c = 0; c < cols; c++) meltN[c] = 0.4 + hash(c, 7, 0) * 0.9;
+      }
+      if (anim === "rain") {
+        if (rainN.length !== cols) rainN = new Float32Array(cols);
+        if (rainOff.length !== cols) rainOff = new Float32Array(cols);
+        const span = rows * 1.4;
+        for (let c = 0; c < cols; c++) {
+          rainN[c] = 8 + hash(c, 3, 0) * 14;
+          rainOff[c] = hash(c, 5, 0) * span;
+        }
       }
       cellsVersion++;
     }
@@ -1027,8 +1067,8 @@ export default function DitherEngine(props: DitherProps) {
       const scanOffset = anim === "scan" ? (t * 0.22) % 1.3 - 0.15 : 0;
       const dissolvePulse = anim === "dissolve" ? Math.sin(t * 1.5) * 0.3 : 0;
       const glitchFrame = anim === "glitch" ? Math.floor(t * 2.5) : 0;
-      const midC = cols / 2;
-      const midR = rows / 2;
+      const strength = mousePower * cursorActive;
+      const warpPush = strength * cursorRange * 0.35;
 
       if (anim !== "none" || cursorOn) {
         let changed = false;
@@ -1046,18 +1086,17 @@ export default function DitherEngine(props: DitherProps) {
             let boost = 0;
             let light = 0;
 
-            if (anim === "flow") sx += Math.sin(r * 0.13 + t * 1.6) * 1.8;
+            if (anim === "flow") sx += Math.sin(flowPhase[r] + t * 1.6) * 1.8;
             if (anim === "melt") {
-              const n = 0.4 + hash(c, 7, 0) * 0.9;
+              const n = meltN[c];
               sy = r - t * 7 * n;
               sy = ((sy % rows) + rows) % rows;
             } else if (anim === "wave") {
-              const d = Math.sqrt((c - midC) * (c - midC) + (r - midR) * (r - midR));
-              light += Math.sin(d * 0.35 - t * 3) * 0.22;
+              light += Math.sin(waveDist[r * cols + c] * 0.35 - t * 3) * 0.22;
             } else if (anim === "rain") {
-              const n = 8 + hash(c, 3, 0) * 14;
+              const n = rainN[c];
               const span = rows * 1.4;
-              const i = ((t * n + hash(c, 5, 0) * span) % span) - r;
+              const i = ((t * n + rainOff[c]) % span) - r;
               if (i > 0 && i < 9) light += (1 - i / 9) * 0.55;
             }
 
@@ -1065,7 +1104,6 @@ export default function DitherEngine(props: DitherProps) {
               const dcx = c + 0.5 - cellCX;
               const dcy = r + 0.5 - cellCY;
               const dist = Math.sqrt(dcx * dcx + dcy * dcy);
-              const strength = mousePower * cursorActive;
               if (cursor === "trail") {
                 boost += trailCells[r * cols + c];
               } else if (dist < cursorRange) {
@@ -1073,11 +1111,11 @@ export default function DitherEngine(props: DitherProps) {
                 if (cursor === "reveal") boost += f * f * strength * 0.7;
                 else if (cursor === "ripple") boost += Math.sin(dist * 0.9 - t * 5) * f * strength * 0.45;
                 else if (cursor === "warp" && dist > 0.001) {
-                  const push = f * f * strength * cursorRange * 0.35;
+                  const push = f * f * warpPush;
                   sx += (dcx / dist) * push;
                   sy += (dcy / dist) * push;
                 } else if (cursor === "pinch" && dist > 0.001) {
-                  const push = f * f * strength * cursorRange * 0.35;
+                  const push = f * f * warpPush;
                   sx -= (dcx / dist) * push;
                   sy -= (dcy / dist) * push;
                 } else if (cursor === "twist") {
