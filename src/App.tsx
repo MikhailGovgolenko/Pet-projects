@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { cards } from "./pages/cards";
 import HomePage from "./pages/HomePage";
 import { useI18n } from "./i18n";
@@ -57,7 +57,6 @@ function updateUrl(tab: string) {
 export default function App() {
   const { t } = useI18n();
   const [tab, setTab] = useState(getTabFromPath);
-  const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     var onPop = () => setTab(getTabFromPath());
@@ -66,9 +65,6 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (rootRef.current) {
-      rootRef.current.style.overflow = tab !== "home" ? "hidden" : "";
-    }
     updateSeo(tab === "home" ? null : tab);
   }, [tab]);
 
@@ -76,23 +72,12 @@ export default function App() {
 
   return (
     <div
-      ref={rootRef}
       style={{
         minHeight: "100dvh",
         width: "100%",
         position: "relative",
-        overflowX: "hidden",
       }}
     >
-      <style>{`
-        #root::before {
-          content: "";
-          position: fixed;
-          inset: 0;
-          background: var(--bg);
-          z-index: -1;
-        }
-      `}</style>
       {tab !== "home" && (
         <div
           onClick={() => { setTab("home"); updateUrl("home"); }}
