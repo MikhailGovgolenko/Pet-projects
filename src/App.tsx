@@ -1,16 +1,14 @@
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { cards } from "./pages/cards";
 import HomePage from "./pages/HomePage";
 import { useI18n } from "./i18n";
+import { siteUrl, getSeoForPage } from "./seo-data";
 
 const BASE = "/";
-const SITE_URL = "https://pet-projects.govgolenko.ru";
 
 var pageMap = {};
-var cardDataMap: Record<string, (typeof cards)[number]> = {};
 for (const card of cards) {
   pageMap[card.id] = card.component;
-  cardDataMap[card.id] = card;
 }
 
 function setMeta(property: string, content: string) {
@@ -20,31 +18,24 @@ function setMeta(property: string, content: string) {
   if (el) el.content = content;
 }
 
-function updateSeo(cardId: string | null, t: (key: string) => string) {
-  if (!cardId || !cardDataMap[cardId]) {
-    var title = "Pet projects";
-    var desc = "Interactive simulations and tools";
-    var image = SITE_URL + "/og-image.png";
-    var url = SITE_URL + "/";
-  } else {
-    var card = cardDataMap[cardId];
-    var title = t(card.titleKey);
-    var desc = t(card.descKey);
-    var image = SITE_URL + "/" + card.ogImage;
-    var url = SITE_URL + "/" + card.id;
-  }
+function updateSeo(cardId: string | null) {
+  var seo = getSeoForPage(cardId);
+  var fullUrl = seo.id ? `${siteUrl}/${seo.id}/` : `${siteUrl}/`;
+  var fullImage = `${siteUrl}/${seo.ogImage}`;
+  var title = seo.id ? `${seo.title} | Pet projects` : seo.title;
 
-  document.title = title + " | Pet projects";
+  document.title = title;
   setMeta("og:title", title);
-  setMeta("og:description", desc);
-  setMeta("og:image", image);
-  setMeta("og:url", url);
+  setMeta("og:description", seo.description);
+  setMeta("og:image", fullImage);
+  setMeta("og:url", fullUrl);
+  setMeta("og:image:alt", title);
   setMeta("twitter:title", title);
-  setMeta("twitter:description", desc);
-  setMeta("twitter:image", image);
+  setMeta("twitter:description", seo.description);
+  setMeta("twitter:image", fullImage);
 
   var canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
-  if (canonical) canonical.href = url;
+  if (canonical) canonical.href = fullUrl;
 }
 
 function getTabFromPath() {
@@ -66,6 +57,7 @@ function updateUrl(tab: string) {
 export default function App() {
   const { t } = useI18n();
   const [tab, setTab] = useState(getTabFromPath);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     var onPop = () => setTab(getTabFromPath());
@@ -74,27 +66,22 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (tab !== "home") {
-      window.scrollTo(0, 0);
-      document.documentElement.style.overflow = "hidden";
-      document.body.style.overflow = "hidden";
-    } else {
-      document.documentElement.style.overflow = "";
-      document.body.style.overflow = "";
+    if (rootRef.current) {
+      rootRef.current.style.overflow = tab !== "home" ? "hidden" : "";
     }
-    updateSeo(tab === "home" ? null : tab, t);
-  }, [tab, t]);
+    updateSeo(tab === "home" ? null : tab);
+  }, [tab]);
 
   var Page = tab !== "home" && pageMap[tab];
 
   return (
     <div
+      ref={rootRef}
       style={{
         minHeight: "100dvh",
         width: "100%",
         background: "var(--bg)",
         position: "relative",
-        overflow: "hidden",
       }}
     >
       {tab !== "home" && (

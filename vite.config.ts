@@ -2,27 +2,41 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import fs from "fs";
 import path from "path";
+import { pages, homePage, siteUrl, type PageSeo } from "./src/seo-data";
 
-const SITE_URL = "https://pet-projects.govgolenko.ru";
+function buildHeadTags(page: PageSeo): string {
+  const fullUrl = page.id ? `${siteUrl}/${page.id}/` : `${siteUrl}/`;
+  const fullImage = `${siteUrl}/${page.ogImage}`;
+  const title = page.id ? `${page.title} | Pet projects` : page.title;
+  const desc = page.description;
 
-const cards = [
-  {
-    id: "lens",
-    title: "Симметричная линза без сферической аберрации",
-    titleEn: "Symmetric lens without spherical aberration",
-    desc: "Моделирование преломления света в симметричной линзе. Визуализация хода лучей, фокусного расстояния и аберраций.",
-    descEn: "Simulation of light refraction in a symmetric lens. Visualization of ray paths, focal distance and aberrations.",
-    ogImage: "lens-preview-light.png",
-  },
-  {
-    id: "agenda",
-    title: "Повестки: Запад vs Кремль",
-    titleEn: "Agendas: West vs Kremlin",
-    desc: "Сравнение двух повесток: что предлагают на Западе и в Кремле. Скачайте PDF и узнайте ключевые отличия.",
-    descEn: "Comparison of two agendas: what the West and the Kremlin propose. Download PDFs to see the key differences.",
-    ogImage: "agenda-preview-light.png",
-  },
-];
+  return `
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Pet projects" />
+        <meta property="og:title" content="${escapeAttr(title)}" />
+        <meta property="og:description" content="${escapeAttr(desc)}" />
+        <link rel="canonical" href="${fullUrl}" />
+        <meta property="og:url" content="${fullUrl}" />
+        <meta property="og:image" content="${fullImage}" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content="${escapeAttr(title)}" />
+        <meta property="og:locale" content="ru_RU" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="${escapeAttr(title)}" />
+        <meta name="twitter:description" content="${escapeAttr(desc)}" />
+        <meta name="twitter:image" content="${fullImage}" />
+
+        <title>${escapeHtml(title)}</title>`;
+}
+
+function escapeAttr(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
 
 function ogPagesPlugin(): import("vite").Plugin {
   return {
@@ -32,51 +46,18 @@ function ogPagesPlugin(): import("vite").Plugin {
       const dist = path.resolve(__dirname, "dist");
       const indexHtml = fs.readFileSync(path.join(dist, "index.html"), "utf-8");
 
-      for (const card of cards) {
-        const pageHtml = indexHtml
-          .replace(
-            /<meta property="og:title" content="[^"]*" \/>/,
-            `<meta property="og:title" content="${card.title}" />`
-          )
-          .replace(
-            /<meta\s+property="og:description"\s+content="[^"]*"\s+\/>/,
-            `<meta property="og:description" content="${card.desc}" />`
-          )
-          .replace(
-            /<meta property="og:image" content="[^"]*" \/>/,
-            `<meta property="og:image" content="${SITE_URL}/${card.ogImage}" />`
-          )
-          .replace(
-            /<link rel="canonical" href="[^"]*" \/>/,
-            `<link rel="canonical" href="${SITE_URL}/${card.id}" />`
-          )
-          .replace(
-            /<meta property="og:url" content="[^"]*" \/>/,
-            `<meta property="og:url" content="${SITE_URL}/${card.id}" />`
-          )
-          .replace(
-            /<meta name="twitter:title" content="[^"]*" \/>/,
-            `<meta name="twitter:title" content="${card.title}" />`
-          )
-          .replace(
-            /<meta\s+name="twitter:description"\s+content="[^"]*"\s+\/>/,
-            `<meta name="twitter:description" content="${card.desc}" />`
-          )
-          .replace(
-            /<meta name="twitter:image" content="[^"]*" \/>/,
-            `<meta name="twitter:image" content="${SITE_URL}/${card.ogImage}" />`
-          )
-          .replace(
-            /<title>[^<]*<\/title>/,
-            `<title>${card.title} | Pet projects</title>`
-          );
+      const socialPreviewBlock = /<!-- Social preview -->[\s\S]*?<title>[^<]*<\/title>/;
 
-        const dir = path.join(dist, card.id);
+      for (const page of pages) {
+        const newHead = `<!-- Social preview -->${buildHeadTags(page)}`;
+        const pageHtml = indexHtml.replace(socialPreviewBlock, newHead);
+
+        const dir = path.join(dist, page.id);
         fs.mkdirSync(dir, { recursive: true });
         fs.writeFileSync(path.join(dir, "index.html"), pageHtml);
       }
 
-      console.log(`[og-pages] Generated OG pages for: ${cards.map((c) => c.id).join(", ")}`);
+      console.log(`[og-pages] Generated pages: ${pages.map((p) => `/${p.id}/`).join(", ")}`);
     },
   };
 }

@@ -47,17 +47,22 @@
 }
 
 html,
-body,
+body {
+  width: 100%;
+  min-height: 100dvh;
+  margin: 0;
+  background: transparent;
+}
+
 #root {
   width: 100%;
   min-height: 100dvh;
   margin: 0;
   background: var(--bg);
+  overflow-x: hidden;
 }
 
 body {
-  overflow-x: hidden;
-  background: var(--bg);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
     "Segoe UI", Roboto, sans-serif;
