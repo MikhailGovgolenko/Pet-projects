@@ -100,6 +100,7 @@ export default function LensPage() {
         width: "100%",
         position: "relative",
         background: "var(--bg)",
+        paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
       <div
