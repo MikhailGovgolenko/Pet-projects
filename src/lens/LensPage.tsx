@@ -98,7 +98,6 @@ export default function LensPage() {
       style={{
         minHeight: "100dvh",
         width: "100%",
-        overflow: "hidden",
         position: "relative",
         background: "var(--bg)",
       }}
