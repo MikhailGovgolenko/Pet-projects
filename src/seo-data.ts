@@ -11,7 +11,7 @@ export const homePage: PageSeo = {
   id: "",
   title: "Pet projects",
   description: "Interactive simulations and tools",
-  ogImage: "og-image.png",
+  ogImage: "og-image.png?v=2",
 };
 
 export const pages: PageSeo[] = [
@@ -20,14 +20,14 @@ export const pages: PageSeo[] = [
     title: "Симметричная линза без сферической аберрации",
     description:
       "Моделирование преломления света в симметричной линзе. Визуализация хода лучей, фокусного расстояния и аберраций.",
-    ogImage: "lens-preview-light.png",
+    ogImage: "lens-preview-light.png?v=2",
   },
   {
     id: "agenda",
     title: "Повестки: Запад vs Кремль",
     description:
       "Сравнение двух повесток: что предлагают на Западе и в Кремле. Скачайте PDF и узнайте ключевые отличия.",
-    ogImage: "agenda-preview-light.png",
+    ogImage: "agenda-preview-light.png?v=2",
   },
 ];
 

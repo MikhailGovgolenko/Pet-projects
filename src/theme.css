@@ -51,8 +51,17 @@ body {
   width: 100%;
   min-height: 100dvh;
   min-height: 100vh;
+  min-height: -webkit-fill-available;
+  height: -webkit-fill-available;
   margin: 0;
   background: var(--bg);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root { color-scheme: dark; }
+}
+@media (prefers-color-scheme: light) {
+  :root { color-scheme: light; }
 }
 
 html {
@@ -67,6 +76,8 @@ body {
   width: 100%;
   min-height: 100dvh;
   min-height: 100vh;
+  min-height: -webkit-fill-available;
+  height: -webkit-fill-available;
   margin: 0;
   background: var(--bg);
 }
