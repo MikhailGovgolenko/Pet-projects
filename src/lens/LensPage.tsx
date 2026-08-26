@@ -7,13 +7,6 @@ import Lens3D from "./Lens3D";
 import { compile, substituteCoeffs } from "./expr";
 import { useI18n, type TranslationKey } from "../i18n";
 
-// ──────────────────────────────────────────────────────────────
-// DIAGNOSTIC FLAG — set to true to replace Canvas with a plain
-// DOM <div> in order to test iOS Safari Tab Bar compositing.
-// MUST be set back to false before any production deploy.
-// ──────────────────────────────────────────────────────────────
-const DIAGNOSTIC_NO_CANVAS = true;
-
 function defaultEq(params) {
   return `${params.z0}+(${params.a2})*r*r+(${params.a4})*r**4+(${params.a6})*r**6`;
 }
@@ -112,34 +105,23 @@ export default function LensPage() {
       <div
         id="canvas-container"
         style={{
-          position: "fixed",
+          position: "absolute",
           inset: 0,
           zIndex: 0,
-          // Opaque fill on the fixed layer — parent bg is not visible under iOS canvas compositing.
           background: "var(--bg)",
         }}
       >
-        {DIAGNOSTIC_NO_CANVAS ? (
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              background: "transparent",
-            }}
-          />
-        ) : (
-          <ViewBoundary key={mode3d ? "3d" : "2d"} t={t}>
-            {!mode3d ? (
-              <Lens2D
-                params={paramsWithEq}
-                resetKey={resetKey}
-                scaleRef={scaleRef}
-              />
-            ) : (
-              <Lens3D key={resetKey} params={paramsWithEq} scaleRef={scaleRef} />
-            )}
-          </ViewBoundary>
-        )}
+        <ViewBoundary key={mode3d ? "3d" : "2d"} t={t}>
+          {!mode3d ? (
+            <Lens2D
+              params={paramsWithEq}
+              resetKey={resetKey}
+              scaleRef={scaleRef}
+            />
+          ) : (
+            <Lens3D key={resetKey} params={paramsWithEq} scaleRef={scaleRef} />
+          )}
+        </ViewBoundary>
       </div>
 
       <GlassPanel title={t("lens.panel")}>
