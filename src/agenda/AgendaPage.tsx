@@ -28,7 +28,7 @@ export default function AgendaPage() {
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        padding: "calc(48px + env(safe-area-inset-top)) 20px calc(48px + env(safe-area-inset-bottom))",
+        padding: "calc(48px + env(safe-area-inset-top)) calc(20px + env(safe-area-inset-right)) calc(48px + env(safe-area-inset-bottom)) calc(20px + env(safe-area-inset-left))",
         position: "relative",
       }}
     >
