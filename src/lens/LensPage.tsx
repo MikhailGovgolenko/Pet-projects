@@ -108,6 +108,8 @@ export default function LensPage() {
           position: "fixed",
           inset: 0,
           zIndex: 0,
+          // Opaque fill on the fixed layer — parent bg is not visible under iOS canvas compositing.
+          background: "var(--bg)",
         }}
       >
         <ViewBoundary key={mode3d ? "3d" : "2d"} t={t}>
