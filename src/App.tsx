@@ -76,6 +76,7 @@ export default function App() {
         minHeight: "100dvh",
         width: "100%",
         position: "relative",
+        background: "var(--bg)",
       }}
     >
       {tab !== "home" && (
