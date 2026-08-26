@@ -50,16 +50,23 @@ html,
 body {
   width: 100%;
   min-height: 100dvh;
+  min-height: 100vh;
   margin: 0;
+  background: var(--bg);
 }
 
 html {
   background: var(--bg);
 }
 
+body {
+  background: var(--bg);
+}
+
 #root {
   width: 100%;
   min-height: 100dvh;
+  min-height: 100vh;
   margin: 0;
   background: var(--bg);
   overflow-x: hidden;
