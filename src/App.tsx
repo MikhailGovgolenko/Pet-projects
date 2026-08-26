@@ -4,10 +4,47 @@ import HomePage from "./pages/HomePage";
 import { useI18n } from "./i18n";
 
 const BASE = "/";
+const SITE_URL = "https://pet-projects.govgolenko.ru";
 
 var pageMap = {};
+var cardDataMap: Record<string, (typeof cards)[number]> = {};
 for (const card of cards) {
   pageMap[card.id] = card.component;
+  cardDataMap[card.id] = card;
+}
+
+function setMeta(property: string, content: string) {
+  var el =
+    document.querySelector<HTMLMetaElement>(`meta[property="${property}"]`) ||
+    document.querySelector<HTMLMetaElement>(`meta[name="${property}"]`);
+  if (el) el.content = content;
+}
+
+function updateSeo(cardId: string | null, t: (key: string) => string) {
+  if (!cardId || !cardDataMap[cardId]) {
+    var title = "Pet projects";
+    var desc = "Interactive simulations and tools";
+    var image = SITE_URL + "/og-image.png";
+    var url = SITE_URL + "/";
+  } else {
+    var card = cardDataMap[cardId];
+    var title = t(card.titleKey);
+    var desc = t(card.descKey);
+    var image = SITE_URL + "/" + card.ogImage;
+    var url = SITE_URL + "/" + card.id;
+  }
+
+  document.title = title + " | Pet projects";
+  setMeta("og:title", title);
+  setMeta("og:description", desc);
+  setMeta("og:image", image);
+  setMeta("og:url", url);
+  setMeta("twitter:title", title);
+  setMeta("twitter:description", desc);
+  setMeta("twitter:image", image);
+
+  var canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+  if (canonical) canonical.href = url;
 }
 
 function getTabFromPath() {
@@ -45,7 +82,8 @@ export default function App() {
       document.documentElement.style.overflow = "";
       document.body.style.overflow = "";
     }
-  }, [tab]);
+    updateSeo(tab === "home" ? null : tab, t);
+  }, [tab, t]);
 
   var Page = tab !== "home" && pageMap[tab];
 
