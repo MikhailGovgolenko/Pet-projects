@@ -80,10 +80,19 @@ export default function App() {
       style={{
         minHeight: "100dvh",
         width: "100%",
-        background: "var(--bg)",
         position: "relative",
+        overflowX: "hidden",
       }}
     >
+      <style>{`
+        #root::before {
+          content: "";
+          position: fixed;
+          inset: 0;
+          background: var(--bg);
+          z-index: -1;
+        }
+      `}</style>
       {tab !== "home" && (
         <div
           onClick={() => { setTab("home"); updateUrl("home"); }}

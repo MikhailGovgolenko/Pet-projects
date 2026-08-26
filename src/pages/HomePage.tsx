@@ -27,7 +27,6 @@ export default function HomePage({ onNavigate }) {
           position: relative;
           min-height: 100vh;
           min-height: 100dvh;
-          background: var(--bg);
           padding: calc(48px + env(safe-area-inset-top))
             calc(20px + env(safe-area-inset-right))
             calc(32px + env(safe-area-inset-bottom))
