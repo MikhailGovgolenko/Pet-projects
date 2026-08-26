@@ -22,12 +22,13 @@ export default function AgendaPage() {
   return (
     <div
       style={{
-        height: "100dvh",
+        minHeight: "100dvh",
         width: "100%",
         overflowY: "auto",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
+        background: "var(--bg)",
         padding: "calc(48px + env(safe-area-inset-top)) calc(20px + env(safe-area-inset-right)) calc(48px + env(safe-area-inset-bottom)) calc(20px + env(safe-area-inset-left))",
         position: "relative",
       }}

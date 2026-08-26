@@ -100,6 +100,7 @@ export default function LensPage() {
         width: "100%",
         overflow: "hidden",
         position: "relative",
+        background: "var(--bg)",
       }}
     >
       <div

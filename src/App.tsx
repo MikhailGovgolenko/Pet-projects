@@ -42,11 +42,11 @@ function getTabFromPath() {
   var stored = sessionStorage.redirect;
   if (stored) {
     sessionStorage.removeItem("redirect");
-    var recovered = stored.replace(BASE, "") || "home";
+    var recovered = stored.replace(/^\/+|\/+$/g, "") || "home";
     history.replaceState(null, "", recovered === "home" ? BASE : BASE + recovered);
     return recovered;
   }
-  return location.pathname.replace(BASE, "") || "home";
+  return location.pathname.replace(/^\/+|\/+$/g, "") || "home";
 }
 
 function updateUrl(tab: string) {
