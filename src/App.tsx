@@ -1,10 +1,16 @@
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, lazy } from "react";
 import { cards } from "./pages/cards";
 import HomePage from "./pages/HomePage";
 import { useI18n } from "./i18n";
 import { siteUrl, getSeoForPage } from "./seo-data";
 
+const DebugOverlay = lazy(() => import("./components/DebugOverlay"));
+
 const BASE = "/";
+
+const DEBUG =
+  typeof location !== "undefined" &&
+  new URLSearchParams(location.search).has("debug");
 
 var pageMap = {};
 for (const card of cards) {
@@ -113,6 +119,12 @@ export default function App() {
         {tab === "home" && <HomePage onNavigate={(t) => { setTab(t); updateUrl(t); }} />}
         {Page && <Page />}
       </Suspense>
+
+      {DEBUG && (
+        <Suspense fallback={null}>
+          <DebugOverlay />
+        </Suspense>
+      )}
     </div>
   );
 }
