@@ -40,7 +40,7 @@ class ViewBoundary extends Component<
       return (
         <div
           style={{
-            position: "absolute",
+          position: "fixed",
             inset: 0,
             display: "flex",
             flexDirection: "column",
@@ -100,13 +100,12 @@ export default function LensPage() {
         width: "100%",
         position: "relative",
         background: "var(--bg)",
-        paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
       <div
         id="canvas-container"
         style={{
-          position: "absolute",
+          position: "fixed",
           inset: 0,
           zIndex: 0,
           background: "var(--bg)",
