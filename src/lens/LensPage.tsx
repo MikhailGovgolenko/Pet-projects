@@ -100,6 +100,8 @@ export default function LensPage() {
         width: "100%",
         position: "relative",
         background: "var(--bg)",
+        overflowY: "auto",
+        paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
       <div

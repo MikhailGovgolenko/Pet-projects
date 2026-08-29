@@ -22,7 +22,7 @@ export default function AgendaPage() {
   return (
     <div
       style={{
-        height: "100dvh",
+        minHeight: "100dvh",
         width: "100%",
         overflowY: "auto",
         display: "flex",
