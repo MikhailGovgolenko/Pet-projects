@@ -55,7 +55,6 @@ body {
   height: -webkit-fill-available;
   margin: 0;
   background: var(--bg);
-  overscroll-behavior-y: none;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -80,7 +79,6 @@ body {
   min-height: -webkit-fill-available;
   margin: 0;
   background: var(--bg);
-  overscroll-behavior-y: none;
 }
 
 body {
