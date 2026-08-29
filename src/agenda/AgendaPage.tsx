@@ -29,7 +29,7 @@ export default function AgendaPage() {
         flexDirection: "column",
         alignItems: "center",
         background: "var(--bg)",
-        padding: "calc(48px + env(safe-area-inset-top)) calc(20px + env(safe-area-inset-right)) calc(48px + env(safe-area-inset-bottom)) calc(20px + env(safe-area-inset-left))",
+        padding: "calc(72px + env(safe-area-inset-top)) calc(20px + env(safe-area-inset-right)) calc(48px + env(safe-area-inset-bottom)) calc(20px + env(safe-area-inset-left))",
         position: "relative",
       }}
     >
@@ -114,7 +114,7 @@ export default function AgendaPage() {
           left: 50%;
           transform: translateX(-50%);
           padding: 12px 24px;
-          border-radius: 12px;
+          border-radius: 120px;
           background: var(--glass-bg);
           border: 1px solid var(--glass-border);
           backdrop-filter: blur(16px);
