@@ -4,9 +4,9 @@ import fs from "fs";
 import path from "path";
 import { pages, homePage, siteUrl, type PageSeo } from "./src/seo-data";
 
-function buildHeadTags(page: PageSeo): string {
+function buildHeadTags(page: PageSeo, version: string): string {
   const fullUrl = page.id ? `${siteUrl}/${page.id}/` : `${siteUrl}/`;
-  const fullImage = `${siteUrl}/${page.ogImage}`;
+  const fullImage = `${siteUrl}/${page.ogImage}?v=${version}`;
   const title = page.id ? `${page.title} | Pet projects` : page.title;
   const desc = page.description;
 
@@ -47,17 +47,22 @@ function ogPagesPlugin(): import("vite").Plugin {
       const indexHtml = fs.readFileSync(path.join(dist, "index.html"), "utf-8");
 
       const socialPreviewBlock = /<!-- Social preview -->[\s\S]*?<title>[^<]*<\/title>/;
+      const version = String(Date.now());
 
-      for (const page of pages) {
-        const newHead = `<!-- Social preview -->${buildHeadTags(page)}`;
+      for (const page of [homePage, ...pages]) {
+        const newHead = `<!-- Social preview -->${buildHeadTags(page, version)}`;
         const pageHtml = indexHtml.replace(socialPreviewBlock, newHead);
 
-        const dir = path.join(dist, page.id);
-        fs.mkdirSync(dir, { recursive: true });
-        fs.writeFileSync(path.join(dir, "index.html"), pageHtml);
+        if (page.id) {
+          const dir = path.join(dist, page.id);
+          fs.mkdirSync(dir, { recursive: true });
+          fs.writeFileSync(path.join(dir, "index.html"), pageHtml);
+        } else {
+          fs.writeFileSync(path.join(dist, "index.html"), pageHtml);
+        }
       }
 
-      console.log(`[og-pages] Generated pages: ${pages.map((p) => `/${p.id}/`).join(", ")}`);
+      console.log(`[og-pages] Generated pages: ${[homePage, ...pages].map((p) => (p.id ? `/${p.id}/` : "/")).join(", ")}`);
     },
   };
 }
