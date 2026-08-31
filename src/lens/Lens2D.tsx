@@ -2,6 +2,7 @@ import { useRef, useEffect, useCallback, memo } from "react";
 import * as M from "./lensMathReflect";
 import * as M_OLD from "./lensMath";
 import { createCamera } from "./Camera";
+import { SAFARI_BLEED_PAD, nudgeSafariChrome } from "./useSafariCanvasBleed";
 
 function cacheKey(p, aperture) {
   return [p.eq, p.eqR, aperture, p.angle, p.n, p.rayCount, p.keepFailed, p.useReflections].join("|");
@@ -205,6 +206,8 @@ function Lens2D({ params, resetKey, scaleRef }) {
     return { width: w, height: h };
   }, []);
 
+  const chromeNudged = useRef(false);
+
   const render = useCallback(() => {
     const ctx = ctxRef.current;
     const canvas = canvasRef.current;
@@ -216,6 +219,11 @@ function Lens2D({ params, resetKey, scaleRef }) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawLens(ctx, lens, camera);
     drawRays(ctx, rays, camera);
+
+    if (!chromeNudged.current && window.innerWidth <= 760) {
+      chromeNudged.current = true;
+      nudgeSafariChrome(SAFARI_BLEED_PAD);
+    }
   }, []);
 
   const scheduleRender = useCallback(() => {
@@ -439,7 +447,15 @@ function Lens2D({ params, resetKey, scaleRef }) {
   return (
     <canvas
       ref={canvasRef}
-      style={{ display: "block", width: "100%", height: "100dvh", cursor: "move", touchAction: "none" }}
+      style={{
+        display: "block",
+        position: "absolute",
+        inset: 0,
+        width: "100%",
+        height: "100%",
+        cursor: "move",
+        touchAction: "none",
+      }}
     />
   );
 }
