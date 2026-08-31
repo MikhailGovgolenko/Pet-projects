@@ -104,16 +104,13 @@ export default function LensPage() {
         paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
-      {/* EXP SAFE: canvas ends ABOVE safe-area — does not paint under Tab Bar */}
+      {/* EXP Z: z-index auto, fullscreen absolute container */}
       <div
         id="canvas-container"
         style={{
           position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          height: "calc(100dvh - env(safe-area-inset-bottom))",
-          zIndex: 0,
+          inset: 0,
+          zIndex: "auto",
           background: "var(--bg)",
         }}
       >
