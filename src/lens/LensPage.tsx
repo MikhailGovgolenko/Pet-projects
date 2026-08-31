@@ -104,6 +104,7 @@ export default function LensPage() {
         paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
+      {/* EXP A: fixed container, NO canvas — testing if canvas is needed */}
       <div
         id="canvas-container"
         style={{
@@ -112,19 +113,8 @@ export default function LensPage() {
           zIndex: 0,
           background: "var(--bg)",
         }}
-      >
-        <ViewBoundary key={mode3d ? "3d" : "2d"} t={t}>
-          {!mode3d ? (
-            <Lens2D
-              params={paramsWithEq}
-              resetKey={resetKey}
-              scaleRef={scaleRef}
-            />
-          ) : (
-            <Lens3D key={resetKey} params={paramsWithEq} scaleRef={scaleRef} />
-          )}
-        </ViewBoundary>
-      </div>
+      />
+      {/* END EXP A */}
 
       <GlassPanel title={t("lens.panel")}>
         <div className="section">
