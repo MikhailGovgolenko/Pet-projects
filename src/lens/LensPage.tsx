@@ -104,15 +104,11 @@ export default function LensPage() {
         paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
-      {/* EXP D: fixed, NOT fullscreen — canvas does NOT cover bottom area */}
       <div
         id="canvas-container"
         style={{
           position: "fixed",
-          top: 0,
-          left: 0,
-          width: "80%",
-          height: "80%",
+          inset: 0,
           zIndex: 0,
           background: "var(--bg)",
         }}
