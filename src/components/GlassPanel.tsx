@@ -94,7 +94,7 @@ export default function GlassPanel({ title, children }) {
       <div
         onClick={() => setCollapsed(false)}
         style={{
-          position: "fixed",
+          position: "absolute",
           left: "calc(20px + env(safe-area-inset-left))",
           top: "calc(20px + env(safe-area-inset-top))",
           width: 44,
