@@ -126,7 +126,8 @@ export default function LensPage() {
         </ViewBoundary>
       </div>
 
-      <GlassPanel title={t("lens.panel")}>
+      {/* EXP G: controls-panel removed entirely for testing */}
+      {/* <GlassPanel title={t("lens.panel")}>
         <div className="section">
           <ToggleSwitch name="mode3d" label={t("lens.mode3d")} checked={mode3d} onChange={setMode3d} />
         </div>
@@ -143,7 +144,8 @@ export default function LensPage() {
           </label>
           <button onClick={resetView}>{t("lens.resetView")}</button>
         </div>
-      </GlassPanel>
+      </GlassPanel> */}
+      {/* END EXP G */}
     </div>
   );
 }
