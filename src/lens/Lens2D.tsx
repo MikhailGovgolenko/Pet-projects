@@ -214,8 +214,9 @@ function Lens2D({ params, resetKey, scaleRef }) {
     if (!ctx || !canvas || !lens || !rays) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawLens(ctx, lens, camera);
-    drawRays(ctx, rays, camera);
+    // EXP 1: empty canvas — nothing drawn
+    // drawLens(ctx, lens, camera);
+    // drawRays(ctx, rays, camera);
   }, []);
 
   const scheduleRender = useCallback(() => {
