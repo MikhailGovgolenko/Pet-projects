@@ -4,6 +4,7 @@ import ToggleSwitch from "../components/ToggleSwitch";
 import LensControls from "./LensControls";
 import Lens2D from "./Lens2D";
 import Lens3D from "./Lens3D";
+import { useLensSafariScroll } from "./useLensSafariScroll";
 import { compile, substituteCoeffs } from "./expr";
 import { useI18n, type TranslationKey } from "../i18n";
 
@@ -66,6 +67,7 @@ class ViewBoundary extends Component<
 
 export default function LensPage() {
   const { t } = useI18n();
+  const scroll = useLensSafariScroll();
   const [mode3d, setMode3d] = useState(false);
   const [resetKey, setResetKey] = useState(0);
   const scaleRef = useRef(null);
@@ -93,29 +95,18 @@ export default function LensPage() {
     setResetKey((k) => k + 1);
   }, []);
 
-  return (
-    <>
-      <style>{`
-        /*
-         * Edge-to-edge viewport under iOS chrome (viewport-fit=cover).
-         * Unlike Home/Agenda, canvas must paint into safe-area insets —
-         * otherwise Safari shows solid --bg strips and the tab bar goes opaque.
-         */
-        #canvas-container {
-          position: fixed;
-          inset: 0;
-          width: 100%;
-          /* lvh = large/layout viewport — paints behind iOS Safari chrome;
-             dvh shrinks with the tab bar and leaves solid --bg gaps */
-          height: 100lvh;
-          min-height: 100vh;
-          min-height: -webkit-fill-available;
-          z-index: 0;
-          overflow: hidden;
-          touch-action: none;
-        }
-      `}</style>
-
+  const frame = (
+    <div
+      className="lens-frame"
+      style={{
+        position: "relative",
+        width: "100%",
+        height: scroll.enabled ? scroll.frameHeight : "100dvh",
+        minHeight: scroll.enabled ? undefined : "100dvh",
+        overflow: "hidden",
+        overscrollBehavior: "none",
+      }}
+    >
       <div id="canvas-container">
         <ViewBoundary key={mode3d ? "3d" : "2d"} t={t}>
           {!mode3d ? (
@@ -141,6 +132,36 @@ export default function LensPage() {
           <button onClick={resetView}>{t("lens.resetView")}</button>
         </div>
       </GlassPanel>
+    </div>
+  );
+
+  return (
+    <>
+      <style>{`
+        /*
+         * iOS Safari 26: position:fixed is clipped to the *visual* viewport — content
+         * stops at the tab bar edge and the bar stays opaque. Only in-flow / scrolled
+         * document pixels bleed under Liquid Glass chrome (see useLensSafariScroll).
+         */
+        #canvas-container {
+          position: absolute;
+          inset: 0;
+          touch-action: none;
+        }
+      `}</style>
+
+      {scroll.enabled ? (
+        <div
+          className="lens-scroll-band"
+          style={{ height: scroll.bandHeight, background: "var(--bg)" }}
+        >
+          <div aria-hidden="true" style={{ height: scroll.pad }} />
+          {frame}
+          <div aria-hidden="true" style={{ height: scroll.pad }} />
+        </div>
+      ) : (
+        <div style={{ position: "relative", minHeight: "100dvh" }}>{frame}</div>
+      )}
     </>
   );
 }
