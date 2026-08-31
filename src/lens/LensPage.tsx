@@ -3,6 +3,7 @@ import GlassPanel from "../components/GlassPanel";
 import ToggleSwitch from "../components/ToggleSwitch";
 import LensControls from "./LensControls";
 import Lens2D from "./Lens2D";
+import Lens2DSvg from "./Lens2DSvg";
 import Lens3D from "./Lens3D";
 import { useLensSafariScroll } from "./useLensSafariScroll";
 import { compile, substituteCoeffs } from "./expr";
@@ -113,7 +114,11 @@ export default function LensPage() {
       <div id="canvas-container">
         <ViewBoundary key={mode3d ? "3d" : "2d"} t={t}>
           {!mode3d ? (
-            <Lens2D params={paramsWithEq} resetKey={resetKey} scaleRef={scaleRef} />
+            scroll.enabled ? (
+              <Lens2DSvg params={paramsWithEq} resetKey={resetKey} scaleRef={scaleRef} />
+            ) : (
+              <Lens2D params={paramsWithEq} resetKey={resetKey} scaleRef={scaleRef} />
+            )
           ) : (
             <Lens3D key={resetKey} params={paramsWithEq} scaleRef={scaleRef} />
           )}

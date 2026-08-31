@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from "react";
 
-const SELECTORS = ["#root", "#canvas-container", "canvas", "#controls", ".glass"];
+const SELECTORS = ["#root", "#canvas-container", "canvas", "svg", "#controls", ".glass"];
 const FONT = '10px/1.5 "SF Mono", ui-monospace, monospace';
 
 type Box = {
