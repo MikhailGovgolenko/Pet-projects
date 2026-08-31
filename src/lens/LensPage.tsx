@@ -4,6 +4,7 @@ import ToggleSwitch from "../components/ToggleSwitch";
 import LensControls from "./LensControls";
 import Lens2D from "./Lens2D";
 import Lens3D from "./Lens3D";
+import { useSafariCanvasBleed } from "./useSafariCanvasBleed";
 import { compile, substituteCoeffs } from "./expr";
 import { useI18n, type TranslationKey } from "../i18n";
 
@@ -40,7 +41,7 @@ class ViewBoundary extends Component<
       return (
         <div
           style={{
-          position: "fixed",
+            position: "absolute",
             inset: 0,
             display: "flex",
             flexDirection: "column",
@@ -66,6 +67,7 @@ class ViewBoundary extends Component<
 
 export default function LensPage() {
   const { t } = useI18n();
+  const bleed = useSafariCanvasBleed();
   const [mode3d, setMode3d] = useState(false);
   const [resetKey, setResetKey] = useState(0);
   const scaleRef = useRef(null);
@@ -81,7 +83,7 @@ export default function LensPage() {
     useField: false,
     customEq: "z0+5.170850194e-02*r^2-3.069862096e-04*r^4+1.932778274e-06*r^6+2.689897537e-08*r^8-1.507039271e-09*r^10+2.831055327e-11*r^12+2.560362512e-13*r^14-3.403878405e-14*r^16+8.472651009e-16*r^18",
     keepFailed: false,
-    useReflections: false, // when true use new math that accounts for reflections
+    useReflections: false,
   });
 
   const paramsWithEq = useMemo(() => {
@@ -93,39 +95,40 @@ export default function LensPage() {
     setResetKey((k) => k + 1);
   }, []);
 
-  return (
+  const frame = (
     <div
+      className="lens-frame"
       style={{
-        minHeight: "100dvh",
-        width: "100%",
         position: "relative",
-        background: "var(--bg)",
-        overflowY: "auto",
-        paddingBottom: "env(safe-area-inset-bottom)",
+        width: "100%",
+        height: bleed.enabled ? bleed.frameHeight : "100dvh",
+        minHeight: bleed.enabled ? undefined : "100dvh",
+        overflow: "hidden",
+        overscrollBehavior: "none",
       }}
     >
-      {/* EXP CLEAN: canvas directly, NO wrapper */}
-      <ViewBoundary key={mode3d ? "3d" : "2d"} t={t}>
-        {!mode3d ? (
-          <Lens2D
-            params={paramsWithEq}
-            resetKey={resetKey}
-            scaleRef={scaleRef}
-          />
-        ) : (
-          <Lens3D key={resetKey} params={paramsWithEq} scaleRef={scaleRef} />
-        )}
-      </ViewBoundary>
-      {/* END EXP CLEAN */}
+      <div
+        id="canvas-container"
+        style={{
+          position: "absolute",
+          inset: 0,
+          zIndex: 0,
+        }}
+      >
+        <ViewBoundary key={mode3d ? "3d" : "2d"} t={t}>
+          {!mode3d ? (
+            <Lens2D params={paramsWithEq} resetKey={resetKey} scaleRef={scaleRef} />
+          ) : (
+            <Lens3D key={resetKey} params={paramsWithEq} scaleRef={scaleRef} />
+          )}
+        </ViewBoundary>
+      </div>
 
       <GlassPanel title={t("lens.panel")}>
         <div className="section">
           <ToggleSwitch name="mode3d" label={t("lens.mode3d")} checked={mode3d} onChange={setMode3d} />
         </div>
-        <LensControls
-          params={params}
-          setParams={setParams}
-        />
+        <LensControls params={params} setParams={setParams} />
         <div className="section">
           <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "4px 0", fontSize: 12, fontWeight: 500 }}>
             <span style={{ color: "var(--text-sec)" }}>{t("lens.scale")}</span>
@@ -136,6 +139,36 @@ export default function LensPage() {
           <button onClick={resetView}>{t("lens.resetView")}</button>
         </div>
       </GlassPanel>
+    </div>
+  );
+
+  if (bleed.enabled) {
+    return (
+      <div
+        className="lens-bleed-band"
+        style={{
+          width: "100%",
+          height: bleed.bandHeight,
+          background: "var(--bg)",
+        }}
+      >
+        <div style={{ height: bleed.pad }} aria-hidden="true" />
+        {frame}
+        <div style={{ height: bleed.pad }} aria-hidden="true" />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        width: "100%",
+        position: "relative",
+        background: "var(--bg)",
+        minHeight: "100dvh",
+      }}
+    >
+      {frame}
     </div>
   );
 }
