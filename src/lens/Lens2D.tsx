@@ -439,7 +439,7 @@ function Lens2D({ params, resetKey, scaleRef }) {
   return (
     <canvas
       ref={canvasRef}
-      style={{ display: "block", width: "100%", height: "100%", cursor: "move", touchAction: "none" }}
+      style={{ display: "block", position: "absolute", inset: 0, width: "100%", height: "100%", cursor: "move", touchAction: "none" }}
     />
   );
 }
