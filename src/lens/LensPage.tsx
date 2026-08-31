@@ -104,26 +104,19 @@ export default function LensPage() {
         paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
-      {/* EXP 2: canvas directly in LensPage, NO wrapper element */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-        }}
-      >
-        <ViewBoundary key={mode3d ? "3d" : "2d"} t={t}>
-          {!mode3d ? (
-            <Lens2D
-              params={paramsWithEq}
-              resetKey={resetKey}
-              scaleRef={scaleRef}
-            />
-          ) : (
-            <Lens3D key={resetKey} params={paramsWithEq} scaleRef={scaleRef} />
-          )}
-        </ViewBoundary>
-      </div>
-      {/* END EXP 2 */}
+      {/* EXP CLEAN: canvas directly, NO wrapper */}
+      <ViewBoundary key={mode3d ? "3d" : "2d"} t={t}>
+        {!mode3d ? (
+          <Lens2D
+            params={paramsWithEq}
+            resetKey={resetKey}
+            scaleRef={scaleRef}
+          />
+        ) : (
+          <Lens3D key={resetKey} params={paramsWithEq} scaleRef={scaleRef} />
+        )}
+      </ViewBoundary>
+      {/* END EXP CLEAN */}
 
       <GlassPanel title={t("lens.panel")}>
         <div className="section">
