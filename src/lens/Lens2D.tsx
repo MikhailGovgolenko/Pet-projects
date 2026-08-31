@@ -214,9 +214,8 @@ function Lens2D({ params, resetKey, scaleRef }) {
     if (!ctx || !canvas || !lens || !rays) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    // EXP 1: empty canvas — nothing drawn
-    // drawLens(ctx, lens, camera);
-    // drawRays(ctx, rays, camera);
+    drawLens(ctx, lens, camera);
+    drawRays(ctx, rays, camera);
   }, []);
 
   const scheduleRender = useCallback(() => {
@@ -440,7 +439,7 @@ function Lens2D({ params, resetKey, scaleRef }) {
   return (
     <canvas
       ref={canvasRef}
-      style={{ display: "block", position: "absolute", inset: 0, width: "100%", height: "100%", cursor: "move", touchAction: "none" }}
+      style={{ display: "block", width: "100%", height: "100dvh", cursor: "move", touchAction: "none" }}
     />
   );
 }
