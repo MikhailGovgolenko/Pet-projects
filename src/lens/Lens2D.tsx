@@ -2,6 +2,7 @@ import { useRef, useEffect, useCallback, memo } from "react";
 import * as M from "./lensMathReflect";
 import * as M_OLD from "./lensMath";
 import { createCamera } from "./Camera";
+import { LENS_SCROLL_PAD, nudgeLensSafariChrome } from "./useLensSafariScroll";
 
 function cacheKey(p, aperture) {
   return [p.eq, p.eqR, aperture, p.angle, p.n, p.rayCount, p.keepFailed, p.useReflections].join("|");
@@ -152,18 +153,15 @@ function drawRays(ctx, rays, camera) {
   }
 }
 
-function Lens2D({ params, resetKey, scaleRef, useBitmapDisplay = false }) {
-  const domCanvasRef = useRef(null);
-  const paintCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const surfaceRef = useRef<HTMLDivElement>(null);
-  const imgRef = useRef<HTMLImageElement>(null);
-  const blobUrlRef = useRef<string | null>(null);
-  const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
+function Lens2D({ params, resetKey, scaleRef }) {
+  const canvasRef = useRef(null);
+  const ctxRef = useRef(null);
   const cameraRef = useRef(createCamera());
   const dragRef = useRef({ isDragging: false, x: 0, y: 0 });
   const renderScheduled = useRef(false);
   const zoomReportScheduled = useRef(false);
   const pinchRef = useRef(null);
+  const chromeNudged = useRef(false);
   const lensCacheRef = useRef<{
     key: string;
     lens?: ReturnType<typeof M.sampleLens>;
@@ -175,31 +173,12 @@ function Lens2D({ params, resetKey, scaleRef, useBitmapDisplay = false }) {
   const paramsRef = useRef(params);
   paramsRef.current = params;
 
-  const getPaintCanvas = useCallback(() => {
-    if (useBitmapDisplay) {
-      if (!paintCanvasRef.current) {
-        paintCanvasRef.current = document.createElement("canvas");
-        ctxRef.current = paintCanvasRef.current.getContext("2d");
-      }
-      return paintCanvasRef.current;
-    }
-    return domCanvasRef.current;
-  }, [useBitmapDisplay]);
-
-  const getSurfaceRect = useCallback(() => {
-    const el = useBitmapDisplay ? surfaceRef.current : domCanvasRef.current;
-    if (!el) return null;
-    const rect = el.getBoundingClientRect();
-    if (rect.width > 0 && rect.height > 0) return rect;
-    return null;
-  }, [useBitmapDisplay]);
-
   const syncCanvasSize = useCallback(() => {
-    const canvas = getPaintCanvas();
+    const canvas = canvasRef.current;
     if (!canvas) return null;
-    const rect = getSurfaceRect();
-    let w = rect?.width ?? 0;
-    let h = rect?.height ?? 0;
+    let rect = canvas.getBoundingClientRect();
+    let w = rect.width;
+    let h = rect.height;
     if (w <= 0 || h <= 0) {
       w = window.innerWidth;
       h = window.innerHeight;
@@ -209,26 +188,11 @@ function Lens2D({ params, resetKey, scaleRef, useBitmapDisplay = false }) {
     canvas.height = Math.max(1, Math.round(h * dpr));
     ctxRef.current?.setTransform(dpr, 0, 0, dpr, 0, 0);
     return { width: w, height: h };
-  }, [getPaintCanvas, getSurfaceRect]);
-
-  const blitToImage = useCallback(() => {
-    if (!useBitmapDisplay) return;
-    const canvas = paintCanvasRef.current;
-    const img = imgRef.current;
-    if (!canvas || !img) return;
-    canvas.toBlob((blob) => {
-      if (!blob || !imgRef.current) return;
-      const url = URL.createObjectURL(blob);
-      const prev = blobUrlRef.current;
-      blobUrlRef.current = url;
-      imgRef.current.src = url;
-      if (prev) URL.revokeObjectURL(prev);
-    }, "image/png");
-  }, [useBitmapDisplay]);
+  }, []);
 
   const render = useCallback(() => {
     const ctx = ctxRef.current;
-    const canvas = getPaintCanvas();
+    const canvas = canvasRef.current;
     const camera = cameraRef.current;
     const lens = lensCacheRef.current.lens;
     const rays = rayCacheRef.current.rays;
@@ -237,8 +201,12 @@ function Lens2D({ params, resetKey, scaleRef, useBitmapDisplay = false }) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawLens(ctx, lens, camera);
     drawRays(ctx, rays, camera);
-    blitToImage();
-  }, [getPaintCanvas, blitToImage]);
+
+    if (!chromeNudged.current && window.innerWidth <= 760) {
+      chromeNudged.current = true;
+      nudgeLensSafariChrome(LENS_SCROLL_PAD);
+    }
+  }, []);
 
   const scheduleRender = useCallback(() => {
     if (renderScheduled.current) return;
@@ -264,9 +232,9 @@ function Lens2D({ params, resetKey, scaleRef, useBitmapDisplay = false }) {
       const lens = lensCacheRef.current.lens;
       if (!fittedRef.current && lensCacheRef.current.box) {
         fittedRef.current = true;
-        const rect = getSurfaceRect();
-        const w = rect?.width ?? window.innerWidth;
-        const h = rect?.height ?? window.innerHeight;
+        const rect = canvasRef.current ? canvasRef.current.getBoundingClientRect() : null;
+        const w = rect && rect.width > 0 ? rect.width : window.innerWidth;
+        const h = rect && rect.height > 0 ? rect.height : window.innerHeight;
         cameraRef.current.fit(lensCacheRef.current.box, w, h);
         if (scaleRef.current) scaleRef.current.textContent = cameraRef.current.scale.toFixed(2);
       }
@@ -294,24 +262,22 @@ function Lens2D({ params, resetKey, scaleRef, useBitmapDisplay = false }) {
       }
       scheduleRender();
     });
-  }, [params, scheduleRender, getSurfaceRect]);
+  }, [params, scheduleRender]);
 
   useEffect(() => {
-    const canvas = getPaintCanvas();
+    const canvas = canvasRef.current;
     if (!canvas) return;
-    if (!useBitmapDisplay) {
-      ctxRef.current = canvas.getContext("2d");
-    }
+    ctxRef.current = canvas.getContext("2d");
     const size = syncCanvasSize();
     if (size) cameraRef.current.reset(size.width, size.height);
     render();
-  }, [useBitmapDisplay, getPaintCanvas, syncCanvasSize, render]);
+  }, [syncCanvasSize, render]);
 
   useEffect(() => {
     const camera = cameraRef.current;
-    const rect = getSurfaceRect();
-    const w = rect?.width ?? window.innerWidth;
-    const h = rect?.height ?? window.innerHeight;
+    const rect = canvasRef.current ? canvasRef.current.getBoundingClientRect() : null;
+    const w = rect && rect.width > 0 ? rect.width : window.innerWidth;
+    const h = rect && rect.height > 0 ? rect.height : window.innerHeight;
     const box = lensCacheRef.current.box;
     if (box) {
       camera.fit(box, w, h);
@@ -321,7 +287,7 @@ function Lens2D({ params, resetKey, scaleRef, useBitmapDisplay = false }) {
     if (scaleRef.current) scaleRef.current.textContent = camera.scale.toFixed(2);
     renderScheduled.current = false;
     render();
-  }, [resetKey, render, getSurfaceRect]);
+  }, [resetKey, render]);
 
   useEffect(() => {
     const onResize = () => {
@@ -337,14 +303,8 @@ function Lens2D({ params, resetKey, scaleRef, useBitmapDisplay = false }) {
   }, [syncCanvasSize, scheduleRender]);
 
   useEffect(() => {
-    return () => {
-      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
-    };
-  }, []);
-
-  useEffect(() => {
-    const surface = useBitmapDisplay ? surfaceRef.current : domCanvasRef.current;
-    if (!surface) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
     const camera = cameraRef.current;
 
     const reportScale = () => {
@@ -376,7 +336,7 @@ function Lens2D({ params, resetKey, scaleRef, useBitmapDisplay = false }) {
     const onWheel = (e) => {
       e.preventDefault();
       var factor = e.deltaY < 0 ? 1.05 : 0.95;
-      var rect = surface.getBoundingClientRect();
+      var rect = canvas.getBoundingClientRect();
       camera.zoomAt(e.clientX - rect.left, e.clientY - rect.top, factor);
       reportScale();
       scheduleRender();
@@ -406,7 +366,7 @@ function Lens2D({ params, resetKey, scaleRef, useBitmapDisplay = false }) {
         const t2 = e.touches[1];
         const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
         if (dist > 0) {
-          var rect = surface.getBoundingClientRect();
+          var rect = canvas.getBoundingClientRect();
           camera.zoomAt(
             (t1.clientX + t2.clientX) / 2 - rect.left,
             (t1.clientY + t2.clientY) / 2 - rect.top,
@@ -439,64 +399,34 @@ function Lens2D({ params, resetKey, scaleRef, useBitmapDisplay = false }) {
 
     const onContextMenu = (e) => e.preventDefault();
 
-    surface.addEventListener("mousedown", onMouseDown);
+    canvas.addEventListener("mousedown", onMouseDown);
     window.addEventListener("mousemove", onMouseMove);
     window.addEventListener("mouseup", onMouseUp);
-    surface.addEventListener("mouseleave", onMouseLeave);
-    surface.addEventListener("wheel", onWheel, { passive: false });
-    surface.addEventListener("touchstart", onTouchStart, { passive: true });
-    surface.addEventListener("touchmove", onTouchMove, { passive: false });
-    surface.addEventListener("touchend", onTouchEnd);
-    surface.addEventListener("touchcancel", onTouchEnd);
-    surface.addEventListener("contextmenu", onContextMenu);
+    canvas.addEventListener("mouseleave", onMouseLeave);
+    canvas.addEventListener("wheel", onWheel, { passive: false });
+    canvas.addEventListener("touchstart", onTouchStart, { passive: true });
+    canvas.addEventListener("touchmove", onTouchMove, { passive: false });
+    canvas.addEventListener("touchend", onTouchEnd);
+    canvas.addEventListener("touchcancel", onTouchEnd);
+    canvas.addEventListener("contextmenu", onContextMenu);
 
     return () => {
-      surface.removeEventListener("mousedown", onMouseDown);
+      canvas.removeEventListener("mousedown", onMouseDown);
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
-      surface.removeEventListener("mouseleave", onMouseLeave);
-      surface.removeEventListener("wheel", onWheel);
-      surface.removeEventListener("touchstart", onTouchStart);
-      surface.removeEventListener("touchmove", onTouchMove);
-      surface.removeEventListener("touchend", onTouchEnd);
-      surface.removeEventListener("touchcancel", onTouchEnd);
-      surface.removeEventListener("contextmenu", onContextMenu);
+      canvas.removeEventListener("mouseleave", onMouseLeave);
+      canvas.removeEventListener("wheel", onWheel);
+      canvas.removeEventListener("touchstart", onTouchStart);
+      canvas.removeEventListener("touchmove", onTouchMove);
+      canvas.removeEventListener("touchend", onTouchEnd);
+      canvas.removeEventListener("touchcancel", onTouchEnd);
+      canvas.removeEventListener("contextmenu", onContextMenu);
     };
-  }, [scheduleRender, useBitmapDisplay]);
-
-  if (useBitmapDisplay) {
-    return (
-      <div
-        ref={surfaceRef}
-        style={{
-          position: "absolute",
-          inset: 0,
-          width: "100%",
-          height: "100%",
-          cursor: "move",
-          touchAction: "none",
-        }}
-      >
-        <img
-          ref={imgRef}
-          alt=""
-          draggable={false}
-          style={{
-            display: "block",
-            width: "100%",
-            height: "100%",
-            pointerEvents: "none",
-            userSelect: "none",
-            WebkitUserSelect: "none",
-          }}
-        />
-      </div>
-    );
-  }
+  }, [scheduleRender]);
 
   return (
     <canvas
-      ref={domCanvasRef}
+      ref={canvasRef}
       style={{
         display: "block",
         position: "absolute",

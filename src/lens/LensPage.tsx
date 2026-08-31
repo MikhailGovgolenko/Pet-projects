@@ -4,8 +4,7 @@ import ToggleSwitch from "../components/ToggleSwitch";
 import LensControls from "./LensControls";
 import Lens2D from "./Lens2D";
 import Lens3D from "./Lens3D";
-import CanvasIsolationFrame from "./CanvasIsolationFrame";
-import { isIOSWebKit } from "./isIOS";
+import { useLensSafariScroll } from "./useLensSafariScroll";
 import { compile, substituteCoeffs } from "./expr";
 import { useI18n, type TranslationKey } from "../i18n";
 
@@ -68,7 +67,7 @@ class ViewBoundary extends Component<
 
 export default function LensPage() {
   const { t } = useI18n();
-  const ios = isIOSWebKit();
+  const scroll = useLensSafariScroll();
   const [mode3d, setMode3d] = useState(false);
   const [resetKey, setResetKey] = useState(0);
   const scaleRef = useRef(null);
@@ -96,41 +95,30 @@ export default function LensPage() {
     setResetKey((k) => k + 1);
   }, []);
 
-  const viewport = (
-    <ViewBoundary key={mode3d ? "3d" : "2d"} t={t}>
-      {!mode3d ? (
-        <Lens2D params={paramsWithEq} resetKey={resetKey} scaleRef={scaleRef} useBitmapDisplay={ios} />
-      ) : ios ? (
-        <CanvasIsolationFrame>
-          <Lens3D key={resetKey} params={paramsWithEq} scaleRef={scaleRef} />
-        </CanvasIsolationFrame>
-      ) : (
-        <Lens3D key={resetKey} params={paramsWithEq} scaleRef={scaleRef} />
-      )}
-    </ViewBoundary>
-  );
+  const frameHeight = scroll.enabled ? scroll.frameHeight : undefined;
 
-  return (
+  const frame = (
     <div
-      className="lens-page"
+      className="lens-frame"
       style={{
         position: "relative",
-        minHeight: "100dvh",
         width: "100%",
-        background: "var(--bg)",
-        overflowY: "auto",
+        height: frameHeight ?? "100dvh",
+        minHeight: frameHeight ? undefined : "100dvh",
+        overflow: "hidden",
+        overscrollBehavior: "none",
+        touchAction: "none",
       }}
     >
-      <style>{`
-        .lens-page #canvas-container {
-          position: absolute;
-          inset: 0;
-          min-height: 100dvh;
-          touch-action: none;
-        }
-      `}</style>
-
-      <div id="canvas-container">{viewport}</div>
+      <div id="canvas-container">
+        <ViewBoundary key={mode3d ? "3d" : "2d"} t={t}>
+          {!mode3d ? (
+            <Lens2D params={paramsWithEq} resetKey={resetKey} scaleRef={scaleRef} />
+          ) : (
+            <Lens3D key={resetKey} params={paramsWithEq} scaleRef={scaleRef} />
+          )}
+        </ViewBoundary>
+      </div>
 
       <GlassPanel title={t("lens.panel")}>
         <div className="section">
@@ -148,5 +136,29 @@ export default function LensPage() {
         </div>
       </GlassPanel>
     </div>
+  );
+
+  return (
+    <>
+      <style>{`
+        #canvas-container {
+          position: absolute;
+          inset: 0;
+        }
+      `}</style>
+
+      {scroll.enabled ? (
+        <div
+          className="lens-scroll-band"
+          style={{ height: scroll.bandHeight, background: "var(--bg)" }}
+        >
+          <div aria-hidden="true" style={{ height: scroll.pad }} />
+          {frame}
+          <div aria-hidden="true" style={{ height: scroll.pad }} />
+        </div>
+      ) : (
+        <div style={{ position: "relative", minHeight: "100dvh", background: "var(--bg)" }}>{frame}</div>
+      )}
+    </>
   );
 }

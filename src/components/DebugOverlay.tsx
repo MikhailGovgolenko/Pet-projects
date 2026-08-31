@@ -47,6 +47,7 @@ export default function DebugOverlay() {
 
       const out: string[] = [
         `viewport ${window.innerWidth} x ${window.innerHeight}  dpr=${window.devicePixelRatio}`,
+        `scroll   y=${Math.round(window.scrollY)}  docH=${document.documentElement.scrollHeight}`,
         vv
           ? `visual  ${Math.round(vv.width)} x ${Math.round(vv.height)}  off=${Math.round(vv.offsetTop)},${Math.round(vv.offsetLeft)}  scale=${vv.scale}`
           : "visual  n/a",
