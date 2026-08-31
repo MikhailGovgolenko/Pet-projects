@@ -4,7 +4,8 @@ import ToggleSwitch from "../components/ToggleSwitch";
 import LensControls from "./LensControls";
 import Lens2D from "./Lens2D";
 import Lens3D from "./Lens3D";
-import { useSafariCanvasBleed } from "./useSafariCanvasBleed";
+import CanvasIsolationFrame from "./CanvasIsolationFrame";
+import { isIOSWebKit } from "./isIOS";
 import { compile, substituteCoeffs } from "./expr";
 import { useI18n, type TranslationKey } from "../i18n";
 
@@ -67,7 +68,7 @@ class ViewBoundary extends Component<
 
 export default function LensPage() {
   const { t } = useI18n();
-  const bleed = useSafariCanvasBleed();
+  const isolateCanvas = isIOSWebKit();
   const [mode3d, setMode3d] = useState(false);
   const [resetKey, setResetKey] = useState(0);
   const scaleRef = useRef(null);
@@ -95,16 +96,25 @@ export default function LensPage() {
     setResetKey((k) => k + 1);
   }, []);
 
-  const frame = (
+  const viewport = (
+    <ViewBoundary key={mode3d ? "3d" : "2d"} t={t}>
+      {!mode3d ? (
+        <Lens2D params={paramsWithEq} resetKey={resetKey} scaleRef={scaleRef} />
+      ) : (
+        <Lens3D key={resetKey} params={paramsWithEq} scaleRef={scaleRef} />
+      )}
+    </ViewBoundary>
+  );
+
+  return (
     <div
-      className="lens-frame"
       style={{
-        position: "relative",
+        minHeight: "100dvh",
         width: "100%",
-        height: bleed.enabled ? bleed.frameHeight : "100dvh",
-        minHeight: bleed.enabled ? undefined : "100dvh",
-        overflow: "hidden",
-        overscrollBehavior: "none",
+        position: "relative",
+        background: "var(--bg)",
+        overflowY: "auto",
+        paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
       <div
@@ -115,13 +125,7 @@ export default function LensPage() {
           zIndex: 0,
         }}
       >
-        <ViewBoundary key={mode3d ? "3d" : "2d"} t={t}>
-          {!mode3d ? (
-            <Lens2D params={paramsWithEq} resetKey={resetKey} scaleRef={scaleRef} />
-          ) : (
-            <Lens3D key={resetKey} params={paramsWithEq} scaleRef={scaleRef} />
-          )}
-        </ViewBoundary>
+        {isolateCanvas ? <CanvasIsolationFrame>{viewport}</CanvasIsolationFrame> : viewport}
       </div>
 
       <GlassPanel title={t("lens.panel")}>
@@ -139,36 +143,6 @@ export default function LensPage() {
           <button onClick={resetView}>{t("lens.resetView")}</button>
         </div>
       </GlassPanel>
-    </div>
-  );
-
-  if (bleed.enabled) {
-    return (
-      <div
-        className="lens-bleed-band"
-        style={{
-          width: "100%",
-          height: bleed.bandHeight,
-          background: "var(--bg)",
-        }}
-      >
-        <div style={{ height: bleed.pad }} aria-hidden="true" />
-        {frame}
-        <div style={{ height: bleed.pad }} aria-hidden="true" />
-      </div>
-    );
-  }
-
-  return (
-    <div
-      style={{
-        width: "100%",
-        position: "relative",
-        background: "var(--bg)",
-        minHeight: "100dvh",
-      }}
-    >
-      {frame}
     </div>
   );
 }
