@@ -104,11 +104,15 @@ export default function LensPage() {
         paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
+      {/* EXP SAFE: canvas ends ABOVE safe-area — does not paint under Tab Bar */}
       <div
         id="canvas-container"
         style={{
           position: "fixed",
-          inset: 0,
+          top: 0,
+          left: 0,
+          right: 0,
+          height: "calc(100dvh - env(safe-area-inset-bottom))",
           zIndex: 0,
           background: "var(--bg)",
         }}
@@ -126,8 +130,7 @@ export default function LensPage() {
         </ViewBoundary>
       </div>
 
-      {/* EXP G: controls-panel removed entirely for testing */}
-      {/* <GlassPanel title={t("lens.panel")}>
+      <GlassPanel title={t("lens.panel")}>
         <div className="section">
           <ToggleSwitch name="mode3d" label={t("lens.mode3d")} checked={mode3d} onChange={setMode3d} />
         </div>
@@ -144,8 +147,7 @@ export default function LensPage() {
           </label>
           <button onClick={resetView}>{t("lens.resetView")}</button>
         </div>
-      </GlassPanel> */}
-      {/* END EXP G */}
+      </GlassPanel>
     </div>
   );
 }
