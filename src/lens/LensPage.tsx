@@ -104,14 +104,13 @@ export default function LensPage() {
         paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
-      {/* EXP Z: z-index auto, fullscreen absolute container */}
       <div
         id="canvas-container"
         style={{
           position: "absolute",
           inset: 0,
-          zIndex: "auto",
-          background: "var(--bg)",
+          zIndex: 0,
+          background: "transparent",
         }}
       >
         <ViewBoundary key={mode3d ? "3d" : "2d"} t={t}>
