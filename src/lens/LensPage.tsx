@@ -4,8 +4,6 @@ import ToggleSwitch from "../components/ToggleSwitch";
 import LensControls from "./LensControls";
 import Lens2D from "./Lens2D";
 import Lens3D from "./Lens3D";
-import CanvasIsolationFrame from "./CanvasIsolationFrame";
-import { isIOSWebKit } from "./isIOS";
 import { compile, substituteCoeffs } from "./expr";
 import { useI18n, type TranslationKey } from "../i18n";
 
@@ -68,7 +66,6 @@ class ViewBoundary extends Component<
 
 export default function LensPage() {
   const { t } = useI18n();
-  const isolateCanvas = isIOSWebKit();
   const [mode3d, setMode3d] = useState(false);
   const [resetKey, setResetKey] = useState(0);
   const scaleRef = useRef(null);
@@ -96,36 +93,37 @@ export default function LensPage() {
     setResetKey((k) => k + 1);
   }, []);
 
-  const viewport = (
-    <ViewBoundary key={mode3d ? "3d" : "2d"} t={t}>
-      {!mode3d ? (
-        <Lens2D params={paramsWithEq} resetKey={resetKey} scaleRef={scaleRef} />
-      ) : (
-        <Lens3D key={resetKey} params={paramsWithEq} scaleRef={scaleRef} />
-      )}
-    </ViewBoundary>
-  );
-
   return (
-    <div
-      style={{
-        minHeight: "100dvh",
-        width: "100%",
-        position: "relative",
-        background: "var(--bg)",
-        overflowY: "auto",
-        paddingBottom: "env(safe-area-inset-bottom)",
-      }}
-    >
-      <div
-        id="canvas-container"
-        style={{
-          position: "absolute",
-          inset: 0,
-          zIndex: 0,
-        }}
-      >
-        {isolateCanvas ? <CanvasIsolationFrame>{viewport}</CanvasIsolationFrame> : viewport}
+    <>
+      <style>{`
+        /*
+         * Edge-to-edge viewport under iOS chrome (viewport-fit=cover).
+         * Unlike Home/Agenda, canvas must paint into safe-area insets —
+         * otherwise Safari shows solid --bg strips and the tab bar goes opaque.
+         */
+        #canvas-container {
+          position: fixed;
+          inset: 0;
+          width: 100%;
+          /* lvh = large/layout viewport — paints behind iOS Safari chrome;
+             dvh shrinks with the tab bar and leaves solid --bg gaps */
+          height: 100lvh;
+          min-height: 100vh;
+          min-height: -webkit-fill-available;
+          z-index: 0;
+          overflow: hidden;
+          touch-action: none;
+        }
+      `}</style>
+
+      <div id="canvas-container">
+        <ViewBoundary key={mode3d ? "3d" : "2d"} t={t}>
+          {!mode3d ? (
+            <Lens2D params={paramsWithEq} resetKey={resetKey} scaleRef={scaleRef} />
+          ) : (
+            <Lens3D key={resetKey} params={paramsWithEq} scaleRef={scaleRef} />
+          )}
+        </ViewBoundary>
       </div>
 
       <GlassPanel title={t("lens.panel")}>
@@ -143,6 +141,6 @@ export default function LensPage() {
           <button onClick={resetView}>{t("lens.resetView")}</button>
         </div>
       </GlassPanel>
-    </div>
+    </>
   );
 }
