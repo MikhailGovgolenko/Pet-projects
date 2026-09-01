@@ -43,13 +43,17 @@ export function useLensSafariScroll(): LensScrollLayout {
 
   useLayoutEffect(() => {
     const root = document.documentElement;
-    root.classList.add("lens-active");
 
     const update = () => {
       const next = measure();
       setLayout(next);
-      if (next.enabled) center(next.pad);
-      else if (window.scrollY !== 0) window.scrollTo(0, 0);
+      if (next.enabled) {
+        root.classList.add("lens-active");
+        center(next.pad);
+      } else {
+        root.classList.remove("lens-active");
+        if (window.scrollY !== 0) window.scrollTo(0, 0);
+      }
     };
 
     update();
