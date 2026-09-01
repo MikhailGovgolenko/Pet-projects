@@ -106,12 +106,19 @@ export default function LensPage() {
         width: "100%",
         height: frameHeight ?? "100dvh",
         minHeight: frameHeight ? undefined : "100dvh",
-        overflow: "hidden",
+        overflow: scroll.enabled ? "visible" : "hidden",
         overscrollBehavior: "none",
         touchAction: "none",
       }}
     >
-      <div id="canvas-container">
+      <div
+        id="canvas-container"
+        style={
+          scroll.enabled
+            ? { position: "absolute", left: 0, right: 0, top: -scroll.pad, bottom: -scroll.pad }
+            : undefined
+        }
+      >
         <ViewBoundary key={mode3d ? "3d" : "2d"} t={t}>
           {!mode3d ? (
             scroll.enabled ? (
