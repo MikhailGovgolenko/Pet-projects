@@ -11,6 +11,10 @@ export default function GlassPanel({ title, children }) {
           left: calc(16px + env(safe-area-inset-left));
           top: calc(16px + env(safe-area-inset-top));
           width: min(320px, calc(100vw - 32px));
+          max-height: calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+          overflow-y: auto;
+          overscroll-behavior: contain;
+          -webkit-overflow-scrolling: touch;
           padding: 12px;
           transition: transform 0.45s cubic-bezier(0.32,0.72,0,1), opacity 0.35s ease;
         }
