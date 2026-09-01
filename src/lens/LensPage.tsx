@@ -155,7 +155,7 @@ export default function LensPage() {
       {scroll.enabled ? (
         <div
           className="lens-scroll-band"
-          style={{ height: scroll.bandHeight, background: "var(--bg)" }}
+          style={{ height: scroll.bandHeight }}
         >
           <div aria-hidden="true" style={{ height: scroll.pad }} />
           {frame}
