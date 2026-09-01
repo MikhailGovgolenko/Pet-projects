@@ -99,8 +99,8 @@ export default function GlassPanel({ title, children }) {
         onClick={() => setCollapsed(false)}
         style={{
           position: "absolute",
-          left: "calc(20px + env(safe-area-inset-left))",
-          top: "calc(20px + env(safe-area-inset-top))",
+          left: "calc(16px + env(safe-area-inset-left))",
+          top: "calc(16px + env(safe-area-inset-top))",
           width: 44,
           height: 44,
           borderRadius: "50%",
