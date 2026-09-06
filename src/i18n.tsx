@@ -23,19 +23,6 @@ const ru = {
   "lens.viewError": "Ошибка отрисовки сцены",
   "lens.retry": "Повторить",
   "lens.useReflections": "Учитывать отражения",
-  "card.agenda.title": "Повестки: Запад vs Кремль",
-  "card.agenda.desc":
-    "Сравнение двух повесток: что предлагают на Западе и в Кремле. Скачайте PDF и узнайте ключевые отличия.",
-  "agenda.west.title": "Западная повестка",
-  "agenda.west.subtitle": "(или «Доктрина общего блага, НАТО и внезапных исключений»)",
-  "agenda.west.desc":
-    "Демократия, права человека, свободный рынок, зелёный переход, НАТО и санкции.\nУкраину поддерживаем, Россию сдерживаем, Китай: внимательно наблюдаем.\n\nГлавный принцип: «Мы за мир, но сначала давайте согласуем пакет помощи».\n\nСвободный рынок работает отлично, пока стратегически важная компания не становится китайской. Тогда рынок внезапно получает геополитическую проблему и новый пакет регулирования.\n\n198 страниц.\nНа 1-й: «Мы едины».\nНа 198-й: «Приложение: почему Венгрия опять не согласна».",
-  "agenda.west.btn": "Скачать западную повестку PDF",
-  "agenda.kremlin.title": "Кремлёвская повестка",
-  "agenda.kremlin.subtitle": "(или «Концепция суверенитета, многополярности и импортозамещения с китайским интерфейсом»)",
-  "agenda.kremlin.desc":
-    "Суверенитет, традиционные ценности, многополярность, сильное государство и стратегическая автономия.\n\nУкраина — главная тема внешней политики, Запад — коллективный источник угроз, Китай — стратегический партнёр, а импортозамещение — уникальная программа, в рамках которой отечественная промышленность героически осваивает технологии, произведённые в Китае.\n\nГлавный принцип: «Мы сами решаем, что нам нужно. Особенно если это уже есть у китайцев».\n\n214 страниц.\nНа 1-й: «Мы полностью самостоятельны».\nНа 214-й: «Список стратегических партнёров, у которых можно купить всё остальное».",
-  "agenda.kremlin.btn": "Скачать кремлёвскую повестку PDF",
 } as const;
 
 export type TranslationKey = keyof typeof ru;
@@ -61,19 +48,6 @@ const en: Record<TranslationKey, string> = {
   "lens.viewError": "Scene render error",
   "lens.retry": "Retry",
   "lens.useReflections": "Consider reflections",
-  "card.agenda.title": "Agendas: West vs Kremlin",
-  "card.agenda.desc":
-    "Comparison of two agendas: what the West and the Kremlin propose. Download PDFs to see the key differences.",
-  "agenda.west.title": "Western Agenda",
-  "agenda.west.subtitle": "(or The Doctrine of Common Good, NATO, and Sudden Exceptions)",
-  "agenda.west.desc":
-    "Democracy, human rights, free market, green transition, NATO and sanctions.\nWe support Ukraine, contain Russia, and carefully watch China.\n\nThe main principle: We are for peace, but first let's approve an aid package.\n\nThe free market works perfectly until a strategically important company becomes Chinese. Then the market suddenly gets a geopolitical problem and a new regulatory package.\n\n198 pages.\nPage 1: We are united.\nPage 198: Appendix: Why Hungary disagrees again.",
-  "agenda.west.btn": "Download Western Agenda PDF",
-  "agenda.kremlin.title": "Kremlin Agenda",
-  "agenda.kremlin.subtitle": "(or The Concept of Sovereignty, Multipolarity, and Import Substitution with a Chinese Interface)",
-  "agenda.kremlin.desc":
-    "Sovereignty, traditional values, multipolarity, strong state and strategic autonomy.\n\nUkraine is the main topic of foreign policy, the West is a collective source of threats, China is a strategic partner, and import substitution is a unique program under which domestic industry heroically masters technologies produced in China.\n\nThe main principle: We decide what we need. Especially if the Chinese already have it.\n\n214 pages.\nPage 1: We are completely independent.\nPage 214: List of strategic partners from whom everything else can be purchased.",
-  "agenda.kremlin.btn": "Download Kremlin Agenda PDF",
 };
 
 const dictionaries: Record<Language, Record<TranslationKey, string>> = { ru, en };

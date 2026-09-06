@@ -22,13 +22,6 @@ export const pages: PageSeo[] = [
       "Моделирование преломления света в симметричной линзе. Визуализация хода лучей, фокусного расстояния и аберраций.",
     ogImage: "lens-preview-light.png",
   },
-  {
-    id: "agenda",
-    title: "Повестки: Запад vs Кремль. скачать PDF",
-    description:
-      "Сравнение двух повесток: что предлагают на Западе и в Кремле. Скачайте повестки в формате PDF и узнайте ключевые отличия.",
-    ogImage: "agenda-preview-light.png",
-  },
 ];
 
 export function getSeoForPage(pageId: string | null): PageSeo {

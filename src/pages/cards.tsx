@@ -19,8 +19,6 @@ export const cards = pages.map((seo) => {
   switch (seo.id) {
     case "lens":
       return { ...base, id: seo.id, component: lazy(() => import("../lens/LensPage")) };
-    case "agenda":
-      return { ...base, id: seo.id, component: lazy(() => import("../agenda/AgendaPage")) };
     default:
       return { ...base, id: seo.id, component: lazy(() => import("../lens/LensPage")) };
   }
