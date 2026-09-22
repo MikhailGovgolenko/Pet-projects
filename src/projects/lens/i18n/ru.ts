@@ -1,0 +1,20 @@
+export const ru = {
+  "card.lens.title": "Симулятор хода лучей",
+  "card.lens.desc":
+    "Интерактивная визуализация прохождения световых лучей через симметричную линзу.",
+  "lens.panel": "Линза",
+  "lens.mode3d": "3D-вид",
+  "lens.useField": "Использовать поле для уравнения",
+  "lens.refraction": "Преломление n",
+  "lens.beamAngle": "Угол пучка (°)",
+  "lens.rayCount": "Кол-во лучей",
+  "lens.keepFailed": "Показывать непреломлённые лучи",
+  "lens.polynomial": "Полином z(r)=z₀+a₂r²+a₄r⁴+a₆r⁶",
+  "lens.scale": "Масштаб",
+  "lens.resetView": "Сбросить вид",
+  "lens.eqError": "Ошибка формулы",
+  "lens.noWebgl": "WebGL недоступен в этом браузере",
+  "lens.viewError": "Ошибка отрисовки сцены",
+  "lens.retry": "Повторить",
+  "lens.useReflections": "Учитывать отражения",
+};

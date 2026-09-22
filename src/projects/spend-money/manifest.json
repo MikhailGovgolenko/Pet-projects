@@ -1,0 +1,9 @@
+{
+  "formatVersion": 1,
+  "apiVersion": 1,
+  "id": "spend-money",
+  "route": "/spend-money",
+  "title": "Потратить деньги",
+  "description": "Самая бесполезная кнопка на сайте.",
+  "icon": "💸"
+}

@@ -1,0 +1,20 @@
+export const en = {
+  "card.lens.title": "Ray Tracing Simulator",
+  "card.lens.desc":
+    "Interactive visualization of light rays passing through a symmetric lens.",
+  "lens.panel": "Lens",
+  "lens.mode3d": "3D view",
+  "lens.useField": "Use equation field",
+  "lens.refraction": "Refraction n",
+  "lens.beamAngle": "Beam angle (°)",
+  "lens.rayCount": "Ray count",
+  "lens.keepFailed": "Show non-refracted rays",
+  "lens.polynomial": "Polynomial z(r)=z₀+a₂r²+a₄r⁴+a₆r⁶",
+  "lens.scale": "Scale",
+  "lens.resetView": "Reset view",
+  "lens.eqError": "Formula error",
+  "lens.noWebgl": "WebGL is unavailable in this browser",
+  "lens.viewError": "Scene render error",
+  "lens.retry": "Retry",
+  "lens.useReflections": "Consider reflections",
+};

@@ -1,5 +1,5 @@
-import { cards } from "./cards";
-import { useI18n } from "../i18n";
+import { projects } from "../projects";
+import { useI18n } from "./i18n";
 
 export default function HomePage({ onNavigate }) {
   const { t } = useI18n();
@@ -44,6 +44,7 @@ export default function HomePage({ onNavigate }) {
         }
         .card-wrap:nth-child(1) { animation-delay: 0.1s; }
         .card-wrap:nth-child(2) { animation-delay: 0.2s; }
+        .card-wrap:nth-child(3) { animation-delay: 0.3s; }
 
         .home-card {
           position: relative;
@@ -86,6 +87,63 @@ export default function HomePage({ onNavigate }) {
           border: 1px solid rgba(0,212,255,0.25);
           color: var(--accent);
         }
+
+        /* Сплит-карточка: эмодзи-герой на левой половине, описание — справа */
+        .card-split {
+          display: flex;
+          flex-direction: column;
+          gap: 0;
+          padding: 0;
+          margin: -29px -29px 0;
+          flex: 1;
+          min-height: 0;
+          overflow: hidden;
+        }
+
+        .card-split-visual {
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex: 0 0 200px;
+          height: 200px;
+          background: radial-gradient(
+            ellipse at 50% 56%,
+            rgba(180, 220, 90, 0.2),
+            transparent 72%
+          );
+          overflow: hidden;
+        }
+        .card-split-visual::after {
+          content: "";
+          position: absolute;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          height: 60px;
+          pointer-events: none;
+          background: linear-gradient(
+            to bottom,
+            rgba(0, 0, 0, 0) 0%,
+            var(--card-fade) 100%
+          );
+        }
+        .card-emoji-hero {
+          font-size: 96px;
+          line-height: 1;
+          filter: drop-shadow(0 12px 30px rgba(0, 0, 0, 0.25));
+          animation: fadeInDown 0.7s ease both;
+          transform: none;
+        }
+        .card-split-body {
+          display: flex;
+          flex-direction: column;
+          flex: 1 1 auto;
+          min-height: 0;
+          padding: 0 28px;
+        }
+        .card-split-body h2 { margin-top: 10px; }
+        .card-split-body p { flex: 1; margin: 0 0 20px; }
 
         .card-hero {
           position: relative;
@@ -225,25 +283,57 @@ export default function HomePage({ onNavigate }) {
           maxWidth: 960,
         }}
       >
-        {cards.map(function (card) {
+        {projects.map((project) => {
+          const m = project.manifest;
+          const title = t(`card.${m.id}.title`) || m.title;
+          const desc = t(`card.${m.id}.desc`) || m.description;
+          const previewLight = project.card?.previewLight;
+          const previewDark = project.card?.previewDark;
+          const heroEmoji = project.card?.heroEmoji;
           return (
-            <div className="card-wrap" key={card.id}>
+            <div className="card-wrap" key={m.id}>
               <div
                 className="glass home-card"
-                onClick={() => onNavigate(card.id)}
+                onClick={() => onNavigate(m.id)}
               >
-                {card.previewLight || card.previewDark ? (
+                {heroEmoji ? (
+                  <div className="card-split">
+                    <div className="card-split-visual">
+                      <div className="card-emoji-hero" aria-hidden="true">
+                        {heroEmoji}
+                      </div>
+                    </div>
+                    <div className="card-split-body">
+                      <h2>{title}</h2>
+                      <p>{desc}</p>
+                      <div className="card-footer">
+                        <span className="card-action">
+                          {t("home.open")}
+                        </span>
+                        <a
+                          className="readme-link"
+                          href={m.readme ?? "#"}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          📄 Readme
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                ) : previewLight || previewDark ? (
                   <div className="card-hero">
                     <picture>
-                      {card.previewLight && (
+                      {previewLight && (
                         <source
                           media="(prefers-color-scheme: light)"
-                          srcSet={card.previewLight}
+                          srcSet={previewLight}
                         />
                       )}
                       <img
                         className="card-preview"
-                        src={card.previewDark || card.previewLight}
+                        src={previewDark || previewLight}
                         alt=""
                         draggable={false}
                       />
@@ -251,22 +341,26 @@ export default function HomePage({ onNavigate }) {
                     <div className="card-hero-fade"></div>
                   </div>
                 ) : (
-                  <div className="card-icon">{card.icon}</div>
+                  <div className="card-icon">{m.icon}</div>
                 )}
-                <h2>{t(card.titleKey)}</h2>
-                <p>{t(card.descKey)}</p>
-                <div className="card-footer">
-                  <span className="card-action">{t("home.open")}</span>
-                  <a
-                    className="readme-link"
-                    href={card.readmeUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    📄 Readme
-                  </a>
-                </div>
+                {!heroEmoji && (
+                  <>
+                    <h2>{title}</h2>
+                    <p>{desc}</p>
+                    <div className="card-footer">
+                      <span className="card-action">{t("home.open")}</span>
+                      <a
+                        className="readme-link"
+                        href={m.readme ?? "#"}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        📄 Readme
+                      </a>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           );
