@@ -1,13 +1,13 @@
 ﻿import { useState, useRef, useCallback, useMemo, Component, type ReactNode } from "react";
-import GlassPanel from "../components/GlassPanel";
-import ToggleSwitch from "../components/ToggleSwitch";
+import GlassPanel from "./GlassPanel";
+import ToggleSwitch from "./ToggleSwitch";
 import LensControls from "./LensControls";
 import Lens2D from "./Lens2D";
 import Lens2DSvg from "./Lens2DSvg";
 import Lens3D from "./Lens3D";
 import { useLensSafariScroll } from "./useLensSafariScroll";
 import { compile, substituteCoeffs } from "./expr";
-import { useI18n, type TranslationKey } from "../i18n";
+import { useI18n, type TranslationKey } from "../../core/i18n";
 
 function defaultEq(params) {
   return `${params.z0}+(${params.a2})*r*r+(${params.a4})*r**4+(${params.a6})*r**6`;

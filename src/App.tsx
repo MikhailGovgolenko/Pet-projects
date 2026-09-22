@@ -1,8 +1,8 @@
 import { useState, useEffect, Suspense, lazy } from "react";
-import { cards } from "./pages/cards";
-import HomePage from "./pages/HomePage";
-import { useI18n } from "./i18n";
-import { siteUrl, getSeoForPage } from "./seo-data";
+import { projects } from "./projects";
+import HomePage from "./core/HomePage";
+import { useI18n } from "./core/i18n";
+import { siteUrl, getSeoForPage, ogImageUrl } from "./core/seo";
 
 const DebugOverlay = lazy(() => import("./components/DebugOverlay"));
 
@@ -13,8 +13,8 @@ const DEBUG =
   new URLSearchParams(location.search).has("debug");
 
 var pageMap = {};
-for (const card of cards) {
-  pageMap[card.id] = card.component;
+for (const project of projects) {
+  pageMap[project.manifest.id] = project.Page;
 }
 
 function setMeta(property: string, content: string) {
@@ -27,7 +27,7 @@ function setMeta(property: string, content: string) {
 function updateSeo(cardId: string | null) {
   var seo = getSeoForPage(cardId);
   var fullUrl = seo.id ? `${siteUrl}/${seo.id}/` : `${siteUrl}/`;
-  var fullImage = `${siteUrl}/${seo.ogImage}`;
+  var fullImage = ogImageUrl(seo);
   var title = seo.id ? `${seo.title} | Pet projects` : seo.title;
 
   document.title = title;

@@ -1,8 +1,8 @@
 import { memo, useMemo } from "react";
-import RangeSlider from "../components/RangeSlider";
-import ToggleSwitch from "../components/ToggleSwitch";
+import RangeSlider from "./RangeSlider";
+import ToggleSwitch from "./ToggleSwitch";
 import { compile, substituteCoeffs, type ExprError } from "./expr";
-import { useI18n } from "../i18n";
+import { useI18n } from "../../core/i18n";
 
 function formatVal(n, v) {
   if (n === "a2") return parseFloat(v).toFixed(3);

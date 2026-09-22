@@ -1,0 +1,12 @@
+/* Lens: document must scroll (not a 100dvh shell) so iOS Safari bleeds under tab bar */
+html.lens-active {
+  overflow-y: scroll;
+  height: auto;
+  min-height: 100%;
+}
+
+html.lens-active body,
+html.lens-active #root {
+  height: auto;
+  min-height: 100%;
+}
