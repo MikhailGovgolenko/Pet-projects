@@ -4,7 +4,7 @@
   "id": "spend-money",
   "route": "/spend-money",
   "title": "Потратить деньги",
-  "description": "Самая бесполезная кнопка на сайте.",
+  "description": "Добровольный перевод. Никаких товаров. Никаких услуг.",
   "icon": "💸",
   "ogImage": "preview.png"
 }
