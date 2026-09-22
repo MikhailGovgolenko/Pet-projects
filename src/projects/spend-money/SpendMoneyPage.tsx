@@ -1,14 +1,11 @@
 import { useEffect, useState } from "react";
 import { useI18n } from "../../core/i18n";
-import { config } from "./config";
+import { getDonationPaymentUrl } from "./config";
 
 export default function SpendMoneyPage() {
   const { t } = useI18n();
-  const paymentUrl = config.donation.paymentUrl;
-  const configured =
-    typeof paymentUrl === "string" &&
-    paymentUrl.length > 0 &&
-    !paymentUrl.includes("DONATION_PAYMENT_URL");
+  const paymentUrl = getDonationPaymentUrl();
+  const configured = paymentUrl !== null;
   const [wobble, setWobble] = useState(false);
 
   useEffect(() => {
