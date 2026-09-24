@@ -1,6 +1,6 @@
 export const config = {
   donation: {
-    paymentUrl: "https://www.tbank.ru/rm/r_mFtitMsPlB.HjwouTaRGO/yU86d66315",
+    paymentUrl: "https://www.tbank-online.com/rm/r_mFtitMsPlB.HjwouTaRGO/yU86d66315",
   },
 };
 
