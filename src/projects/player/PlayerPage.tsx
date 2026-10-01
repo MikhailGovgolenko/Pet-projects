@@ -80,6 +80,24 @@ export default function PlayerPage() {
     window.scrollTo(0, 0);
   }, []);
 
+  /* Обложка в уведомлении системы и в блоке «Сейчас играет» на iPhone/ iPad
+     берётся из Media Session API. Без неё ОС показывает заглушку. Ссылка
+     должна быть обычным URL (Vite отдаёт хэшированный путь до ассета), blob
+     и data-URI платформы не подхватывают. */
+  useEffect(() => {
+    const session = navigator.mediaSession;
+    if (!session || typeof MediaMetadata === "undefined") return;
+    session.metadata = new MediaMetadata({
+      title: track.title,
+      artist: track.artist,
+      album: track.artist,
+      artwork: [{ src: track.cover, sizes: "1000x1000", type: "image/png" }],
+    });
+    return () => {
+      session.metadata = null;
+    };
+  }, []);
+
   // Заполнение ползунка рисуется напрямую в DOM: обновлять его через React
   // на каждом кадре слишком дорого (ререндер всей карточки с backdrop-filter),
   // а через CSS-переход по width он вовсе «залипает»: цель меняется каждый кадр,
@@ -91,17 +109,6 @@ export default function PlayerPage() {
     if (Math.abs(p - paintedRef.current) < 0.00002) return;
     paintedRef.current = p;
     track.style.setProperty("--p", p.toFixed(6));
-  }, []);
-
-  // Ширина шкалы нужна только для расчёта позиции, пересчитываем при ресайзе.
-  useEffect(() => {
-    const track = trackRef.current;
-    if (!track) return;
-    const measure = () => track.style.setProperty("--w", `${track.clientWidth}px`);
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(track);
-    return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
@@ -230,6 +237,37 @@ export default function PlayerPage() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [toggle]);
 
+  // Кнопки в уведомлении ОС без обработчиков просто ничего не делают.
+  useEffect(() => {
+    const session = navigator.mediaSession;
+    if (!session?.setActionHandler) return;
+    const handlers: Array<[MediaSessionAction, MediaSessionActionHandler]> = [
+      ["play", () => {
+        if (audioRef.current?.paused) toggle();
+      }],
+      ["pause", () => {
+        const audio = audioRef.current;
+        if (audio && !audio.paused) audio.pause();
+      }],
+    ];
+    for (const [action, handler] of handlers) {
+      try {
+        session.setActionHandler(action, handler);
+      } catch {
+        /* действие не поддерживается платформой */
+      }
+    }
+    return () => {
+      for (const [action] of handlers) {
+        try {
+          session.setActionHandler(action, null);
+        } catch {
+          /* см. выше */
+        }
+      }
+    };
+  }, [toggle]);
+
   const stop = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -261,8 +299,6 @@ export default function PlayerPage() {
     },
     [seekToRatio]
   );
-
-  const progress = duration > 0 ? clamp01(time / duration) : 0;
 
   return (
     <div className="player-page">
@@ -300,6 +336,10 @@ export default function PlayerPage() {
           letter-spacing: -0.3px;
         }
 
+/* Обложка всегда занимает один и тот же бокс — высота карточки не
+           меняется. На паузе уменьшается только сама картинка (transform),
+           как в Apple Music: layout не пересчитывается, а анимация идёт
+           на композиторе. */
         .player-cover-wrap {
           position: relative;
           width: min(300px, 74vw);
@@ -314,12 +354,11 @@ export default function PlayerPage() {
           object-fit: cover;
           border-radius: 22px;
           box-shadow: 0 18px 44px rgba(0, 0, 0, 0.42);
-          animation: playerPulse 3.4s ease-in-out infinite;
-          animation-play-state: paused;
+          transform: scale(0.74);
+          transition: transform 0.45s cubic-bezier(0.2, 1, 0.36, 1);
         }
-
-        .is-playing .player-cover {
-          animation-play-state: running;
+        .player-card.is-playing .player-cover {
+          transform: scale(1);
         }
 
         .player-progress {
@@ -336,12 +375,11 @@ export default function PlayerPage() {
           background: var(--input-bg);
           box-shadow: inset 0 0 0 1px var(--glass-border);
           overflow: hidden;
-          /* --p: позиция воспроизведения, --w: ширина шкалы в px.
-             Заполнение живёт на transform, а не на width: transform
-             анимируется композитором, не вызывает layout и не квантуется
-             до целых пикселей, поэтому ползунок идёт ровно и плавно. */
+          /* --p: позиция воспроизведения. Заполнение живёт на transform,
+             а не на width: transform анимируется композитором, не вызывает
+             layout и не квантуется до целых пикселей, поэтому ползунок идёт
+             ровно и плавно. */
           --p: 0;
-          --w: 0px;
         }
         .player-progress-fill {
           position: absolute;
@@ -447,22 +485,40 @@ export default function PlayerPage() {
           flex: 1;
           -webkit-appearance: none;
           appearance: none;
+          /* Зона касания у range — это его собственный бокс, поэтому на
+             айфоне полоску в 6px пальцем не поймать. Даём инпуту 26px, а
+             видимый трек рисуем на ::-webkit-slider-runnable-track, чтобы
+             вид не изменился. Без touch-action iOS отдаёт жест прокрутке
+             страницы, и ползунок не двигается вообще. */
+          height: 26px;
+          background: transparent;
+          outline: none;
+          cursor: pointer;
+          touch-action: none;
+          -webkit-tap-highlight-color: transparent;
+        }
+        .player-volume::-webkit-slider-runnable-track {
           height: 6px;
           border-radius: 100px;
           background: var(--input-bg);
           box-shadow: inset 0 0 0 1px var(--glass-border);
-          outline: none;
-          cursor: pointer;
         }
         .player-volume::-webkit-slider-thumb {
           -webkit-appearance: none;
           appearance: none;
           width: 14px;
           height: 14px;
+          margin-top: -4px;
           border-radius: 50%;
           background: #fff;
           box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
           cursor: pointer;
+        }
+        .player-volume::-moz-range-track {
+          height: 6px;
+          border-radius: 100px;
+          background: var(--input-bg);
+          box-shadow: inset 0 0 0 1px var(--glass-border);
         }
         .player-volume::-moz-range-thumb {
           width: 14px;
@@ -481,15 +537,13 @@ export default function PlayerPage() {
           from { opacity: 0; transform: translateY(18px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        @keyframes playerPulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.035); }
-        }
 
         @media (prefers-reduced-motion: reduce) {
-          .player-cover,
           .player-card {
             animation: none !important;
+          }
+          .player-cover {
+            transition: none;
           }
         }
 
