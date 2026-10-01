@@ -3,6 +3,7 @@ import type { ProjectModule } from "../../core/types";
 import { ru } from "./i18n/ru";
 import { en } from "./i18n/en";
 import manifest from "./manifest.json";
+import previewCard from "./assets/preview-card.png";
 
 const Page = lazy(() => import("./SpendMoneyPage"));
 
@@ -10,7 +11,7 @@ const project: ProjectModule = {
   manifest,
   Page,
   translations: { ru, en },
-  card: { heroEmoji: "💸" },
+  card: { previewDark: previewCard },
 };
 
 export default project;

@@ -41,6 +41,11 @@ export default function HomePage({ onNavigate }) {
           animation: fadeInUp 0.7s ease both;
           border-radius: 28px;
           isolation: isolate;
+          /* Контейнер для cqw: все внутренние размеры карточки заданы в
+             процентах от её ширины (база — 306.7px, колонка на ПК). Благодаря
+             этому карточка на мобильном (362px) — это ровно тот же макет,
+             масштабированный в 1.18 раза, а не другой набор отступов. */
+          container-type: inline-size;
         }
         .card-wrap:nth-child(1) { animation-delay: 0.1s; }
         .card-wrap:nth-child(2) { animation-delay: 0.2s; }
@@ -52,10 +57,20 @@ export default function HomePage({ onNavigate }) {
           display: flex;
           flex-direction: column;
           padding: 28px;
+          padding: 9.13cqw;
+          /* радиус .glass задан в px — переопределяем, чтобы скругление
+             масштабировалось вместе с карточкой */
+          border-radius: 24px;
+          border-radius: 7.83cqw;
           color: inherit;
           cursor: pointer;
           height: 100%;
           overflow: hidden;
+          /* Обводку .glass снимаем: overflow: hidden клипает фото по padding box,
+             поэтому 1px бордера оставался поверх фото светлой полосой по всему
+             периметру. Без обводки padding box = border box и фото доходит до
+             самого скругления, а линию рисует ::after ниже. */
+          border-width: 0;
           transition:
             transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
             box-shadow 0.35s ease,
@@ -64,6 +79,20 @@ export default function HomePage({ onNavigate }) {
              на однотонном фоне blur всё равно незаметен */
           backdrop-filter: none;
           -webkit-backdrop-filter: none;
+        }
+        /* Обводка рисуется поверх фото, а не под ним: ::after лежит над
+           картинкой (z-index 2) и кладёт 1px прямо на её пиксели, поэтому
+           зазора между фото и линией нет. Цвет — токен темы, в тёмной теме
+           это светлая линия: граница карточки должна быть видна, иначе на
+           почти чёрном фото карточка сливается со страницей. */
+        .home-card::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          border-radius: inherit;
+          box-shadow: inset 0 0 0 1px var(--glass-border);
+          pointer-events: none;
+          z-index: 2;
         }
         @media (hover: hover) {
           .card-wrap:hover .home-card {
@@ -145,21 +174,41 @@ export default function HomePage({ onNavigate }) {
         .card-split-body h2 { margin-top: 10px; }
         .card-split-body p { flex: 1; margin: 0 0 20px; }
 
+        /* Фото растягивается на всю карточку (cover тянет, потом обрезает) и
+           становится её фоном. Сам блок .card-hero остаётся в потоке и держит
+           прежнюю высоту, поэтому текст описания не двигается; он лишь перестаёт
+           быть containing block для фото и градиента — они раскрываются на
+           границы карточки. */
         .card-hero {
-          position: relative;
-          margin: -29px -29px 0;
-          overflow: hidden;
+          position: static;
+          margin: -28px -28px 0;
+          margin: -9.13cqw -9.13cqw 0;
+          height: 200px;
+          height: 65.21cqw;
           border-radius: 24px 24px 0 0;
+          border-radius: 7.83cqw 7.83cqw 0 0;
+          overflow: visible;
+          /* Сжиматься герой может только до минимума — если описание вдруг
+             станет длиннее (другой язык), сжимается фото, а не текст. */
+          min-height: 110px;
+          min-height: 35.86cqw;
+          flex: 0 1 auto;
         }
         .card-hero picture {
           display: block;
         }
+        /* Фото занимает всю карточку, но на 10% выше и на 10% крупнее: без
+           вертикального запаса (фото ровно в высоту карточки) сдвинуть его
+           вверх нельзя — появилась бы полоса снизу. Лишнее уходит под нижнюю
+           плотную часть градиента и обрезается по скруглению карточки. */
         .card-preview {
+          position: absolute;
+          inset: 0;
           display: block;
           width: 100%;
-          height: 200px;
+          height: 100%;
           object-fit: cover;
-          object-position: center;
+          object-position: center top;
         }
 
         .card-preview-canvas {
@@ -170,39 +219,56 @@ export default function HomePage({ onNavigate }) {
           );
           display: block;
         }
+        /* Градиент цвета темы от низа: нижние 36% высоты плотные, дальше к
+           верху уходит в прозрачность. */
         .card-hero-fade {
           position: absolute;
-          left: 0;
-          right: 0;
-          bottom: 0px;
-          height: 60px;
+          inset: 0;
+          height: auto;
           pointer-events: none;
           background: linear-gradient(
-            to bottom,
-            rgba(0, 0, 0, 0) 0%,
-            var(--card-fade) 100%
+            to top,
+            var(--card-fade) 0%,
+            var(--card-fade) 36%,
+            rgba(0, 0, 0, 0) 100%
           );
         }
+        /* в светлой теме --card-fade почти белый: прозрачный стоп должен быть
+           того же оттенка, иначе фейд уходит в серый через rgba(0,0,0,0) */
         @media (prefers-color-scheme: light) {
           .card-hero-fade {
             background: linear-gradient(
-              to bottom,
-              rgba(255, 255, 255, 0),
-              var(--card-fade) 100%
+              to top,
+              var(--card-fade) 0%,
+              var(--card-fade) 26%,
+              rgba(255, 255, 255, 0) 100%
             );
           }
         }
 
+        /* Текст описания поднимаем над фото и градиентом — его позиции от этого
+           не меняются, он просто перестаёт перекрываться. */
+        .home-card h2,
+        .home-card p,
+        .card-footer {
+          position: relative;
+          z-index: 1;
+        }
+
         .home-card h2 {
           font-size: 20px;
+          font-size: 6.52cqw;
           font-weight: 700;
           margin-bottom: 8px;
+          margin-bottom: 2.61cqw;
           letter-spacing: -0.3px;
           margin-top: 10px;
+          margin-top: 3.26cqw;
         }
 
         .home-card p {
           font-size: 14px;
+          font-size: 4.57cqw;
           color: var(--text-sec);
           line-height: 1.5;
           flex: 1;
@@ -213,10 +279,12 @@ export default function HomePage({ onNavigate }) {
           align-items: center;
           justify-content: space-between;
           margin-top: 20px;
+          margin-top: 6.52cqw;
         }
 
         .card-action {
           font-size: 13px;
+          font-size: 4.24cqw;
           font-weight: 600;
           color: var(--text-sec);
         }
@@ -225,9 +293,12 @@ export default function HomePage({ onNavigate }) {
           display: inline-flex;
           align-items: center;
           gap: 6px;
+          gap: 1.96cqw;
           padding: 7px 12px;
+          padding: 2.28cqw 3.91cqw;
           border-radius: 100px;
           font-size: 12px;
+          font-size: 3.91cqw;
           font-weight: 700;
           text-decoration: none;
           color: var(--text-sec);
@@ -246,12 +317,16 @@ export default function HomePage({ onNavigate }) {
           .home-page { padding-left: 14px; padding-right: 14px; }
           .home-title { margin-bottom: 32px; }
           .home-title h1 { font-size: 32px; letter-spacing: -1px; }
-          .home-card { padding: 22px; }
-          .home-card h2 { font-size: 18px; }
-          .card-icon { width: 42px; height: 42px; font-size: 19px; }
-          .card-hero { margin: -23px -23px 0; border-radius: 18px 18px 0 0; }
-          .card-preview { height: 150px; }
-          .card-hero-fade { height: 84px; }
+          /* Внутри карточки мобильных переопределений больше нет: отступы,
+             фото, шрифты и радиусы заданы в cqw, поэтому на мобиле карточка
+             выглядит как точная копия пк-версии, масштабированная по ширине.
+             Остаётся только зафиксировать соотношение сторон (на ПК высота
+             карточки 306.7 x 367 = 0.8356 — при 2 строках описания; у карточки
+             с описанием в одну строку без него карточки были бы ниже). */
+          .home-card {
+            height: auto;
+            aspect-ratio: 0.8356;
+          }
         }
       `}</style>
 
