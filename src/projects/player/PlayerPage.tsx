@@ -66,6 +66,8 @@ export default function PlayerPage() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const barRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
+  const volumeRef = useRef<HTMLInputElement | null>(null);
+  const volumeDragRef = useRef(false);
   const scrubRef = useRef(false);
   const paintedRef = useRef(-1);
 
@@ -299,6 +301,26 @@ export default function PlayerPage() {
     [seekToRatio]
   );
 
+  /* Громкость на iPhone не отдаёт нативному range: жест уходит в
+     прокрутку, и ползунок стоит. Поэтому ведём его тем же pointer-механизмом,
+     что и шкалу времени, а нативный input оставляем только для клавиатуры
+     и скринридера (pointer-events: none), чтобы он не перехватывал жест
+     дважды. */
+  const setVolumeFromClientX = useCallback(
+    (clientX: number) => {
+      const input = volumeRef.current;
+      if (!input) return;
+      const rect = input.getBoundingClientRect();
+      if (rect.width <= 0) return;
+      const inset = 7; // половина кружка: 0 — это центр кружка у края
+      const usable = Math.max(rect.width - inset * 2, 1);
+      const next = clamp01((clientX - rect.left - inset) / usable);
+      setVolume(next);
+      if (next > 0 && muted) setMuted(false);
+    },
+    [muted]
+  );
+
   return (
     <div className="player-page">
       <style>{`
@@ -354,7 +376,11 @@ export default function PlayerPage() {
           border-radius: 22px;
           box-shadow: 0 18px 44px rgba(0, 0, 0, 0.42);
           transform: scale(0.74);
-          transition: transform 0.45s cubic-bezier(0.2, 1, 0.36, 1);
+          transform-origin: center;
+          /* Кривая (0.32, 0.72, 0, 1) к четверти времени проходила 77%
+             пути — на телефоне это читалось как рывок. Плавная
+             ease-in-out с равномерным распределением пути. */
+          transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .player-card.is-playing .player-cover {
           transform: scale(1);
@@ -430,6 +456,10 @@ export default function PlayerPage() {
           border: 1px solid var(--glass-border);
           box-shadow: none;
           cursor: pointer;
+          /* manipulation убирает на iPhone задержку в 300мс перед click
+             и двойной-тап-зум, из-за которого тапы иногда «не срабатывают». */
+          touch-action: manipulation;
+          -webkit-tap-highlight-color: transparent;
           transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease,
             transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
@@ -482,6 +512,9 @@ export default function PlayerPage() {
           align-items: center;
           gap: 10px;
           color: var(--text-sec);
+          cursor: pointer;
+          touch-action: none;
+          -webkit-tap-highlight-color: transparent;
         }
 
         .player-volume {
@@ -491,14 +524,13 @@ export default function PlayerPage() {
           /* Зона касания у range — это его собственный бокс, поэтому на
              айфоне полоску в 6px пальцем не поймать. Даём инпуту 26px, а
              видимый трек рисуем на ::-webkit-slider-runnable-track, чтобы
-             вид не изменился. Без touch-action iOS отдаёт жест прокрутке
-             страницы, и ползунок не двигается вообще. */
+             вид не изменился. Жест обрабатывает обёртка выше, поэтому
+             input не перехватывает его сам. */
           height: 26px;
           background: transparent;
           outline: none;
           cursor: pointer;
-          touch-action: none;
-          -webkit-tap-highlight-color: transparent;
+          pointer-events: none;
         }
         .player-volume::-webkit-slider-runnable-track {
           height: 6px;
@@ -625,10 +657,11 @@ export default function PlayerPage() {
         </div>
 
         <div className="player-controls">
-          <button className="player-btn ghost" onClick={stop} aria-label={t("player.stop")} title={t("player.stop")}>
+          <button type="button" className="player-btn ghost" onClick={stop} aria-label={t("player.stop")} title={t("player.stop")}>
             <StopIcon />
           </button>
           <button
+            type="button"
             className="player-btn main"
             onClick={toggle}
             aria-label={playing ? t("player.pause") : t("player.play")}
@@ -637,6 +670,7 @@ export default function PlayerPage() {
             {playing ? <PauseIcon /> : <PlayIcon />}
           </button>
           <button
+            type="button"
             className="player-btn ghost"
             onClick={() => setMuted((m) => !m)}
             aria-label={muted ? t("player.unmute") : t("player.mute")}
@@ -647,9 +681,27 @@ export default function PlayerPage() {
           </button>
         </div>
 
-        <div className="player-volume-wrap">
+        <div
+          className="player-volume-wrap"
+          onPointerDown={(e) => {
+            volumeDragRef.current = true;
+            e.currentTarget.setPointerCapture(e.pointerId);
+            setVolumeFromClientX(e.clientX);
+          }}
+          onPointerMove={(e) => {
+            if (volumeDragRef.current) setVolumeFromClientX(e.clientX);
+          }}
+          onPointerUp={(e) => {
+            volumeDragRef.current = false;
+            e.currentTarget.releasePointerCapture(e.pointerId);
+          }}
+          onPointerCancel={() => {
+            volumeDragRef.current = false;
+          }}
+        >
           <VolumeIcon muted={muted} />
           <input
+            ref={volumeRef}
             className="player-volume"
             type="range"
             min={0}
