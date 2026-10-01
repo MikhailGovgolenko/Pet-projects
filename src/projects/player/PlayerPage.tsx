@@ -74,7 +74,6 @@ export default function PlayerPage() {
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.8);
   const [muted, setMuted] = useState(false);
-  const [scrubbing, setScrubbing] = useState(false);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -390,13 +389,17 @@ export default function PlayerPage() {
           transform-origin: left center;
           will-change: transform;
         }
-        .player-progress.is-scrubbing .player-progress-track {
-          box-shadow: inset 0 0 0 1px var(--accent);
-        }
         .player-progress:focus-visible {
           outline: 2px solid var(--accent);
           outline-offset: 6px;
           border-radius: 100px;
+        }
+        /* Тап мышью или пальцем по ползунку в Safari и Chrome тоже считается
+           :focus-visible, поэтому после касания кольцо оставалось висеть.
+           Помечаем фокус указателем и убираем кольцо; с клавиатуры оно
+           остаётся, иначе непонятно, где фокус. */
+        .player-progress.is-pointer-focus:focus-visible {
+          outline: none;
         }
 
         .player-times {
@@ -566,7 +569,7 @@ export default function PlayerPage() {
         <h1 className="player-title">{track.title}</h1>
 
         <div
-          className={"player-progress" + (scrubbing ? " is-scrubbing" : "")}
+          className="player-progress"
           ref={barRef}
           role="slider"
           tabIndex={0}
@@ -577,7 +580,7 @@ export default function PlayerPage() {
           aria-valuetext={`${formatTime(time)} / ${formatTime(duration)}`}
           onPointerDown={(e) => {
             scrubRef.current = true;
-            setScrubbing(true);
+            e.currentTarget.classList.add("is-pointer-focus");
             e.currentTarget.setPointerCapture(e.pointerId);
             seekFromClientX(e.clientX);
           }}
@@ -586,14 +589,16 @@ export default function PlayerPage() {
           }}
           onPointerUp={(e) => {
             scrubRef.current = false;
-            setScrubbing(false);
             e.currentTarget.releasePointerCapture(e.pointerId);
           }}
           onPointerCancel={() => {
             scrubRef.current = false;
-            setScrubbing(false);
+          }}
+          onBlur={(e) => {
+            e.currentTarget.classList.remove("is-pointer-focus");
           }}
           onKeyDown={(e) => {
+            e.currentTarget.classList.remove("is-pointer-focus");
             const audio = audioRef.current;
             if (!audio || !duration) return;
             const step = 5;
