@@ -110,8 +110,6 @@ function VolumeIcon({ muted }: { muted: boolean }) {
 export default function PlayerPage() {
   const { t } = useI18n();
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const gainRef = useRef<GainNode | null>(null);
   const barRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
   const volumeRef = useRef<HTMLInputElement | null>(null);
@@ -125,9 +123,27 @@ export default function PlayerPage() {
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.8);
   const [muted, setMuted] = useState(false);
+  const [visible, setVisible] = useState(() => !document.hidden);
 
   useEffect(() => {
     window.scrollTo(0, 0);
+  }, []);
+
+  /* Блокировка экрана на iOS — это уход страницы в фон: rAF не приходят, а
+     уже поставленный в очередь кадр просто теряется, из-за чего цепочка
+     requestAnimationFrame обрывается навсегда (перезапуск в её теле есть
+     только у самой себя). Отслеживаем видимость, чтобы после разблокировки
+     перезапустить цикл анимации ползунка. Состояние play/pause при этом
+     восстанавливать не нужно — оно идёт из событий элемента.
+     pageshow нужен для возврата из bfcache, где visibilitychange не стреляет. */
+  useEffect(() => {
+    const onVisibility = () => setVisible(!document.hidden);
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pageshow", onVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pageshow", onVisibility);
+    };
   }, []);
 
   /* Обложка в уведомлении системы и в блоке «Сейчас играет» на iPhone/ iPad
@@ -211,30 +227,20 @@ export default function PlayerPage() {
     };
   }, [paintProgress]);
 
+  /* Громкость и mute — штатными свойствами элемента, без Web Audio.
+     Раньше звук гнали через createMediaElementSource -> GainNode, и это
+     ломало воспроизведение на iOS: после блокировки экрана AudioContext
+     уходит в "interrupted" (WebKit 276016 / 231105), а восстановить граф
+     WebKit надёжно не умеет — элемент остаётся не на паузе (события pause
+     нет, кнопка показывает play), но звука нет, и оживает он только со
+     второго нажатия. Элемент, играющий прямо в выход устройства, iOS
+     держит в фоне штатно, поэтому лишняя прослойка не нужна. */
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    const gain = gainRef.current;
-    if (gain) {
-      const context = audioContextRef.current;
-      gain.gain.setTargetAtTime(muted ? 0 : volume, context?.currentTime ?? 0, 0.015);
-      audio.muted = false;
-      audio.volume = 1;
-    } else {
-      audio.muted = muted;
-      audio.volume = muted ? 0 : volume;
-    }
+    audio.muted = muted;
+    audio.volume = muted ? 0 : volume;
   }, [volume, muted]);
-
-  useEffect(
-    () => () => {
-      const context = audioContextRef.current;
-      audioContextRef.current = null;
-      gainRef.current = null;
-      if (context && context.state !== "closed") void context.close();
-    },
-    []
-  );
 
   // Ползунок обязан идти за реальной позицией трека. rAF даёт плавность,
   // но он придушается в Low Power Mode / фоновой вкладке — поэтому
@@ -274,39 +280,27 @@ export default function PlayerPage() {
       cancelAnimationFrame(frame);
       window.clearInterval(timer);
     };
-  }, [playing, paintProgress]);
+    // visible — перезапуск после возврата из фона: rAF в фоне не тикает, и
+    // без нового прогоста эффекта ползунок шёл бы только шагами по таймеру.
+  }, [playing, visible, paintProgress]);
 
   const toggle = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
     if (audio.paused) {
-      let context = audioContextRef.current;
-      if (!context) {
-        context = new AudioContext();
-        const source = context.createMediaElementSource(audio);
-        const gain = context.createGain();
-        gain.gain.value = muted ? 0 : volume;
-        source.connect(gain);
-        gain.connect(context.destination);
-        audioContextRef.current = context;
-        gainRef.current = gain;
-        audio.muted = false;
-        audio.volume = 1;
-      }
-      const resumePromise = context.resume();
       if (audio.ended || audio.currentTime >= (audio.duration || 0)) {
         audio.currentTime = 0;
         setTime(0);
         paintProgress(0, audio.duration);
       }
-      void Promise.all([resumePromise, audio.play()]).catch((error: unknown) => {
+      void audio.play().catch((error: unknown) => {
         console.error("Unable to start player audio", error);
         setPlaying(false);
       });
     } else {
       audio.pause();
     }
-  }, [muted, paintProgress, volume]);
+  }, [paintProgress]);
 
   // Пробел — play/pause. На кнопках и в полях ввода он уже работает
   // штатно, поэтому там не перехватываем (иначе сработает дважды).
@@ -323,6 +317,15 @@ export default function PlayerPage() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [toggle]);
 
+  const stop = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.pause();
+    audio.currentTime = 0;
+    setTime(0);
+    paintProgress(0, audio.duration);
+  }, [paintProgress]);
+
   // Кнопки в уведомлении ОС без обработчиков просто ничего не делают.
   useEffect(() => {
     const session = navigator.mediaSession;
@@ -335,6 +338,7 @@ export default function PlayerPage() {
         const audio = audioRef.current;
         if (audio && !audio.paused) audio.pause();
       }],
+      ["stop", stop],
     ];
     for (const [action, handler] of handlers) {
       try {
@@ -352,16 +356,28 @@ export default function PlayerPage() {
         }
       }
     };
-  }, [toggle]);
+  }, [stop, toggle]);
 
-  const stop = useCallback(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    audio.pause();
-    audio.currentTime = 0;
-    setTime(0);
-    paintProgress(0, audio.duration);
-  }, [paintProgress]);
+  /* Состояние и позиция для ОС. Без playbackState блокировка экрана
+     показывает неверную кнопку, а без setPositionState в Control Center и
+     на экране блокировки нет шкалы прогресса — и именно на этом фоне
+     iOS склонна считать сессию простаивающей. */
+  useEffect(() => {
+    const session = navigator.mediaSession;
+    if (!session) return;
+    session.playbackState = playing ? "playing" : "paused";
+    const position = audioRef.current?.currentTime ?? time;
+    if (!duration || !Number.isFinite(duration)) return;
+    try {
+      session.setPositionState({
+        duration,
+        position: clamp01(position / duration) * duration,
+        playbackRate: 1,
+      });
+    } catch {
+      /* setPositionState бросает на duration <= 0 и position вне границ */
+    }
+  }, [playing, duration, time]);
 
   const seekToRatio = useCallback(
     (ratio: number) => {
@@ -387,12 +403,10 @@ export default function PlayerPage() {
   );
 
   const toggleMute = useCallback(() => {
-    const nextMuted = !muted;
-    setMuted(nextMuted);
-    const gain = gainRef.current;
-    if (gain) gain.gain.value = nextMuted ? 0 : volume;
-    else if (audioRef.current) audioRef.current.muted = nextMuted;
-  }, [muted, volume]);
+    // Свойства элемента проставляет эффект по [volume, muted] — дублировать
+    // запись сюда не нужно.
+    setMuted((prev) => !prev);
+  }, []);
 
   /* Громкость ведём вручную: нативный input оставлен только для клавиатуры и
      скринридера (pointer-events: none), иначе он перехватит жест. Мышь — через
@@ -878,7 +892,10 @@ export default function PlayerPage() {
         </div>
       </div>
 
-      <audio ref={audioRef} src={track.src} preload="metadata" />
+      {/* playsinline обязателен для iOS: без него элемент пытается уйти в
+          полноэкранный режим и теряет аудиосессию, из-за чего фоновое
+          воспроизведение прерывается. */}
+      <audio ref={audioRef} src={track.src} preload="metadata" playsInline />
     </div>
   );
 }
