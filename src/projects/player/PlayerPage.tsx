@@ -12,6 +12,52 @@ function formatTime(seconds: number): string {
 
 const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
+/* Жест пальцем по ползункам на iOS.
+   setPointerCapture на touch-указателях там не работает: WebKit теряет
+   pointermove и присылает pointercancel, поэтому ползунок замирает после
+   первого касания. А touchmove без preventDefault перехватывает прокрутка
+   страницы. Поэтому для пальца вешаем touch-события напрямую с passive:false,
+   а React-обработчики pointer остаются только для мыши (в них touch пропускаем,
+   иначе обработается дважды).
+   ignoreTarget нужен, чтобы тап по кнопке внутри ползунка (mute) не съедался
+   preventDefault — иначе iOS не пришлёт click и кнопка не сработает. */
+function attachTouchDrag(
+  el: HTMLElement,
+  onDrag: (clientX: number) => void,
+  ignoreTarget?: (target: EventTarget | null) => boolean
+): () => void {
+  let active = false;
+
+  const start = (e: TouchEvent) => {
+    const t = e.touches[0];
+    if (!t) return;
+    if (ignoreTarget && ignoreTarget(e.target)) return;
+    active = true;
+    onDrag(t.clientX);
+    e.preventDefault();
+  };
+  const move = (e: TouchEvent) => {
+    if (!active) return;
+    const t = e.touches[0];
+    if (t) onDrag(t.clientX);
+    e.preventDefault();
+  };
+  const end = () => {
+    active = false;
+  };
+
+  el.addEventListener("touchstart", start, { passive: false });
+  el.addEventListener("touchmove", move, { passive: false });
+  el.addEventListener("touchend", end);
+  el.addEventListener("touchcancel", end);
+  return () => {
+    el.removeEventListener("touchstart", start);
+    el.removeEventListener("touchmove", move);
+    el.removeEventListener("touchend", end);
+    el.removeEventListener("touchcancel", end);
+  };
+}
+
 function PlayIcon() {
   return (
     <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
@@ -64,9 +110,12 @@ function VolumeIcon({ muted }: { muted: boolean }) {
 export default function PlayerPage() {
   const { t } = useI18n();
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const gainRef = useRef<GainNode | null>(null);
   const barRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
   const volumeRef = useRef<HTMLInputElement | null>(null);
+  const volumeWrapRef = useRef<HTMLDivElement | null>(null);
   const volumeDragRef = useRef(false);
   const scrubRef = useRef(false);
   const paintedRef = useRef(-1);
@@ -165,8 +214,27 @@ export default function PlayerPage() {
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    audio.volume = muted ? 0 : volume;
+    const gain = gainRef.current;
+    if (gain) {
+      const context = audioContextRef.current;
+      gain.gain.setTargetAtTime(muted ? 0 : volume, context?.currentTime ?? 0, 0.015);
+      audio.muted = false;
+      audio.volume = 1;
+    } else {
+      audio.muted = muted;
+      audio.volume = muted ? 0 : volume;
+    }
   }, [volume, muted]);
+
+  useEffect(
+    () => () => {
+      const context = audioContextRef.current;
+      audioContextRef.current = null;
+      gainRef.current = null;
+      if (context && context.state !== "closed") void context.close();
+    },
+    []
+  );
 
   // Ползунок обязан идти за реальной позицией трека. rAF даёт плавность,
   // но он придушается в Low Power Mode / фоновой вкладке — поэтому
@@ -212,16 +280,33 @@ export default function PlayerPage() {
     const audio = audioRef.current;
     if (!audio) return;
     if (audio.paused) {
+      let context = audioContextRef.current;
+      if (!context) {
+        context = new AudioContext();
+        const source = context.createMediaElementSource(audio);
+        const gain = context.createGain();
+        gain.gain.value = muted ? 0 : volume;
+        source.connect(gain);
+        gain.connect(context.destination);
+        audioContextRef.current = context;
+        gainRef.current = gain;
+        audio.muted = false;
+        audio.volume = 1;
+      }
+      const resumePromise = context.resume();
       if (audio.ended || audio.currentTime >= (audio.duration || 0)) {
         audio.currentTime = 0;
         setTime(0);
         paintProgress(0, audio.duration);
       }
-      audio.play().catch(() => setPlaying(false));
+      void Promise.all([resumePromise, audio.play()]).catch((error: unknown) => {
+        console.error("Unable to start player audio", error);
+        setPlaying(false);
+      });
     } else {
       audio.pause();
     }
-  }, [paintProgress]);
+  }, [muted, paintProgress, volume]);
 
   // Пробел — play/pause. На кнопках и в полях ввода он уже работает
   // штатно, поэтому там не перехватываем (иначе сработает дважды).
@@ -301,11 +386,17 @@ export default function PlayerPage() {
     [seekToRatio]
   );
 
-  /* Громкость на iPhone не отдаёт нативному range: жест уходит в
-     прокрутку, и ползунок стоит. Поэтому ведём его тем же pointer-механизмом,
-     что и шкалу времени, а нативный input оставляем только для клавиатуры
-     и скринридера (pointer-events: none), чтобы он не перехватывал жест
-     дважды. */
+  const toggleMute = useCallback(() => {
+    const nextMuted = !muted;
+    setMuted(nextMuted);
+    const gain = gainRef.current;
+    if (gain) gain.gain.value = nextMuted ? 0 : volume;
+    else if (audioRef.current) audioRef.current.muted = nextMuted;
+  }, [muted, volume]);
+
+  /* Громкость ведём вручную: нативный input оставлен только для клавиатуры и
+     скринридера (pointer-events: none), иначе он перехватит жест. Мышь — через
+     pointer-события, палец — через touch-события (attachTouchDrag). */
   const setVolumeFromClientX = useCallback(
     (clientX: number) => {
       const input = volumeRef.current;
@@ -320,6 +411,27 @@ export default function PlayerPage() {
     },
     [muted]
   );
+
+  /* Пальцем по шкале времени и по громкости ведёт touch-механизм, мышью —
+     pointer-обработчики в разметке. */
+  useEffect(() => {
+    const bar = barRef.current;
+    const wrap = volumeWrapRef.current;
+    if (!bar || !wrap) return;
+    const offBar = attachTouchDrag(bar, (clientX) => {
+      bar.classList.add("is-pointer-focus");
+      seekFromClientX(clientX);
+    });
+    const offWrap = attachTouchDrag(
+      wrap,
+      (clientX) => setVolumeFromClientX(clientX),
+      (target) => target instanceof Element && !!target.closest("button")
+    );
+    return () => {
+      offBar();
+      offWrap();
+    };
+  }, [seekFromClientX, setVolumeFromClientX]);
 
   return (
     <div className="player-page">
@@ -517,6 +629,37 @@ export default function PlayerPage() {
           -webkit-tap-highlight-color: transparent;
         }
 
+        .player-mute {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          /* Высота равна высоте инпута, чтобы ряд mute не изменил вёрстку.
+             Ширина 44px — нормальная зона нажатия, а отрицательные поля
+             (-12px слева и справа) возвращают иконку и начало ползунка на
+             прежние места: 44 - 24 = ширина прежней иконки, плюс gap 10px. */
+          width: 44px;
+          height: 26px;
+          margin: 0 -12px 0 -12px;
+          padding: 0;
+          flex-shrink: 0;
+          border: 0;
+          border-radius: 50%;
+          background: transparent;
+          color: var(--text-sec);
+          cursor: pointer;
+          touch-action: manipulation;
+          -webkit-tap-highlight-color: transparent;
+          transition: color 0.2s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .player-mute:active { transform: scale(0.86); }
+        .player-mute:focus-visible {
+          outline: 2px solid var(--accent);
+          outline-offset: 3px;
+        }
+        @media (hover: hover) {
+          .player-mute:hover { color: var(--accent); }
+        }
+
         .player-volume {
           flex: 1;
           -webkit-appearance: none;
@@ -567,7 +710,6 @@ export default function PlayerPage() {
           outline: 2px solid var(--accent);
           outline-offset: 4px;
         }
-
         @keyframes playerRise {
           from { opacity: 0; transform: translateY(18px); }
           to { opacity: 1; transform: translateY(0); }
@@ -611,15 +753,18 @@ export default function PlayerPage() {
           aria-valuenow={Math.round(time)}
           aria-valuetext={`${formatTime(time)} / ${formatTime(duration)}`}
           onPointerDown={(e) => {
+            if (e.pointerType === "touch") return; // палец ведёт touch-обработчик
             scrubRef.current = true;
             e.currentTarget.classList.add("is-pointer-focus");
             e.currentTarget.setPointerCapture(e.pointerId);
             seekFromClientX(e.clientX);
           }}
           onPointerMove={(e) => {
+            if (e.pointerType === "touch") return;
             if (scrubRef.current) seekFromClientX(e.clientX);
           }}
           onPointerUp={(e) => {
+            if (e.pointerType === "touch") return;
             scrubRef.current = false;
             e.currentTarget.releasePointerCapture(e.pointerId);
           }}
@@ -672,7 +817,7 @@ export default function PlayerPage() {
           <button
             type="button"
             className="player-btn ghost"
-            onClick={() => setMuted((m) => !m)}
+            onClick={toggleMute}
             aria-label={muted ? t("player.unmute") : t("player.mute")}
             aria-pressed={muted}
             title={muted ? t("player.unmute") : t("player.mute")}
@@ -683,15 +828,21 @@ export default function PlayerPage() {
 
         <div
           className="player-volume-wrap"
+          ref={volumeWrapRef}
           onPointerDown={(e) => {
+            if (e.pointerType === "touch") return; // палец ведёт touch-обработчик
+            // тап по кнопке mute не должен ещё и двигать громкость
+            if (e.target instanceof Element && e.target.closest("button")) return;
             volumeDragRef.current = true;
             e.currentTarget.setPointerCapture(e.pointerId);
             setVolumeFromClientX(e.clientX);
           }}
           onPointerMove={(e) => {
+            if (e.pointerType === "touch") return;
             if (volumeDragRef.current) setVolumeFromClientX(e.clientX);
           }}
           onPointerUp={(e) => {
+            if (e.pointerType === "touch") return;
             volumeDragRef.current = false;
             e.currentTarget.releasePointerCapture(e.pointerId);
           }}
@@ -699,7 +850,16 @@ export default function PlayerPage() {
             volumeDragRef.current = false;
           }}
         >
-          <VolumeIcon muted={muted} />
+          <button
+            type="button"
+            className="player-mute"
+            onClick={toggleMute}
+            aria-label={muted ? t("player.unmute") : t("player.mute")}
+            aria-pressed={muted}
+            title={muted ? t("player.unmute") : t("player.mute")}
+          >
+            <VolumeIcon muted={muted} />
+          </button>
           <input
             ref={volumeRef}
             className="player-volume"
