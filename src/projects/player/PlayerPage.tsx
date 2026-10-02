@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useI18n } from "../../core/i18n";
+import { extractCoverPalette } from "./coverPalette";
 import { track } from "./track";
 
 function formatTime(seconds: number): string {
@@ -125,6 +126,7 @@ export default function PlayerPage() {
   const trackRef = useRef<HTMLDivElement | null>(null);
   const volumeRef = useRef<HTMLInputElement | null>(null);
   const volumeWrapRef = useRef<HTMLDivElement | null>(null);
+  const cardRef = useRef<HTMLDivElement | null>(null);
   const scrubRef = useRef(false);
   const paintedRef = useRef(-1);
 
@@ -139,6 +141,29 @@ export default function PlayerPage() {
 
   useEffect(() => {
     window.scrollTo(0, 0);
+  }, []);
+
+  /* Ореол под обложкой красится в цвета самой обложки: палитра читается из
+     файла один раз и уходит в CSS-переменные карточки. Переменные, а не
+     состояние, — их потом читает сам градиент, и цвет не гоняет через React.
+     Если картинку прочитать не вышло (чужой домен, нет 2D-контекста),
+     остаются акцентные значения из стилей: ореол виден в любом случае. */
+  useEffect(() => {
+    const card = cardRef.current;
+    if (!card) return;
+    let cancelled = false;
+    void extractCoverPalette(track.cover)
+      .then((palette) => {
+        if (cancelled) return;
+        card.style.setProperty("--cover-glow-a", palette.a);
+        card.style.setProperty("--cover-glow-b", palette.b);
+      })
+      .catch((error: unknown) => {
+        console.warn("Не удалось снять цвета с обложки, ореол остаётся акцентным", error);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   /* Блокировка экрана на iOS — это уход страницы в фон: rAF не приходят, а
@@ -531,6 +556,14 @@ export default function PlayerPage() {
         }
 
         .player-card {
+          /* Цвета ореола. Компоненты через пробел — с запятыми rgb(var(--x) / 0.7)
+             невалиден, и весь background молча отбрасывается. Значения по
+             умолчанию — акцент темы: подставлены на тот случай, если цвета с
+             обложки снять не удалось. */
+          --cover-glow-a: 0 212 255;
+          --cover-glow-b: 0 119 182;
+          --glow-opacity: 0.32;
+          --glow-opacity-peak: 0.52;
           width: 100%;
           max-width: 400px;
           display: flex;
@@ -540,6 +573,13 @@ export default function PlayerPage() {
           padding: 30px 26px 26px;
           border-radius: 30px;
           animation: playerRise 0.7s ease both;
+        }
+        @media (prefers-color-scheme: light) {
+          /* На светлом фоне ореол той же силы выглядит грязным пятном. */
+          .player-card {
+            --glow-opacity: 0.5;
+            --glow-opacity-peak: 0.62;
+          }
         }
 
         .player-title {
@@ -559,6 +599,45 @@ export default function PlayerPage() {
           width: min(300px, 74vw);
           aspect-ratio: 1 / 1;
           display: flex;
+        }
+
+        /* Ореол под обложкой — широкое гало, а не пятно у края: обложка
+           непрозрачная и закрывает всё, что ближе к центру, поэтому цвет
+           должен держаться в кольце вокруг неё. Радиусы градиентов (50% и 42%
+           от бокса) заметно больше половины бокса, а крайние стопы уходят в
+           transparent на 100% — так градиент ещё живёт там, где обложка
+           кончилась. С маленькими радиусами (проверено замером пикселей)
+           весь цвет уезжал под обложку, наружу выходили единицы из 255.
+           Промежуточный стоп на 52% держит плотность у самого края обложки,
+           а не даёт ореолу превратиться в плоское пятно.
+           Слоя без промоушена (translateZ/will-change) и без transform: над
+           backdrop-filter карточки промоушенный слой с border-radius даёт
+           угловатый контур — тот же грабли, что описаны у .player-btn.main. */
+        .player-cover-glow {
+          position: absolute;
+          inset: -30%;
+          border-radius: 50%;
+          background:
+            radial-gradient(
+              50% 50% at 50% 46%,
+              rgb(var(--cover-glow-a) / 0.72) 0%,
+              rgb(var(--cover-glow-a) / 0.34) 52%,
+              transparent 100%
+            ),
+            radial-gradient(
+              42% 42% at 68% 74%,
+              rgb(var(--cover-glow-b) / 0.6) 0%,
+              rgb(var(--cover-glow-b) / 0.24) 55%,
+              transparent 100%
+            );
+          filter: blur(22px);
+          opacity: var(--glow-opacity);
+          pointer-events: none;
+        }
+        /* Пульсирует только вместе с обложкой: на паузе анимаций на странице
+           нет вовсе, чтобы фон не молотил композит впустую. */
+        .player-card.is-playing .player-cover-glow {
+          animation: playerGlow 3.6s ease-in-out infinite;
         }
 
         .player-cover {
@@ -791,6 +870,10 @@ export default function PlayerPage() {
           from { opacity: 0; transform: translateY(18px); }
           to { opacity: 1; transform: translateY(0); }
         }
+        @keyframes playerGlow {
+          0%, 100% { opacity: var(--glow-opacity); }
+          50% { opacity: var(--glow-opacity-peak); }
+        }
 
         @media (prefers-reduced-motion: reduce) {
           .player-card {
@@ -798,6 +881,11 @@ export default function PlayerPage() {
           }
           .player-cover {
             transition: none;
+          }
+          /* Селектор с is-playing: без него он слабее правила пульсации выше
+             и не отключил бы анимацию (специфичность важнее порядка). */
+          .player-card.is-playing .player-cover-glow {
+            animation: none;
           }
         }
 
@@ -807,8 +895,9 @@ export default function PlayerPage() {
         }
       `}</style>
 
-      <div className={"glass player-card" + (playing ? " is-playing" : "")}>
+      <div className={"glass player-card" + (playing ? " is-playing" : "")} ref={cardRef}>
         <div className="player-cover-wrap">
+          <div className="player-cover-glow" aria-hidden="true" />
           <img
             className="player-cover"
             src={track.cover}
