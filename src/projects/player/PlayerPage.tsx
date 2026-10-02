@@ -110,6 +110,8 @@ function VolumeIcon({ muted }: { muted: boolean }) {
 export default function PlayerPage() {
   const { t } = useI18n();
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const gainRef = useRef<GainNode | null>(null);
   const barRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
   const volumeRef = useRef<HTMLInputElement | null>(null);
@@ -226,20 +228,47 @@ export default function PlayerPage() {
     };
   }, [paintProgress]);
 
-  /* Громкость и mute — штатными свойствами элемента, без Web Audio.
-     Раньше звук гнали через createMediaElementSource -> GainNode, и это
-     ломало воспроизведение на iOS: после блокировки экрана AudioContext
-     уходит в "interrupted" (WebKit 276016 / 231105), а восстановить граф
-     WebKit надёжно не умеет — элемент остаётся не на паузе (события pause
-     нет, кнопка показывает play), но звука нет, и оживает он только со
-     второго нажатия. Элемент, играющий прямо в выход устройства, iOS
-     держит в фоне штатно, поэтому лишняя прослойка не нужна. */
-  useEffect(() => {
+  const ensureAudioGraph = useCallback(() => {
     const audio = audioRef.current;
-    if (!audio) return;
-    audio.muted = muted;
-    audio.volume = muted ? 0 : volume;
+    if (!audio) return null;
+    let context = audioContextRef.current;
+    if (!context) {
+      context = new AudioContext();
+      const source = context.createMediaElementSource(audio);
+      const gain = context.createGain();
+      gain.gain.value = muted ? 0 : volume;
+      source.connect(gain);
+      gain.connect(context.destination);
+      audioContextRef.current = context;
+      gainRef.current = gain;
+      audio.muted = false;
+      audio.volume = 1;
+    }
+    return context;
+  }, [muted, volume]);
+
+  useEffect(() => {
+    const gain = gainRef.current;
+    const audio = audioRef.current;
+    if (gain) {
+      const context = audioContextRef.current;
+      gain.gain.setTargetAtTime(muted ? 0 : volume, context?.currentTime ?? 0, 0.015);
+      if (audio) {
+        audio.muted = false;
+        audio.volume = 1;
+      }
+    } else if (audio) {
+      audio.muted = muted;
+      audio.volume = muted ? 0 : volume;
+    }
   }, [volume, muted]);
+
+  useEffect(() => () => {
+    const context = audioContextRef.current;
+    audioContextRef.current = null;
+    gainRef.current = null;
+    if (context && context.state !== "closed") void context.close();
+  }, []);
 
   // Ползунок обязан идти за реальной позицией трека. rAF даёт плавность,
   // но он придушается в Low Power Mode / фоновой вкладке — поэтому
@@ -287,19 +316,21 @@ export default function PlayerPage() {
     const audio = audioRef.current;
     if (!audio) return;
     if (audio.paused) {
+      const context = ensureAudioGraph();
       if (audio.ended || audio.currentTime >= (audio.duration || 0)) {
         audio.currentTime = 0;
         setTime(0);
         paintProgress(0, audio.duration);
       }
-      void audio.play().catch((error: unknown) => {
+      const resume = context?.state === "suspended" ? context.resume() : Promise.resolve();
+      void Promise.all([resume, audio.play()]).catch((error: unknown) => {
         console.error("Unable to start player audio", error);
         setPlaying(false);
       });
     } else {
       audio.pause();
     }
-  }, [paintProgress]);
+  }, [ensureAudioGraph, paintProgress]);
 
   // Пробел — play/pause. На кнопках и в полях ввода он уже работает
   // штатно, поэтому там не перехватываем (иначе сработает дважды).
@@ -402,10 +433,13 @@ export default function PlayerPage() {
   );
 
   const toggleMute = useCallback(() => {
-    // Свойства элемента проставляет эффект по [volume, muted] — дублировать
-    // запись сюда не нужно.
-    setMuted((prev) => !prev);
-  }, []);
+    const nextMuted = !muted;
+    setMuted(nextMuted);
+    const gain = gainRef.current;
+    const context = audioContextRef.current;
+    if (gain) gain.gain.setTargetAtTime(nextMuted ? 0 : volume, context?.currentTime ?? 0, 0.015);
+    else if (audioRef.current) audioRef.current.muted = nextMuted;
+  }, [muted, volume]);
 
   const setVolumeFromClientX = useCallback((clientX: number) => {
     const input = volumeRef.current;
@@ -417,9 +451,18 @@ export default function PlayerPage() {
     const next = clamp01((clientX - rect.left - inset) / Math.max(rect.width - inset * 2, 1));
     setVolume(next);
     setMuted(false);
-    audio.muted = false;
-    audio.volume = next;
-  }, []);
+    const context = ensureAudioGraph();
+    const gain = gainRef.current;
+    if (gain) {
+      gain.gain.setTargetAtTime(next, context?.currentTime ?? 0, 0.015);
+      audio.muted = false;
+      audio.volume = 1;
+      if (context?.state === "suspended") void context.resume();
+    } else {
+      audio.muted = false;
+      audio.volume = next;
+    }
+  }, [ensureAudioGraph]);
 
   /* Кастомная шкала времени и громкости используют touch-обработчики,
      поскольку нативный range на iOS не отправляет надёжные input-события. */
@@ -858,7 +901,16 @@ export default function PlayerPage() {
               setVolume(v);
               const audio = audioRef.current;
               if (v > 0 && muted) setMuted(false);
-              if (audio) {
+              const context = ensureAudioGraph();
+              const gain = gainRef.current;
+              if (gain) {
+                gain.gain.setTargetAtTime(v, context?.currentTime ?? 0, 0.015);
+                if (audio) {
+                  audio.muted = false;
+                  audio.volume = 1;
+                }
+                if (context?.state === "suspended") void context.resume();
+              } else if (audio) {
                 audio.muted = false;
                 audio.volume = v;
               }
