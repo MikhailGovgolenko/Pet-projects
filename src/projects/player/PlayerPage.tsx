@@ -112,9 +112,6 @@ export default function PlayerPage() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const barRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
-  const volumeRef = useRef<HTMLInputElement | null>(null);
-  const volumeWrapRef = useRef<HTMLDivElement | null>(null);
-  const volumeDragRef = useRef(false);
   const scrubRef = useRef(false);
   const paintedRef = useRef(-1);
 
@@ -408,44 +405,17 @@ export default function PlayerPage() {
     setMuted((prev) => !prev);
   }, []);
 
-  /* Громкость ведём вручную: нативный input оставлен только для клавиатуры и
-     скринридера (pointer-events: none), иначе он перехватит жест. Мышь — через
-     pointer-события, палец — через touch-события (attachTouchDrag). */
-  const setVolumeFromClientX = useCallback(
-    (clientX: number) => {
-      const input = volumeRef.current;
-      if (!input) return;
-      const rect = input.getBoundingClientRect();
-      if (rect.width <= 0) return;
-      const inset = 7; // половина кружка: 0 — это центр кружка у края
-      const usable = Math.max(rect.width - inset * 2, 1);
-      const next = clamp01((clientX - rect.left - inset) / usable);
-      setVolume(next);
-      if (next > 0 && muted) setMuted(false);
-    },
-    [muted]
-  );
-
-  /* Пальцем по шкале времени и по громкости ведёт touch-механизм, мышью —
-     pointer-обработчики в разметке. */
+  /* Пальцем по шкале времени ведёт touch-механизм; громкость использует
+     нативный range input, чтобы iOS корректно обрабатывал касания. */
   useEffect(() => {
     const bar = barRef.current;
-    const wrap = volumeWrapRef.current;
-    if (!bar || !wrap) return;
+    if (!bar) return;
     const offBar = attachTouchDrag(bar, (clientX) => {
       bar.classList.add("is-pointer-focus");
       seekFromClientX(clientX);
     });
-    const offWrap = attachTouchDrag(
-      wrap,
-      (clientX) => setVolumeFromClientX(clientX),
-      (target) => target instanceof Element && !!target.closest("button")
-    );
-    return () => {
-      offBar();
-      offWrap();
-    };
-  }, [seekFromClientX, setVolumeFromClientX]);
+    return offBar;
+  }, [seekFromClientX]);
 
   return (
     <div className="player-page">
@@ -678,16 +648,12 @@ export default function PlayerPage() {
           flex: 1;
           -webkit-appearance: none;
           appearance: none;
-          /* Зона касания у range — это его собственный бокс, поэтому на
-             айфоне полоску в 6px пальцем не поймать. Даём инпуту 26px, а
-             видимый трек рисуем на ::-webkit-slider-runnable-track, чтобы
-             вид не изменился. Жест обрабатывает обёртка выше, поэтому
-             input не перехватывает его сам. */
+          /* Высокая зона касания позволяет точно управлять range на iOS. */
           height: 26px;
           background: transparent;
           outline: none;
           cursor: pointer;
-          pointer-events: none;
+          touch-action: pan-y;
         }
         .player-volume::-webkit-slider-runnable-track {
           height: 6px;
@@ -842,27 +808,6 @@ export default function PlayerPage() {
 
         <div
           className="player-volume-wrap"
-          ref={volumeWrapRef}
-          onPointerDown={(e) => {
-            if (e.pointerType === "touch") return; // палец ведёт touch-обработчик
-            // тап по кнопке mute не должен ещё и двигать громкость
-            if (e.target instanceof Element && e.target.closest("button")) return;
-            volumeDragRef.current = true;
-            e.currentTarget.setPointerCapture(e.pointerId);
-            setVolumeFromClientX(e.clientX);
-          }}
-          onPointerMove={(e) => {
-            if (e.pointerType === "touch") return;
-            if (volumeDragRef.current) setVolumeFromClientX(e.clientX);
-          }}
-          onPointerUp={(e) => {
-            if (e.pointerType === "touch") return;
-            volumeDragRef.current = false;
-            e.currentTarget.releasePointerCapture(e.pointerId);
-          }}
-          onPointerCancel={() => {
-            volumeDragRef.current = false;
-          }}
         >
           <button
             type="button"
@@ -875,7 +820,6 @@ export default function PlayerPage() {
             <VolumeIcon muted={muted} />
           </button>
           <input
-            ref={volumeRef}
             className="player-volume"
             type="range"
             min={0}
