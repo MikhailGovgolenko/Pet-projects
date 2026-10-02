@@ -112,6 +112,8 @@ export default function PlayerPage() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const barRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
+  const volumeRef = useRef<HTMLInputElement | null>(null);
+  const volumeWrapRef = useRef<HTMLDivElement | null>(null);
   const scrubRef = useRef(false);
   const paintedRef = useRef(-1);
 
@@ -405,17 +407,40 @@ export default function PlayerPage() {
     setMuted((prev) => !prev);
   }, []);
 
-  /* Пальцем по шкале времени ведёт touch-механизм; громкость использует
-     нативный range input, чтобы iOS корректно обрабатывал касания. */
+  const setVolumeFromClientX = useCallback((clientX: number) => {
+    const input = volumeRef.current;
+    const audio = audioRef.current;
+    if (!input || !audio) return;
+    const rect = input.getBoundingClientRect();
+    if (rect.width <= 0) return;
+    const inset = 7;
+    const next = clamp01((clientX - rect.left - inset) / Math.max(rect.width - inset * 2, 1));
+    setVolume(next);
+    setMuted(false);
+    audio.muted = false;
+    audio.volume = next;
+  }, []);
+
+  /* Кастомная шкала времени и громкости используют touch-обработчики,
+     поскольку нативный range на iOS не отправляет надёжные input-события. */
   useEffect(() => {
     const bar = barRef.current;
-    if (!bar) return;
+    const volumeWrap = volumeWrapRef.current;
+    if (!bar || !volumeWrap) return;
     const offBar = attachTouchDrag(bar, (clientX) => {
       bar.classList.add("is-pointer-focus");
       seekFromClientX(clientX);
     });
-    return offBar;
-  }, [seekFromClientX]);
+    const offVolume = attachTouchDrag(
+      volumeWrap,
+      setVolumeFromClientX,
+      (target) => target instanceof Element && !!target.closest("button")
+    );
+    return () => {
+      offBar();
+      offVolume();
+    };
+  }, [seekFromClientX, setVolumeFromClientX]);
 
   return (
     <div className="player-page">
@@ -653,7 +678,7 @@ export default function PlayerPage() {
           background: transparent;
           outline: none;
           cursor: pointer;
-          touch-action: pan-y;
+          pointer-events: none;
         }
         .player-volume::-webkit-slider-runnable-track {
           height: 6px;
@@ -808,6 +833,7 @@ export default function PlayerPage() {
 
         <div
           className="player-volume-wrap"
+          ref={volumeWrapRef}
         >
           <button
             type="button"
@@ -820,6 +846,7 @@ export default function PlayerPage() {
             <VolumeIcon muted={muted} />
           </button>
           <input
+            ref={volumeRef}
             className="player-volume"
             type="range"
             min={0}
@@ -829,7 +856,12 @@ export default function PlayerPage() {
             onChange={(e) => {
               const v = Number(e.target.value);
               setVolume(v);
+              const audio = audioRef.current;
               if (v > 0 && muted) setMuted(false);
+              if (audio) {
+                audio.muted = false;
+                audio.volume = v;
+              }
             }}
             aria-label={t("player.volume")}
           />
