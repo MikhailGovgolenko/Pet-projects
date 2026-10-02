@@ -27,23 +27,30 @@ function attachTouchDrag(
   ignoreTarget?: (target: EventTarget | null) => boolean
 ): () => void {
   let active = false;
+  let activeTouchId: number | null = null;
 
   const start = (e: TouchEvent) => {
     const t = e.touches[0];
     if (!t) return;
     if (ignoreTarget && ignoreTarget(e.target)) return;
     active = true;
+    activeTouchId = t.identifier;
     onDrag(t.clientX);
     e.preventDefault();
   };
   const move = (e: TouchEvent) => {
     if (!active) return;
-    const t = e.touches[0];
+    const t = Array.from(e.touches).find((touch) => touch.identifier === activeTouchId);
     if (t) onDrag(t.clientX);
     e.preventDefault();
   };
-  const end = () => {
-    active = false;
+  const end = (e: TouchEvent) => {
+    if (activeTouchId === null) return;
+    const ended = Array.from(e.changedTouches).some((touch) => touch.identifier === activeTouchId);
+    if (ended) {
+      active = false;
+      activeTouchId = null;
+    }
   };
 
   el.addEventListener("touchstart", start, { passive: false });
@@ -112,6 +119,8 @@ export default function PlayerPage() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const gainRef = useRef<GainNode | null>(null);
+  const volumeValueRef = useRef(0.8);
+  const mutedValueRef = useRef(false);
   const barRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
   const volumeRef = useRef<HTMLInputElement | null>(null);
@@ -125,6 +134,8 @@ export default function PlayerPage() {
   const [volume, setVolume] = useState(0.8);
   const [muted, setMuted] = useState(false);
   const [visible, setVisible] = useState(() => !document.hidden);
+  volumeValueRef.current = volume;
+  mutedValueRef.current = muted;
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -138,7 +149,23 @@ export default function PlayerPage() {
      восстанавливать не нужно — оно идёт из событий элемента.
      pageshow нужен для возврата из bfcache, где visibilitychange не стреляет. */
   useEffect(() => {
-    const onVisibility = () => setVisible(!document.hidden);
+    const audioSession = (navigator as Navigator & {
+      audioSession?: { type: string };
+    }).audioSession;
+    try {
+      if (audioSession) audioSession.type = "playback";
+    } catch {
+      /* audioSession is not supported by every iOS version */
+    }
+    const onVisibility = () => {
+      setVisible(!document.hidden);
+      const context = audioContextRef.current;
+      if (!document.hidden && audioRef.current && !audioRef.current.paused && context && context.state !== "running") {
+        void context.resume().catch((error: unknown) => {
+          console.error("Unable to resume background audio", error);
+        });
+      }
+    };
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("pageshow", onVisibility);
     return () => {
@@ -236,7 +263,7 @@ export default function PlayerPage() {
       context = new AudioContext();
       const source = context.createMediaElementSource(audio);
       const gain = context.createGain();
-      gain.gain.value = muted ? 0 : volume;
+      gain.gain.value = mutedValueRef.current ? 0 : volumeValueRef.current;
       source.connect(gain);
       gain.connect(context.destination);
       audioContextRef.current = context;
@@ -245,7 +272,7 @@ export default function PlayerPage() {
       audio.volume = 1;
     }
     return context;
-  }, [muted, volume]);
+  }, []);
 
   useEffect(() => {
     const gain = gainRef.current;
@@ -463,6 +490,8 @@ export default function PlayerPage() {
       audio.volume = next;
     }
   }, [ensureAudioGraph]);
+
+  const volumePointerDragRef = useRef(false);
 
   /* Кастомная шкала времени и громкости используют touch-обработчики,
      поскольку нативный range на iOS не отправляет надёжные input-события. */
@@ -877,6 +906,27 @@ export default function PlayerPage() {
         <div
           className="player-volume-wrap"
           ref={volumeWrapRef}
+          onPointerDown={(event) => {
+            if (event.pointerType === "touch") return;
+            if (event.target instanceof Element && event.target.closest("button")) return;
+            volumePointerDragRef.current = true;
+            event.currentTarget.setPointerCapture(event.pointerId);
+            setVolumeFromClientX(event.clientX);
+          }}
+          onPointerMove={(event) => {
+            if (event.pointerType === "touch") return;
+            if (volumePointerDragRef.current) setVolumeFromClientX(event.clientX);
+          }}
+          onPointerUp={(event) => {
+            if (event.pointerType === "touch") return;
+            volumePointerDragRef.current = false;
+            if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+              event.currentTarget.releasePointerCapture(event.pointerId);
+            }
+          }}
+          onPointerCancel={() => {
+            volumePointerDragRef.current = false;
+          }}
         >
           <button
             type="button"
