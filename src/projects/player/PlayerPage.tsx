@@ -549,10 +549,17 @@ export default function PlayerPage() {
           display: flex;
           align-items: center;
           justify-content: center;
+          overflow-x: clip;
           padding: calc(84px + env(safe-area-inset-top))
             calc(18px + env(safe-area-inset-right))
             calc(40px + env(safe-area-inset-bottom))
             calc(18px + env(safe-area-inset-left));
+        }
+
+        @supports not (overflow-x: clip) {
+          .player-page {
+            overflow-x: hidden;
+          }
         }
 
         .player-card {
