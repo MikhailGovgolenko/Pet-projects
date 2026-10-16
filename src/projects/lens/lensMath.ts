@@ -67,7 +67,7 @@ export function sampleLens(eqL, eqR) {
     L.push({ z: zL, r: r });
     R.push({ z: zR, r: r });
   }
-  if (aperture <= 0) return { L: [], R: [], aperture: 0 };
+  if (aperture <= 0) return { L: [], R: [], aperture: 0, eq: eqL, eqR };
   for (var r = -0.2; r >= -MAX_R; r -= 0.2) {
     var zL = safeEval(eqL, r);
     var zR = safeEval(eqR, r);
@@ -82,7 +82,7 @@ export function sampleLens(eqL, eqR) {
     L.unshift({ z: zL, r: r });
     R.unshift({ z: zR, r: r });
   }
-  return { L, R, aperture };
+  return { L, R, aperture, eq: eqL, eqR };
 }
 
 export function findIntersection(P, D, eq, box) {
@@ -129,7 +129,8 @@ export function findIntersection(P, D, eq, box) {
         else a = m;
       }
       var th = 0.5 * (a + b);
-      return { z: P.z + th * D.z, r: P.r + th * D.r };
+      var hr = P.r + th * D.r;
+      return { z: safeEval(eq, hr), r: hr };
     }
     f0 = f1;
   }

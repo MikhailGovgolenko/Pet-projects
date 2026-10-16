@@ -1,5 +1,7 @@
 /** Shared 2D drawing helpers for canvas and SVG renderers. */
 
+import { safeEval } from "./lensMath";
+
 export const REFLEN = 120;
 export const COLOR_SINGLE = [50, 255, 100];
 export const RAY_RADIUS = 1.5;
@@ -115,6 +117,114 @@ export function clipPolyline(pts: ScreenPoint[], view: CamView): ScreenPoint[][]
   }
   flush();
   return paths;
+}
+
+export function refineCurve(
+  pts: { z: number; r: number }[],
+  eq: string,
+  toScreen: (p: { z: number; r: number }) => ScreenPoint,
+  tol: number,
+  view?: CamView
+): ScreenPoint[] {
+  if (!pts || pts.length < 2) return (pts || []).map(toScreen);
+  const out: ScreenPoint[] = [toScreen(pts[0])];
+  const margin = 64;
+  const inView = (sa: ScreenPoint, sb: ScreenPoint, sm: ScreenPoint) => {
+    if (!view) return true;
+    const minX = Math.min(sa.x, sb.x, sm.x);
+    const maxX = Math.max(sa.x, sb.x, sm.x);
+    const minY = Math.min(sa.y, sb.y, sm.y);
+    const maxY = Math.max(sa.y, sb.y, sm.y);
+    return maxX >= -margin && minX <= view.w + margin && maxY >= -margin && minY <= view.h + margin;
+  };
+  const walk = (
+    a: { z: number; r: number },
+    b: { z: number; r: number },
+    depth: number,
+    sa: ScreenPoint,
+    sb: ScreenPoint
+  ) => {
+    if (depth >= 18) {
+      out.push(sb);
+      return;
+    }
+    const mr = 0.5 * (a.r + b.r);
+    const mz = safeEval(eq, mr);
+    if (!isFinite(mz)) {
+      out.push(sb);
+      return;
+    }
+    const sm = toScreen({ z: mz, r: mr });
+    if (!inView(sa, sb, sm)) {
+      out.push(sb);
+      return;
+    }
+    const dx = sb.x - sa.x;
+    const dy = sb.y - sa.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const dev = Math.abs((sm.x - sa.x) * dy - (sm.y - sa.y) * dx) / len;
+    if (dev > tol) {
+      const m = { z: mz, r: mr };
+      walk(a, m, depth + 1, sa, sm);
+      walk(m, b, depth + 1, sm, sb);
+      return;
+    }
+    out.push(sb);
+  };
+  let sa = out[0];
+  for (let i = 0; i < pts.length - 1; i++) {
+    const sb = toScreen(pts[i + 1]);
+    walk(pts[i], pts[i + 1], 0, sa, sb);
+    sa = sb;
+  }
+  return out;
+}
+
+export function insertSurfacePoints(
+  pts: { z: number; r: number }[],
+  eq: string,
+  hitsR: number[]
+): { z: number; r: number }[] {
+  if (!hitsR || hitsR.length === 0) return pts;
+  const rs = hitsR.slice().sort((a, b) => a - b);
+  const out: { z: number; r: number }[] = [];
+  let i = 0;
+  for (let j = 0; j < rs.length; j++) {
+    const r = rs[j];
+    while (i < pts.length && pts[i].r < r) out.push(pts[i++]);
+    if (i < pts.length && pts[i].r === r) continue;
+    out.push({ z: safeEval(eq, r), r });
+  }
+  while (i < pts.length) out.push(pts[i++]);
+  return out;
+}
+
+export function collectSurfaceHits(
+  rays: any[],
+  eq: string,
+  eqR: string
+): { onEq: number[]; onEqR: number[] } {
+  const onEq: number[] = [];
+  const onEqR: number[] = [];
+  const classify = (z: number, r: number) => {
+    const dl = Math.abs(z - safeEval(eq, r));
+    const dr = Math.abs(z - safeEval(eqR, r));
+    if (dl <= dr) onEq.push(r);
+    else onEqR.push(r);
+  };
+  for (let k = 0; k < (rays ? rays.length : 0); k++) {
+    const ray = rays[k];
+    if (ray.h1) onEq.push(ray.h1.r);
+    if (ray.h2) onEqR.push(ray.h2.r);
+    for (const seg of ray.inner || []) {
+      if (seg.a) classify(seg.a.z, seg.a.r);
+      if (seg.b) classify(seg.b.z, seg.b.r);
+    }
+    for (const ex of ray.esc || []) {
+      if (ex.p) classify(ex.p.z, ex.p.r);
+    }
+  }
+  return { onEq, onEqR };
 }
 
 function screenPathD(paths: ScreenPoint[][], close: boolean) {
@@ -280,13 +390,16 @@ export function drawSegmentSvg(g: SVGGElement, seg: Segment) {
 
 export function drawLensSvg(
   g: SVGGElement,
-  lens: { L: { z: number; r: number }[]; R: { z: number; r: number }[] },
+  lens: { L: { z: number; r: number }[]; R: { z: number; r: number }[]; eq?: string; eqR?: string },
+  hits: { onEq: number[]; onEqR: number[] } | null,
   camera: CamLike,
   view: CamView
 ) {
   const wts = createViewTransform(camera, view);
-  const Ls = lens.L.map(wts);
-  const Rs = lens.R.map(wts);
+  const Lsrc = hits ? insertSurfacePoints(lens.L, lens.eq, hits.onEq) : lens.L;
+  const Rsrc = hits ? insertSurfacePoints(lens.R, lens.eqR, hits.onEqR) : lens.R;
+  const Ls = refineCurve(Lsrc, lens.eq, wts, 0.25, view);
+  const Rs = refineCurve(Rsrc, lens.eqR, wts, 0.25, view);
   const d = screenPathD([clipPolygon([...Ls, ...Rs.slice().reverse()], view)], true);
 
   const grad = document.createElementNS(SVG_NS, "linearGradient");

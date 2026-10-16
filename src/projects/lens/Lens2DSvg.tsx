@@ -2,7 +2,7 @@ import { useRef, useEffect, useCallback, memo } from "react";
 import * as M from "./lensMathReflect";
 import * as M_OLD from "./lensMath";
 import { createCamera } from "./Camera";
-import { collectRaySegments, drawLensSvg, drawSegmentSvg } from "./lensDraw2D";
+import { collectRaySegments, drawLensSvg, drawSegmentSvg, collectSurfaceHits } from "./lensDraw2D";
 
 function cacheKey(p, aperture) {
   return [p.eq, p.eqR, aperture, p.angle, p.n, p.rayCount, p.useReflections].join("|");
@@ -35,7 +35,7 @@ function Lens2DSvg({ params, resetKey, scaleRef }) {
     lens?: ReturnType<typeof M.sampleLens>;
     box?: { z0: number; z1: number; r1: number };
   }>({ key: "" });
-  const rayCacheRef = useRef<{ key: string; rays?: ReturnType<typeof M.traceRays> }>({ key: "" });
+  const rayCacheRef = useRef<{ key: string; rays?: ReturnType<typeof M.traceRays>; hits?: { onEq: number[]; onEqR: number[] } }>({ key: "" });
   const simPending = useRef(false);
   const fittedRef = useRef(false);
   const paramsRef = useRef(params);
@@ -58,7 +58,7 @@ function Lens2DSvg({ params, resetKey, scaleRef }) {
     while (g.firstChild) g.removeChild(g.firstChild);
 
     const view = { w: getSize().width, h: getSize().height };
-    drawLensSvg(g, lens, camera, view);
+    drawLensSvg(g, lens, rayCacheRef.current.hits || null, camera, view);
     for (const seg of collectRaySegments(rays, camera, view)) {
       drawSegmentSvg(g, seg);
     }
@@ -100,9 +100,7 @@ function Lens2DSvg({ params, resetKey, scaleRef }) {
           p.angle * (p.useReflections ? M.DEG : M_OLD.DEG),
           p.n, p.rayCount, lensCacheRef.current.box
         );
-        rayCacheRef.current = {
-          key,
-          rays: (rawRays || []).map((rr) => ({
+        const rays = (rawRays || []).map((rr) => ({
             P: rr.P,
             h1: rr.h1 || null,
             h2: rr.h2 || null,
@@ -116,11 +114,11 @@ function Lens2DSvg({ params, resetKey, scaleRef }) {
             t1: rr.t1 != null ? rr.t1 : 1,
             t2: rr.t2 != null ? rr.t2 : 1,
             r1: rr.r1 != null ? rr.r1 : 0,
-            rdir: rr.rdir || (rr.h1 && rr.h2 ? { z: rr.h2.z - rr.h1.z, r: rr.h2.r - rr.h1.r } : { z: 0, r: 0 }),
+            rdir: rr.rdir || (rr.h1 && rr.h2 ? { z: rr.h2.z-rr.h1.z, r: rr.h2.r-rr.h1.r } : { z:0, r:0 }),
             inner: rr.inner || [],
             esc: rr.esc || [],
-          })),
-        };
+          }));
+        rayCacheRef.current = { key, rays, hits: collectSurfaceHits(rays, p.eq, p.eqR) };
       }
       scheduleRender();
     });
