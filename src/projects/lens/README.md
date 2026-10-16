@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <img width="1900" height="626" alt="lens-preview-light" src="https://github.com/user-attachments/assets/49f3958d-ac8a-4f25-8e0a-b353bb4f3bb0" />
+  <img width="1889" height="630" alt="image" src="https://github.com/user-attachments/assets/73dac3cc-8958-47b8-9cdc-e9a248eb55c2" />
 </p>
 
 Была решена следующая задача. Найти профиль осесимметричной линзы
