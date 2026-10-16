@@ -6,5 +6,6 @@
   "title": "Потратить деньги",
   "description": "Добровольный перевод. Никаких товаров. Никаких услуг.",
   "icon": "💸",
-  "ogImage": "preview.png"
+  "ogImage": "preview.png",
+  "readme": "https://github.com/MikhailGovgolenko/Pet-projects/tree/main/src/projects/spend-money#readme"
 }
