@@ -136,7 +136,7 @@ export function findIntersection(P, D, eq, box) {
   return null;
 }
 
-export function traceRays(eq, eqR, aperture, angle, n, count, box, keepFailed) {
+export function traceRays(eq, eqR, aperture, angle, n, count, box) {
   var dir = { z: Math.cos(angle), r: Math.sin(angle) };
   var perp = { z: -dir.r, r: dir.z };
   var scale = Math.abs(Math.cos(angle));
@@ -240,7 +240,7 @@ export function traceRays(eq, eqR, aperture, angle, n, count, box, keepFailed) {
   }
 
   var offsets = uniform(count);
-  if (keepFailed === false) {
+  {
     var probe = uniform(Math.max(count, 40));
     var best = null;
     var runStart = -1;
@@ -265,7 +265,7 @@ export function traceRays(eq, eqR, aperture, angle, n, count, box, keepFailed) {
   var rays = [];
   for (var i = 0; i < count; i++) {
     var ray = traceOne(offsets[i]);
-    if (keepFailed === false && !ray.ok && !ray.tir) continue;
+    if (!ray.ok && !ray.tir) continue;
     rays.push(ray);
   }
   return rays;

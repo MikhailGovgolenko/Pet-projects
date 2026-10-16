@@ -2,6 +2,7 @@
 
 export const REFLEN = 120;
 export const COLOR_SINGLE = [50, 255, 100];
+export const RAY_RADIUS = 1.5;
 
 export function clamp(v: number, a: number, b: number) {
   return Math.max(a, Math.min(b, v));
@@ -24,33 +25,105 @@ export function rgbToCss(rgb: number[], a: number) {
 }
 
 export type ScreenPoint = { x: number; y: number };
+export type CamView = { w: number; h: number };
+type CamLike = { x: number; y: number; scale: number };
 
-export function lensPathD(
-  lens: { L: { z: number; r: number }[]; R: { z: number; r: number }[] },
-  worldToScreen: (p: { z: number; r: number }) => ScreenPoint
-) {
-  const parts: string[] = [];
-  lens.L.forEach((p, i) => {
-    const s = worldToScreen(p);
-    parts.push(`${i === 0 ? "M" : "L"}${s.x.toFixed(2)},${s.y.toFixed(2)}`);
+export function createViewTransform(camera: CamLike, view: CamView) {
+  const s = camera.scale;
+  const cz = (view.w / 2 - camera.x) / s;
+  const cr = (camera.y - view.h / 2) / s;
+  return (p: { z: number; r: number }) => ({
+    x: view.w / 2 + (p.z - cz) * s,
+    y: view.h / 2 + (cr - p.r) * s,
   });
-  for (let i = lens.R.length - 1; i >= 0; i--) {
-    const s = worldToScreen(lens.R[i]);
-    parts.push(`L${s.x.toFixed(2)},${s.y.toFixed(2)}`);
-  }
-  parts.push("Z");
-  return parts.join(" ");
 }
 
-export function lensSurfacePathD(
-  points: { z: number; r: number }[],
-  worldToScreen: (p: { z: number; r: number }) => ScreenPoint
-) {
+export function clipSegment(ax, ay, bx, by, w, h) {
+  let t0 = 0;
+  let t1 = 1;
+  const dx = bx - ax;
+  const dy = by - ay;
+  const clip = (p, q) => {
+    if (p === 0) return q >= 0;
+    const r = q / p;
+    if (p < 0) {
+      if (r > t1) return false;
+      if (r > t0) t0 = r;
+    } else {
+      if (r < t0) return false;
+      if (r < t1) t1 = r;
+    }
+    return true;
+  };
+  if (!clip(-dx, ax)) return null;
+  if (!clip(dx, w - ax)) return null;
+  if (!clip(-dy, ay)) return null;
+  if (!clip(dy, h - ay)) return null;
+  return { x1: ax + t0 * dx, y1: ay + t0 * dy, x2: ax + t1 * dx, y2: ay + t1 * dy };
+}
+
+export function clipPolygon(pts: ScreenPoint[], view: CamView): ScreenPoint[] {
+  let poly = pts.slice();
+  const edge = (x, y, nx, ny) => {
+    const out: ScreenPoint[] = [];
+    const n = poly.length;
+    for (let i = 0; i < n; i++) {
+      const a = poly[i];
+      const b = poly[(i + 1) % n];
+      const da = nx * (a.x - x) + ny * (a.y - y);
+      const db = nx * (b.x - x) + ny * (b.y - y);
+      if (da >= 0) out.push(a);
+      if (da >= 0 !== db >= 0) {
+        const t = da / (da - db);
+        out.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+      }
+    }
+    poly = out;
+  };
+  edge(0, 0, 1, 0);
+  edge(view.w, 0, -1, 0);
+  edge(0, 0, 0, 1);
+  edge(0, view.h, 0, -1);
+  return poly;
+}
+
+export function clipPolyline(pts: ScreenPoint[], view: CamView): ScreenPoint[][] {
+  const paths: ScreenPoint[][] = [];
+  let sub: ScreenPoint[] = [];
+  const flush = () => {
+    if (sub.length) paths.push(sub);
+    sub = [];
+  };
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i];
+    const b = pts[i + 1];
+    const s = clipSegment(a.x, a.y, b.x, b.y, view.w, view.h);
+    if (!s) {
+      flush();
+      continue;
+    }
+    if (!sub.length) {
+      sub.push({ x: s.x1, y: s.y1 });
+    } else {
+      const last = sub[sub.length - 1];
+      if (Math.hypot(last.x - s.x1, last.y - s.y1) > 1e-6) {
+        flush();
+        sub.push({ x: s.x1, y: s.y1 });
+      }
+    }
+    sub.push({ x: s.x2, y: s.y2 });
+  }
+  flush();
+  return paths;
+}
+
+function screenPathD(paths: ScreenPoint[][], close: boolean) {
   const parts: string[] = [];
-  points.forEach((p, i) => {
-    const s = worldToScreen(p);
-    parts.push(`${i === 0 ? "M" : "L"}${s.x.toFixed(2)},${s.y.toFixed(2)}`);
-  });
+  for (const path of paths) {
+    if (path.length < 2) continue;
+    path.forEach((p, i) => parts.push(`${i === 0 ? "M" : "L"}${p.x.toFixed(2)},${p.y.toFixed(2)}`));
+    if (close) parts.push("Z");
+  }
   return parts.join(" ");
 }
 
@@ -62,54 +135,86 @@ export type Segment = {
   coreWidth: number;
 };
 
-export function collectRaySegments(rays: any[], worldToScreen: (p: { z: number; r: number }) => ScreenPoint): Segment[] {
+export function collectRaySegments(
+  rays: any[],
+  camera: CamLike,
+  view: CamView
+): Segment[] {
   const out: Segment[] = [];
   const baseColor = COLOR_SINGLE;
+  const wts = createViewTransform(camera, view);
+  const ext = 4 * Math.hypot(view.w, view.h);
 
-  const push = (a: ScreenPoint, b: ScreenPoint, color: number[], intensity: number, coreWidth: number) => {
-    out.push({ a, b, color, intensity: clamp(intensity, 0, 1), coreWidth });
+  const push = (
+    aw: { z: number; r: number },
+    bw: { z: number; r: number },
+    freeA: boolean,
+    freeB: boolean,
+    color: number[],
+    intensity: number,
+    width: number
+  ) => {
+    const i = clamp(intensity, 0, 1);
+    if (i <= 0.001) return;
+    const a = wts(aw);
+    const b = wts(bw);
+    let ax = a.x;
+    let ay = a.y;
+    let bx = b.x;
+    let by = b.y;
+    const dx = bx - ax;
+    const dy = by - ay;
+    const len = Math.hypot(dx, dy) || 1;
+    if (freeA) {
+      ax -= (dx / len) * ext;
+      ay -= (dy / len) * ext;
+    }
+    if (freeB) {
+      bx += (dx / len) * ext;
+      by += (dy / len) * ext;
+    }
+    const seg = clipSegment(ax, ay, bx, by, view.w, view.h);
+    if (!seg) return;
+    out.push({ a: { x: seg.x1, y: seg.y1 }, b: { x: seg.x2, y: seg.y2 }, color, intensity: i, coreWidth: width });
   };
 
   for (let i = 0; i < rays.length; i++) {
     const r = rays[i];
-    const sP = worldToScreen(r.P);
-    const sEnd = worldToScreen(r.end);
-    const overallIntensity = (r.t1 || 1) * (r.t2 || 1);
+    const overallIntensity = r.tir ? (r.t1 || 1) : (r.t1 || 1) * (r.t2 || 1);
 
     if (!r.h1) {
-      push(sP, sEnd, baseColor, 0.75 * overallIntensity, 1.2);
+      push(r.P, r.end, true, true, baseColor, 1, RAY_RADIUS);
       continue;
     }
 
-    const sH1 = worldToScreen(r.h1);
-    push(sP, sH1, baseColor, 0.8 * overallIntensity, 1.2);
+    push(r.P, r.h1, true, false, baseColor, 1, RAY_RADIUS);
 
     if (r.r1 > 0.001 && r.rdir) {
-      const sR = worldToScreen({
-        z: r.h1.z + r.rdir.z * REFLEN,
-        r: r.h1.r + r.rdir.r * REFLEN,
-      });
-      push(sH1, sR, mixColor(baseColor, [255, 92, 200], 0.25), r.r1, 1.0);
+      const reflEnd = { z: r.h1.z + r.rdir.z * REFLEN, r: r.h1.r + r.rdir.r * REFLEN };
+      push(r.h1, reflEnd, false, true, baseColor, r.r1, RAY_RADIUS);
+    }
+
+    if (r.edgeHit) {
+      push(r.h1, r.edgeHit, false, false, baseColor, r.t1 || 1, RAY_RADIUS);
+      if (!r.edgeTir) {
+        push(r.edgeHit, r.end, false, true, baseColor, r.edgeIntensity || 0, RAY_RADIUS);
+      }
+      for (const seg of r.inner || []) push(seg.a, seg.b, false, false, baseColor, seg.i || 0, RAY_RADIUS);
+      for (const ex of r.esc || []) {
+        push(ex.p, { z: ex.p.z + ex.dir.z * REFLEN, r: ex.p.r + ex.dir.r * REFLEN }, false, true, baseColor, ex.i || 0, RAY_RADIUS);
+      }
+      continue;
     }
 
     if (r.h2) {
-      const sH2 = worldToScreen(r.h2);
-      push(sH1, sH2, baseColor, 0.6 * (r.t1 || 1), 2.0);
-      push(sH2, sEnd, baseColor, overallIntensity, 2.0);
-      for (const seg of r.inner || []) {
-        push(worldToScreen(seg.a), worldToScreen(seg.b), baseColor, seg.i || 0, 1.2);
-      }
+      push(r.h1, r.h2, false, false, baseColor, r.t1 || 1, RAY_RADIUS);
+      push(r.h2, r.end, false, true, baseColor, overallIntensity, RAY_RADIUS);
+      for (const seg of r.inner || []) push(seg.a, seg.b, false, false, baseColor, seg.i || 0, RAY_RADIUS);
       for (const ex of r.esc || []) {
-        push(
-          worldToScreen(ex.p),
-          worldToScreen({ z: ex.p.z + ex.dir.z * REFLEN, r: ex.p.r + ex.dir.r * REFLEN }),
-          baseColor,
-          ex.i || 0,
-          1.0
-        );
+        push(ex.p, { z: ex.p.z + ex.dir.z * REFLEN, r: ex.p.r + ex.dir.r * REFLEN }, false, true, baseColor, ex.i || 0, RAY_RADIUS);
       }
     } else {
-      push(sH1, sEnd, baseColor, r.t1 || 1, 2.0);
+      push(r.h1, r.end, false, true, baseColor, r.t1 || 1, RAY_RADIUS);
     }
   }
 
@@ -122,27 +227,31 @@ export function drawSegmentCanvas(
   b: ScreenPoint,
   color: number[],
   intensity: number,
-  coreWidth: number
+  coreWidth = 1.5
 ) {
-  coreWidth = coreWidth || 1.5;
-  ctx.lineWidth = coreWidth * 6;
-  ctx.strokeStyle = rgbToCss(color, clamp(0.06 * intensity, 0.02, 0.14));
+  const i = clamp(intensity, 0, 1);
+  if (i <= 0.001) return;
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineWidth = coreWidth * 3;
+  ctx.strokeStyle = rgbToCss(color, 0.14 * i);
   ctx.beginPath();
   ctx.moveTo(a.x, a.y);
   ctx.lineTo(b.x, b.y);
   ctx.stroke();
   ctx.lineWidth = coreWidth * 1.6;
-  ctx.strokeStyle = rgbToCss(color, clamp(0.6 * intensity, 0.2, 0.95));
+  ctx.strokeStyle = rgbToCss(color, 0.6 * i);
   ctx.beginPath();
   ctx.moveTo(a.x, a.y);
   ctx.lineTo(b.x, b.y);
   ctx.stroke();
   ctx.lineWidth = Math.max(1, coreWidth * 0.6);
-  ctx.strokeStyle = rgbToCss([255, 255, 255], clamp(0.35 + 0.65 * intensity, 0.2, 1));
+  ctx.strokeStyle = rgbToCss(color, i);
   ctx.beginPath();
   ctx.moveTo(a.x, a.y);
   ctx.lineTo(b.x, b.y);
   ctx.stroke();
+  ctx.restore();
 }
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -161,26 +270,31 @@ function svgLine(a: ScreenPoint, b: ScreenPoint, stroke: string, width: number) 
 
 export function drawSegmentSvg(g: SVGGElement, seg: Segment) {
   const { a, b, color, intensity, coreWidth } = seg;
+  const i = clamp(intensity, 0, 1);
+  if (i <= 0.001) return;
   const w = coreWidth || 1.5;
-  g.appendChild(svgLine(a, b, rgbToCss(color, clamp(0.06 * intensity, 0.02, 0.14)), w * 6));
-  g.appendChild(svgLine(a, b, rgbToCss(color, clamp(0.6 * intensity, 0.2, 0.95)), w * 1.6));
-  g.appendChild(svgLine(a, b, rgbToCss([255, 255, 255], clamp(0.35 + 0.65 * intensity, 0.2, 1)), Math.max(1, w * 0.6)));
+  g.appendChild(svgLine(a, b, rgbToCss(color, 0.14 * i), w * 3));
+  g.appendChild(svgLine(a, b, rgbToCss(color, 0.6 * i), w * 1.6));
+  g.appendChild(svgLine(a, b, rgbToCss(color, i), Math.max(1, w * 0.6)));
 }
 
 export function drawLensSvg(
   g: SVGGElement,
   lens: { L: { z: number; r: number }[]; R: { z: number; r: number }[] },
-  worldToScreen: (p: { z: number; r: number }) => ScreenPoint,
-  cameraX: number
+  camera: CamLike,
+  view: CamView
 ) {
-  const d = lensPathD(lens, worldToScreen);
+  const wts = createViewTransform(camera, view);
+  const Ls = lens.L.map(wts);
+  const Rs = lens.R.map(wts);
+  const d = screenPathD([clipPolygon([...Ls, ...Rs.slice().reverse()], view)], true);
 
   const grad = document.createElementNS(SVG_NS, "linearGradient");
   grad.setAttribute("id", "lens-grad");
   grad.setAttribute("gradientUnits", "userSpaceOnUse");
-  grad.setAttribute("x1", String(cameraX));
+  grad.setAttribute("x1", String(view.w / 2));
   grad.setAttribute("y1", "0");
-  grad.setAttribute("x2", String(cameraX + 100));
+  grad.setAttribute("x2", String(view.w / 2 + 100));
   grad.setAttribute("y2", "0");
   const stop0 = document.createElementNS(SVG_NS, "stop");
   stop0.setAttribute("offset", "0%");
@@ -200,14 +314,14 @@ export function drawLensSvg(
   g.appendChild(fill);
 
   const strokeL = document.createElementNS(SVG_NS, "path");
-  strokeL.setAttribute("d", lensSurfacePathD(lens.L, worldToScreen));
+  strokeL.setAttribute("d", screenPathD(clipPolyline(Ls, view), false));
   strokeL.setAttribute("fill", "none");
   strokeL.setAttribute("stroke", "rgba(0,180,255,0.6)");
   strokeL.setAttribute("stroke-width", "2");
   g.appendChild(strokeL);
 
   const strokeR = document.createElementNS(SVG_NS, "path");
-  strokeR.setAttribute("d", lensSurfacePathD(lens.R, worldToScreen));
+  strokeR.setAttribute("d", screenPathD(clipPolyline(Rs, view), false));
   strokeR.setAttribute("fill", "none");
   strokeR.setAttribute("stroke", "rgba(0,180,255,0.6)");
   strokeR.setAttribute("stroke-width", "2");

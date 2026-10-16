@@ -136,7 +136,29 @@ export function findIntersection(P, D, eq, box) {
   return null;
 }
 
-export function traceRays(eq, eqR, aperture, angle, n, count, box, keepFailed) {
+function findApertureExit2D(P, D, aperture) {
+  if (Math.abs(D.r) < 1e-9) return { z: P.z, r: P.r };
+  var targetR = D.r > 0 ? aperture : -aperture;
+  var t = (targetR - P.r) / D.r;
+  if (t <= 0) return { z: P.z, r: P.r };
+  return { z: P.z + t * D.z, r: targetR };
+}
+
+function findApertureExit3D(P, D, aperture) {
+  var a = D.x * D.x + D.y * D.y;
+  if (a < 1e-18) return { x: P.x, y: P.y, z: P.z };
+  var b = 2 * (P.x * D.x + P.y * D.y);
+  var c = P.x * P.x + P.y * P.y - aperture * aperture;
+  var discriminant = b * b - 4 * a * c;
+  if (discriminant < 0) return { x: P.x, y: P.y, z: P.z };
+  var root = Math.sqrt(discriminant);
+  var t0 = (-b - root) / (2 * a);
+  var t1 = (-b + root) / (2 * a);
+  var t = t0 > 1e-6 ? t0 : t1 > 1e-6 ? t1 : 0;
+  return { x: P.x + t * D.x, y: P.y + t * D.y, z: P.z + t * D.z };
+}
+
+export function traceRays(eq, eqR, aperture, angle, n, count, box) {
   var dir = { z: Math.cos(angle), r: Math.sin(angle) };
   var perp = { z: -dir.r, r: dir.z };
   var scale = Math.abs(Math.cos(angle));
@@ -150,7 +172,13 @@ export function traceRays(eq, eqR, aperture, angle, n, count, box, keepFailed) {
     var h1 = findIntersection(P, D, eq, box);
     var h2 = null;
     var ok = false;
+    var tir = false;
+    var edgeExit = false;
     var end = { z: P.z + 3000 * D.z, r: P.r + 3000 * D.r };
+    function reflect2d(I, N) {
+      var cosI = -(N.z * I.z + N.r * I.r);
+      return { z: I.z + 2 * cosI * N.z, r: I.r + 2 * cosI * N.r };
+    }
     if (h1) {
       var N = normVec({ z: -1, r: deriv(eq, h1.r) });
       if (N.z * D.z + N.r * D.r > 0) N = { z: -N.z, r: -N.r };
@@ -169,14 +197,17 @@ export function traceRays(eq, eqR, aperture, angle, n, count, box, keepFailed) {
             ok = true;
             end = { z: h2.z + 3000 * T2.z, r: h2.r + 3000 * T2.r };
           } else {
-            end = { z: h2.z + 3000 * T1.z, r: h2.r + 3000 * T1.r };
+            var rdir2 = reflect2d(T1, N2);
+            tir = true;
+            end = { z: h2.z + 3000 * rdir2.z, r: h2.r + 3000 * rdir2.r };
           }
         } else {
-          end = { z: h1.z + 3000 * T1.z, r: h1.r + 3000 * T1.r };
+          end = findApertureExit2D(h1, T1, aperture);
+          edgeExit = true;
         }
       }
     }
-    return { P, h1, h2, end, ok };
+    return { P, h1, h2, end, ok, tir, edgeExit, t1: 1, t2: tir ? 0 : 1 };
   }
 
   function uniform(n) {
@@ -188,12 +219,13 @@ export function traceRays(eq, eqR, aperture, angle, n, count, box, keepFailed) {
   }
 
   var offsets = uniform(count);
-  if (keepFailed === false) {
+  {
     var probe = uniform(Math.max(count, 40));
     var best = null;
     var runStart = -1;
     for (var i = 0; i < probe.length; i++) {
-      var okP = traceOne(probe[i]).ok;
+      var probeRay = traceOne(probe[i]);
+      var okP = probeRay.ok;
       if (okP && runStart === -1) runStart = i;
       if ((!okP || i === probe.length - 1) && runStart !== -1) {
         var runEnd = okP ? i : i - 1;
@@ -212,7 +244,7 @@ export function traceRays(eq, eqR, aperture, angle, n, count, box, keepFailed) {
   var rays = [];
   for (var i = 0; i < count; i++) {
     var ray = traceOne(offsets[i]);
-    if (keepFailed === false && !ray.ok) continue;
+    if (!ray.ok) continue;
     rays.push(ray);
   }
   return rays;
@@ -296,7 +328,7 @@ export function traceRay3D(eq, eqR, P, D, n, box, endDist) {
   if (!T1) return { P, h1, h2: null, end, ok: false };
   var h2 = findHit3(eqR, { x: h1.x + 1e-6 * T1.x, y: h1.y + 1e-6 * T1.y, z: h1.z + 1e-6 * T1.z }, T1, box);
   if (!h2) {
-    return { P, h1, h2: null, end: { x: h1.x + endDist * T1.x, y: h1.y + endDist * T1.y, z: h1.z + endDist * T1.z }, ok: false };
+    return { P, h1, h2: null, end: findApertureExit3D(h1, T1, box.r1), ok: false, edgeExit: true };
   }
   var r2 = Math.hypot(h2.x, h2.y);
   var N2 = r2 < 1e-9
@@ -307,5 +339,7 @@ export function traceRay3D(eq, eqR, P, D, n, box, endDist) {
   if (T2) {
     return { P, h1, h2, end: { x: h2.x + endDist * T2.x, y: h2.y + endDist * T2.y, z: h2.z + endDist * T2.z }, ok: true };
   }
-  return { P, h1, h2, end: { x: h2.x + endDist * T1.x, y: h2.y + endDist * T1.y, z: h2.z + endDist * T1.z }, ok: false };
+  var cosI2 = -(N2.x * T1.x + N2.y * T1.y + N2.z * T1.z);
+  var rdir2 = { x: T1.x + 2 * cosI2 * N2.x, y: T1.y + 2 * cosI2 * N2.y, z: T1.z + 2 * cosI2 * N2.z };
+  return { P, h1, h2, end: { x: h2.x + endDist * rdir2.x, y: h2.y + endDist * rdir2.y, z: h2.z + endDist * rdir2.z }, ok: false, tir: true };
 }

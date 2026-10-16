@@ -2,9 +2,10 @@ import { useRef, useEffect, useCallback, memo } from "react";
 import * as M from "./lensMathReflect";
 import * as M_OLD from "./lensMath";
 import { createCamera } from "./Camera";
+import { createViewTransform, clipSegment, clipPolygon, clipPolyline } from "./lensDraw2D";
 
 function cacheKey(p, aperture) {
-  return [p.eq, p.eqR, aperture, p.angle, p.n, p.rayCount, p.keepFailed, p.useReflections].join("|");
+  return [p.eq, p.eqR, aperture, p.angle, p.n, p.rayCount, p.useReflections].join("|");
 }
 
 function lensBox(lens) {
@@ -21,40 +22,35 @@ function lensBox(lens) {
   return { z0: zMin, z1: zMax, r1: lens.aperture };
 }
 
-function drawLens(ctx, lens, camera) {
-  var grad = ctx.createLinearGradient(camera.x, 0, camera.x + 100, 0);
+function drawLens(ctx, lens, wts, view) {
+  var grad = ctx.createLinearGradient(view.w / 2, 0, view.w / 2 + 100, 0);
   grad.addColorStop(0, "rgba(150,180,255,0.2)");
   grad.addColorStop(1, "rgba(100,130,255,0.15)");
   ctx.fillStyle = grad;
+
+  var Ls = lens.L.map(wts);
+  var Rs = lens.R.map(wts);
+  var poly = clipPolygon(Ls.concat(Rs.slice().reverse()), view);
   ctx.beginPath();
-  lens.L.forEach(function (p, i) {
-    var s = camera.worldToScreen(p);
-    if (i === 0) ctx.moveTo(s.x, s.y);
-    else ctx.lineTo(s.x, s.y);
+  poly.forEach(function (p, i) {
+    if (i === 0) ctx.moveTo(p.x, p.y);
+    else ctx.lineTo(p.x, p.y);
   });
-  for (var i = lens.R.length - 1; i >= 0; i--) {
-    var s = camera.worldToScreen(lens.R[i]);
-    ctx.lineTo(s.x, s.y);
-  }
   ctx.closePath();
   ctx.fill();
 
   ctx.strokeStyle = "rgba(0,180,255,0.6)";
   ctx.lineWidth = 2;
-  ctx.beginPath();
-  lens.L.forEach(function (p, i) {
-    var s = camera.worldToScreen(p);
-    if (i === 0) ctx.moveTo(s.x, s.y);
-    else ctx.lineTo(s.x, s.y);
+  [Ls, Rs].forEach(function (pts) {
+    clipPolyline(pts, view).forEach(function (path) {
+      ctx.beginPath();
+      path.forEach(function (p, i) {
+        if (i === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+      });
+      ctx.stroke();
+    });
   });
-  ctx.stroke();
-  ctx.beginPath();
-  lens.R.forEach(function (p, i) {
-    var s = camera.worldToScreen(p);
-    if (i === 0) ctx.moveTo(s.x, s.y);
-    else ctx.lineTo(s.x, s.y);
-  });
-  ctx.stroke();
 }
 
 var REFLEN = 120;
@@ -70,86 +66,110 @@ function mixColor(c1, c2, t) {
 }
 
 var COLOR_SINGLE = [50, 255, 100];
+var RAY_RADIUS = 1.5;
 
 function rgbToCss(rgb, a) {
   return 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + a + ')';
 }
 
-function drawSegment(ctx, a, b, color, intensity, coreWidth) {
-  coreWidth = coreWidth || 1.5;
-  ctx.lineWidth = coreWidth * 6;
-  ctx.strokeStyle = rgbToCss(color, clamp(0.06 * intensity, 0.02, 0.14));
+function strokeLine(ctx, seg, stroke, width) {
+  ctx.lineWidth = width;
+  ctx.strokeStyle = stroke;
   ctx.beginPath();
-  ctx.moveTo(a.x, a.y);
-  ctx.lineTo(b.x, b.y);
-  ctx.stroke();
-  ctx.lineWidth = coreWidth * 1.6;
-  ctx.strokeStyle = rgbToCss(color, clamp(0.6 * intensity, 0.2, 0.95));
-  ctx.beginPath();
-  ctx.moveTo(a.x, a.y);
-  ctx.lineTo(b.x, b.y);
-  ctx.stroke();
-  ctx.lineWidth = Math.max(1, coreWidth * 0.6);
-  ctx.strokeStyle = rgbToCss([255,255,255], clamp(0.35 + 0.65 * intensity, 0.2, 1));
-  ctx.beginPath();
-  ctx.moveTo(a.x, a.y);
-  ctx.lineTo(b.x, b.y);
+  ctx.moveTo(seg.x1, seg.y1);
+  ctx.lineTo(seg.x2, seg.y2);
   ctx.stroke();
 }
 
-function drawRays(ctx, rays, camera) {
+function strokeSegment(ctx, seg, color, i, w) {
+  strokeLine(ctx, seg, rgbToCss(color, 0.14 * i), w * 3);
+  strokeLine(ctx, seg, rgbToCss(color, 0.6 * i), w * 1.6);
+  strokeLine(ctx, seg, rgbToCss(color, i), Math.max(1, w * 0.6));
+}
+
+function drawRay(ctx, wts, aw, bw, freeA, freeB, color, intensity, w, view) {
+  var i = clamp(intensity, 0, 1);
+  if (i <= 0.001) return;
+  var a = wts(aw);
+  var b = wts(bw);
+  var ax = a.x;
+  var ay = a.y;
+  var bx = b.x;
+  var by = b.y;
+  var dx = bx - ax;
+  var dy = by - ay;
+  var len = Math.hypot(dx, dy) || 1;
+  var ext = 4 * Math.hypot(view.w, view.h);
+  if (freeA) {
+    ax -= (dx / len) * ext;
+    ay -= (dy / len) * ext;
+  }
+  if (freeB) {
+    bx += (dx / len) * ext;
+    by += (dy / len) * ext;
+  }
+  var seg = clipSegment(ax, ay, bx, by, view.w, view.h);
+  if (!seg) return;
+  strokeSegment(ctx, seg, color, i, w);
+}
+
+function drawRays(ctx, rays, wts, view) {
   if (!rays || rays.length === 0) return;
   var baseColor = COLOR_SINGLE;
 
+  ctx.save();
+  ctx.lineCap = "round";
+
   for (var i = 0; i < rays.length; i++) {
     var r = rays[i];
-    var sP = camera.worldToScreen(r.P);
-    var sEnd = camera.worldToScreen(r.end);
-    var overallIntensity = (r.t1 || 1) * (r.t2 || 1);
+    var overallIntensity = r.tir ? (r.t1 || 1) : (r.t1 || 1) * (r.t2 || 1);
 
     if (!r.h1) {
-      drawSegment(ctx, sP, sEnd, baseColor, 0.75 * overallIntensity, 1.2);
+      drawRay(ctx, wts, r.P, r.end, true, true, baseColor, 1, RAY_RADIUS, view);
       continue;
     }
 
-    var sH1 = camera.worldToScreen(r.h1);
-    drawSegment(ctx, sP, sH1, baseColor, 0.8 * overallIntensity, 1.2);
+    drawRay(ctx, wts, r.P, r.h1, true, false, baseColor, 1, RAY_RADIUS, view);
 
-    var sR = camera.worldToScreen({
-      z: r.h1.z + r.rdir.z * REFLEN,
-      r: r.h1.r + r.rdir.r * REFLEN,
-    });
-    var reflIntensity = r.r1 || 0;
-    if (reflIntensity > 0.001) {
-      var reflColor = mixColor(baseColor, [255,92,200], 0.25);
-      drawSegment(ctx, sH1, sR, reflColor, reflIntensity, 1.0);
+    if (r.r1 > 0.001 && r.rdir) {
+      var reflEnd = { z: r.h1.z + r.rdir.z * REFLEN, r: r.h1.r + r.rdir.r * REFLEN };
+      drawRay(ctx, wts, r.h1, reflEnd, false, true, baseColor, r.r1, RAY_RADIUS, view);
+    }
+
+    if (r.edgeHit) {
+      drawRay(ctx, wts, r.h1, r.edgeHit, false, false, baseColor, r.t1 || 1, RAY_RADIUS, view);
+      if (!r.edgeTir) {
+        drawRay(ctx, wts, r.edgeHit, r.end, false, true, baseColor, r.edgeIntensity || 0, RAY_RADIUS, view);
+      }
+      for (var edgeInner of r.inner || []) {
+        drawRay(ctx, wts, edgeInner.a, edgeInner.b, false, false, baseColor, edgeInner.i || 0, RAY_RADIUS, view);
+      }
+      for (var edgeEsc of r.esc || []) {
+        var escEnd = { z: edgeEsc.p.z + edgeEsc.dir.z * REFLEN, r: edgeEsc.p.r + edgeEsc.dir.r * REFLEN };
+        drawRay(ctx, wts, edgeEsc.p, escEnd, false, true, baseColor, edgeEsc.i || 0, RAY_RADIUS, view);
+      }
+      continue;
     }
 
     if (r.h2) {
-      var sH2 = camera.worldToScreen(r.h2);
-      drawSegment(ctx, sH1, sH2, baseColor, 0.6 * (r.t1 || 1), 2.0);
-      drawSegment(ctx, sH2, sEnd, baseColor, overallIntensity, 2.0);
+      drawRay(ctx, wts, r.h1, r.h2, false, false, baseColor, r.t1 || 1, RAY_RADIUS, view);
+      drawRay(ctx, wts, r.h2, r.end, false, true, baseColor, overallIntensity, RAY_RADIUS, view);
 
-      for (var k = 0; k < r.inner.length; k++) {
+      for (var k = 0; k < (r.inner || []).length; k++) {
         var seg = r.inner[k];
-        var sA = camera.worldToScreen(seg.a);
-        var sB = camera.worldToScreen(seg.b);
-        var ci = seg.i || 0;
-        drawSegment(ctx, sA, sB, baseColor, ci, 1.2);
+        drawRay(ctx, wts, seg.a, seg.b, false, false, baseColor, seg.i || 0, RAY_RADIUS, view);
       }
-      for (var k = 0; k < r.esc.length; k++) {
-        var ex = r.esc[k];
-        var sE = camera.worldToScreen(ex.p);
-        var sF = camera.worldToScreen({
-          z: ex.p.z + ex.dir.z * REFLEN,
-          r: ex.p.r + ex.dir.r * REFLEN,
-        });
-        drawSegment(ctx, sE, sF, baseColor, ex.i || 0, 1.0);
+      for (var k2 = 0; k2 < r.esc.length; k2++) {
+        var ex = r.esc[k2];
+        var exEnd = { z: ex.p.z + ex.dir.z * REFLEN, r: ex.p.r + ex.dir.r * REFLEN };
+        drawRay(ctx, wts, ex.p, exEnd, false, true, baseColor, ex.i || 0, RAY_RADIUS, view);
       }
     } else {
-      drawSegment(ctx, sH1, sEnd, baseColor, r.t1 || 1, 2.0);
+      drawRay(ctx, wts, r.h1, r.end, false, true, baseColor, r.t1 || 1, RAY_RADIUS, view);
     }
   }
+
+  ctx.restore();
 }
 
 function Lens2D({ params, resetKey, scaleRef }) {
@@ -197,8 +217,14 @@ function Lens2D({ params, resetKey, scaleRef }) {
     if (!ctx || !canvas || !lens || !rays) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawLens(ctx, lens, camera);
-    drawRays(ctx, rays, camera);
+    var rect = canvas.getBoundingClientRect();
+    var view = {
+      w: rect.width > 0 ? rect.width : canvas.width,
+      h: rect.height > 0 ? rect.height : canvas.height,
+    };
+    var wts = createViewTransform(camera, view);
+    drawLens(ctx, lens, wts, view);
+    drawRays(ctx, rays, wts, view);
   }, []);
 
   const scheduleRender = useCallback(() => {
@@ -218,7 +244,7 @@ function Lens2D({ params, resetKey, scaleRef }) {
       const p = paramsRef.current;
       const eqKey = p.eq + "|" + p.eqR;
       if (lensCacheRef.current.key !== eqKey) {
-        const math = p.useOldMath ? M_OLD : M;
+        const math = p.useReflections ? M : M_OLD;
         const lens = math.sampleLens(p.eq, p.eqR);
         lensCacheRef.current = { key: eqKey, lens, box: lensBox(lens) };
       }
@@ -234,7 +260,7 @@ function Lens2D({ params, resetKey, scaleRef }) {
       const key = cacheKey(p, lens.aperture);
       if (rayCacheRef.current.key !== key) {
         const math = p.useReflections ? M : M_OLD;
-        var rawRays = math.traceRays(p.eq, p.eqR, lens.aperture, p.angle * (p.useReflections ? M.DEG : M_OLD.DEG), p.n, p.rayCount, lensCacheRef.current.box, p.keepFailed);
+        var rawRays = math.traceRays(p.eq, p.eqR, lens.aperture, p.angle * (p.useReflections ? M.DEG : M_OLD.DEG), p.n, p.rayCount, lensCacheRef.current.box);
         var rays = (rawRays || []).map(function(rr){
           return {
             P: rr.P,
@@ -243,6 +269,10 @@ function Lens2D({ params, resetKey, scaleRef }) {
             end: rr.end || (rr.P ? { z: rr.P.z + 3000, r: rr.P.r } : null),
             ok: !!rr.ok,
             tir: !!rr.tir,
+            edgeExit: !!rr.edgeExit,
+            edgeHit: rr.edgeHit || null,
+            edgeTir: !!rr.edgeTir,
+            edgeIntensity: rr.edgeIntensity || 0,
             t1: rr.t1 != null ? rr.t1 : 1,
             t2: rr.t2 != null ? rr.t2 : 1,
             r1: rr.r1 != null ? rr.r1 : 0,

@@ -9,20 +9,20 @@ import * as M_OLD from "./lensMath";
 import { useI18n } from "../../core/i18n";
 
 const RAY_BASE = [0xff3c3c, 0xffb432, 0x32ff64, 0xff5cc8, 0xff5cc8].map((c) => new THREE.Color(c));
-const REFLEN = 120;
+const REFLEN = 100000;
 
 const FOV = 50;
 const FILL = 0.5;
 
-function computeInit(params, sampleLensFn?) {
+function computeInit(params) {
   const w = typeof window !== "undefined" ? window.innerWidth : 1280;
   const h = typeof window !== "undefined" ? window.innerHeight : 720;
   const fovHalf = Math.tan((FOV * Math.PI) / 360);
   let zc = 0;
   let r1 = 1;
   try {
-    const sampleFn = sampleLensFn || (params && params.useReflections ? M.sampleLens : M_OLD.sampleLens);
-    const b = lensBox(sampleFn(params.eq, params.eqR));
+    const math = params.useReflections ? M : M_OLD;
+    const b = lensBox(math.sampleLens(params.eq, params.eqR));
     zc = 0.5 * (b.z0 + b.z1);
     r1 = Math.max(b.r1, 1e-6);
   } catch {}
@@ -70,19 +70,34 @@ function LensMesh({ eq, eqR, aperture }) {
   if (!geo) return null;
 
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} geometry={geo}>
-      <meshPhongMaterial
-        color={0x9cc8f0}
-        emissive={0x223355}
-        emissiveIntensity={0.25}
-        transparent
-        opacity={0.45}
-        depthWrite={false}
-        side={THREE.DoubleSide}
-        shininess={80}
-        specular={0xaaccff}
-      />
-    </mesh>
+    <group rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh geometry={geo} renderOrder={1}>
+        <meshPhongMaterial
+          color={0x9cc8f0}
+          emissive={0x223355}
+          emissiveIntensity={0.25}
+          transparent
+          opacity={0.45}
+          depthWrite={false}
+          side={THREE.BackSide}
+          shininess={80}
+          specular={0xaaccff}
+        />
+      </mesh>
+      <mesh geometry={geo} renderOrder={3}>
+        <meshPhongMaterial
+          color={0x9cc8f0}
+          emissive={0x223355}
+          emissiveIntensity={0.25}
+          transparent
+          opacity={0.45}
+          depthWrite={false}
+          side={THREE.FrontSide}
+          shininess={80}
+          specular={0xaaccff}
+        />
+      </mesh>
+    </group>
   );
 }
 
@@ -100,7 +115,7 @@ function lensBox(lens) {
   return { z0: zMin, z1: zMax, r1: lens.aperture };
 }
 
-function Rays({ eq, eqR, aperture, angle, n, rayCount, box, keepFailed, useReflections }) {
+function Rays({ eq, eqR, aperture, angle, n, rayCount, box, useReflections }) {
   const traceCache = useRef(new Map());
   const { size } = useThree();
 
@@ -112,12 +127,17 @@ function Rays({ eq, eqR, aperture, angle, n, rayCount, box, keepFailed, useRefle
         color: 0xffffff,
         vertexColors: true,
         transparent: true,
-        opacity: 0.9,
+        opacity: 1,
         linewidth: 1.5,
+        worldUnits: false,
+        blending: THREE.NormalBlending,
+        depthWrite: si !== 3,
+        depthTest: si !== 3,
         resolution: new THREE.Vector2(1, 1),
       });
       mat.toneMapped = false;
       const seg = new LineSegments2(geo, mat);
+      seg.renderOrder = si === 3 ? 5 : 2;
       seg.visible = false;
       group.add(seg);
       return seg;
@@ -131,25 +151,23 @@ function Rays({ eq, eqR, aperture, angle, n, rayCount, box, keepFailed, useRefle
     }
   }, [structure, size]);
 
-  // clear trace cache when math mode changes to avoid stale cached rays
+
   useEffect(() => {
     traceCache.current.clear();
   }, [useReflections]);
-
 
   useLayoutEffect(() => {
     function updateSeg(si, positions, colors, visible) {
       const seg = structure.segs[si];
       seg.geometry.setPositions(positions);
-      seg.geometry.setColors(colors);
+      seg.geometry.setColors(colors, 4);
       delete (seg.geometry as any)._maxInstanceCount;
       seg.visible = visible;
     }
     // single hue for all rays; brightness controlled by intensity
     function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
     // single color RGB (green)
-    var BASE_RGB = [50,255,100];
-    var BASE_NORM = [BASE_RGB[0]/255, BASE_RGB[1]/255, BASE_RGB[2]/255];
+    var baseColor = new THREE.Color(0x32ff64);
 
     // diagnostics and counters
     var currentRayCK = null;
@@ -160,9 +178,6 @@ function Rays({ eq, eqR, aperture, angle, n, rayCount, box, keepFailed, useRefle
     function push(allSegs, allCols, si, a, b, intensity) {
       var i = typeof intensity === 'number' && isFinite(intensity) ? intensity : 0;
       i = Math.max(0, Math.min(1, i));
-      // global minimum visibility to avoid fully black rays in 3D (similar to 2D clamp)
-      var MIN_VIS = 0.15;
-      i = Math.max(i, MIN_VIS);
       // skip zero-length segments
       var dx = (b.x - a.x), dy = (b.y - a.y), dz = (b.z - a.z);
       var dist2 = dx*dx + dy*dy + dz*dz;
@@ -172,10 +187,18 @@ function Rays({ eq, eqR, aperture, angle, n, rayCount, box, keepFailed, useRefle
         return;
       }
       allSegs[si].push(a.x, a.y, a.z, b.x, b.y, b.z);
-      var r = Math.max(0, Math.min(1, BASE_NORM[0] * i));
-      var g = Math.max(0, Math.min(1, BASE_NORM[1] * i));
-      var bl = Math.max(0, Math.min(1, BASE_NORM[2] * i));
-      allCols[si].push(r, g, bl, r, g, bl);
+      var r = baseColor.r;
+      var g = baseColor.g;
+      var bl = baseColor.b;
+      var a4 = si === 3 ? i * 0.5 : i;
+      allCols[si].push(r, g, bl, a4, r, g, bl, a4);
+    }
+    var EXT = 100000;
+    function extendFrom(p, base, dist) {
+      var dx = p.x - base.x, dy = p.y - base.y, dz = p.z - base.z;
+      var len = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+      var k = dist / len;
+      return { x: p.x + dx * k, y: p.y + dy * k, z: p.z + dz * k };
     }
     var dx = Math.sin(angle);
     var dz = Math.cos(angle);
@@ -183,7 +206,7 @@ function Rays({ eq, eqR, aperture, angle, n, rayCount, box, keepFailed, useRefle
     var perpz = Math.sin(angle);
     var count = Math.max(1, Math.round(rayCount));
     var startDist = 120;
-    var endDist = 3000;
+    var endDist = 100000;
     var cache = traceCache.current;
     var zMid = box ? 0.5 * (box.z0 + box.z1) : 0;
     var uC = zMid * Math.sin(angle);
@@ -264,7 +287,7 @@ function Rays({ eq, eqR, aperture, angle, n, rayCount, box, keepFailed, useRefle
     }
 
     var picks;
-    if (!keepFailed) {
+    {
       var okPts = [];
       var seen = new Set();
       var probeN = Math.max(count, 40);
@@ -304,8 +327,6 @@ function Rays({ eq, eqR, aperture, angle, n, rayCount, box, keepFailed, useRefle
       for (var j = 0; j < count; j++) {
         picks.push(okPts[Math.min(okPts.length - 1, Math.floor(j * stride))]);
       }
-    } else {
-      picks = fibDisk(count, 0, 0, aperture, aperture).map(toOffset);
     }
 
     var allSegs = [[], [], [], []];
@@ -340,27 +361,13 @@ function Rays({ eq, eqR, aperture, angle, n, rayCount, box, keepFailed, useRefle
           }, ex.i);
         }
       }
-      if (!rr.ok && !rr.tir) {
-        // show non-refracted rays only when keepFailed is true (aligns with 2D "Show non-refracted rays")
-        if (!keepFailed) continue;
-        if (!rr.h1) {
-          push(allSegs, allCols, 0, rr.P, rr.end, 1);
-          continue;
-        }
-        push(allSegs, allCols, 0, rr.P, rr.h1, 1);
-        if (rr.h2) {
-          if (isFinite(rr.t1) && rr.t1 > 1e-6) push(allSegs, allCols, 1, rr.h1, rr.h2, rr.t1);
-          if (!rr.tir && isFinite(rr.t2) && rr.t2 > 1e-6) push(allSegs, allCols, 2, rr.h2, rr.end, rr.t1 * rr.t2);
-        } else {
-          if (isFinite(rr.t1) && rr.t1 > 1e-6) push(allSegs, allCols, 1, rr.h1, rr.end, rr.t1);
-        }
-        continue;
-      }
+      if (!rr.ok && !rr.tir) continue;
       // final: always handle missing h1/h2 safely
+      var Pstart = rr.h1 ? extendFrom(rr.P, rr.h1, EXT) : extendFrom(rr.P, rr.end, EXT);
       if (!rr.h1) {
-        push(allSegs, allCols, 0, rr.P, rr.end, 1);
+        push(allSegs, allCols, 0, Pstart, rr.end, 1);
       } else {
-        push(allSegs, allCols, 0, rr.P, rr.h1, 1);
+        push(allSegs, allCols, 0, Pstart, rr.h1, 1);
         if (rr.h2) {
           if (isFinite(rr.t1) && rr.t1 > 1e-6) push(allSegs, allCols, 1, rr.h1, rr.h2, rr.t1);
           if (!rr.tir && isFinite(rr.t2) && rr.t2 > 1e-6) push(allSegs, allCols, 2, rr.h2, rr.end, rr.t1 * rr.t2);
@@ -382,7 +389,7 @@ function Rays({ eq, eqR, aperture, angle, n, rayCount, box, keepFailed, useRefle
       var has = allSegs[si].length > 0;
       updateSeg(si, has ? allSegs[si] : [0, 0, 0, 0, 0, 0], has ? allCols[si] : [0, 0, 0, 0, 0, 0], has);
     }
-  }, [eq, eqR, aperture, angle, n, rayCount, box, structure, keepFailed]);
+  }, [eq, eqR, aperture, angle, n, rayCount, box, structure, useReflections]);
 
   return <primitive object={structure.group} />;
 }
@@ -421,12 +428,12 @@ function Orbit({ scaleRef, init }) {
   return <primitive object={controls} />;
 }
 
-function Scene({ eq, eqR, aperture, angle, n, rayCount, box, keepFailed, scaleRef, init, useReflections }) {
+function Scene({ eq, eqR, aperture, angle, n, rayCount, box, scaleRef, init, useReflections }) {
   return (
     <>
       <ambientLight intensity={1.0} color={0x404060} />
-      <directionalLight position={[15, 30, 15]} intensity={1.5} color={0xffffff} />
-      <directionalLight position={[-15, -10, -15]} intensity={0.5} color={0x4488ff} />
+      <directionalLight position={[15, 30, 15]} intensity={0.6} color={0xffffff} />
+      <directionalLight position={[-15, -10, -15]} intensity={0.4} color={0x4488ff} />
       <LensMesh eq={eq} eqR={eqR} aperture={aperture} />
       <Rays
         eq={eq}
@@ -436,7 +443,6 @@ function Scene({ eq, eqR, aperture, angle, n, rayCount, box, keepFailed, scaleRe
         n={n}
         rayCount={rayCount}
         box={box}
-        keepFailed={keepFailed}
         useReflections={useReflections}
       />
       <ThemeUpdater />
@@ -447,7 +453,7 @@ function Scene({ eq, eqR, aperture, angle, n, rayCount, box, keepFailed, scaleRe
 
 export default function Lens3D({ params, scaleRef }) {
   const [applied, setApplied] = useState(params);
-  const [init] = useState(() => computeInit(params, params.useReflections ? M.sampleLens : M_OLD.sampleLens));
+  const [init] = useState(() => computeInit(params));
   const pendingRef = useRef(false);
   const latestRef = useRef(params);
   latestRef.current = params;
@@ -462,7 +468,7 @@ export default function Lens3D({ params, scaleRef }) {
   }, [params]);
 
   const lensSample = useMemo(() => {
-    const math = applied.useReflections ? M : M_OLD; // default old math (no reflections)
+    const math = applied.useReflections ? M : M_OLD;
     return math.sampleLens(applied.eq, applied.eqR);
   }, [applied.eq, applied.eqR, applied.useReflections]);
 
@@ -490,7 +496,6 @@ export default function Lens3D({ params, scaleRef }) {
         n={applied.n}
         rayCount={applied.rayCount}
         box={box}
-        keepFailed={applied.keepFailed}
         scaleRef={scaleRef}
         init={init}
         useReflections={applied.useReflections}

@@ -5,7 +5,7 @@ import { createCamera } from "./Camera";
 import { collectRaySegments, drawLensSvg, drawSegmentSvg } from "./lensDraw2D";
 
 function cacheKey(p, aperture) {
-  return [p.eq, p.eqR, aperture, p.angle, p.n, p.rayCount, p.keepFailed, p.useReflections].join("|");
+  return [p.eq, p.eqR, aperture, p.angle, p.n, p.rayCount, p.useReflections].join("|");
 }
 
 function lensBox(lens) {
@@ -57,12 +57,12 @@ function Lens2DSvg({ params, resetKey, scaleRef }) {
 
     while (g.firstChild) g.removeChild(g.firstChild);
 
-    const wts = (p: { z: number; r: number }) => camera.worldToScreen(p);
-    drawLensSvg(g, lens, wts, camera.x);
-    for (const seg of collectRaySegments(rays, wts)) {
+    const view = { w: getSize().width, h: getSize().height };
+    drawLensSvg(g, lens, camera, view);
+    for (const seg of collectRaySegments(rays, camera, view)) {
       drawSegmentSvg(g, seg);
     }
-  }, []);
+  }, [getSize]);
 
   const scheduleRender = useCallback(() => {
     if (renderScheduled.current) return;
@@ -81,7 +81,7 @@ function Lens2DSvg({ params, resetKey, scaleRef }) {
       const p = paramsRef.current;
       const eqKey = p.eq + "|" + p.eqR;
       if (lensCacheRef.current.key !== eqKey) {
-        const math = p.useOldMath ? M_OLD : M;
+        const math = p.useReflections ? M : M_OLD;
         const lens = math.sampleLens(p.eq, p.eqR);
         lensCacheRef.current = { key: eqKey, lens, box: lensBox(lens) };
       }
@@ -98,7 +98,7 @@ function Lens2DSvg({ params, resetKey, scaleRef }) {
         var rawRays = math.traceRays(
           p.eq, p.eqR, lens.aperture,
           p.angle * (p.useReflections ? M.DEG : M_OLD.DEG),
-          p.n, p.rayCount, lensCacheRef.current.box, p.keepFailed
+          p.n, p.rayCount, lensCacheRef.current.box
         );
         rayCacheRef.current = {
           key,
@@ -109,6 +109,10 @@ function Lens2DSvg({ params, resetKey, scaleRef }) {
             end: rr.end || (rr.P ? { z: rr.P.z + 3000, r: rr.P.r } : null),
             ok: !!rr.ok,
             tir: !!rr.tir,
+            edgeExit: !!rr.edgeExit,
+            edgeHit: rr.edgeHit || null,
+            edgeTir: !!rr.edgeTir,
+            edgeIntensity: rr.edgeIntensity || 0,
             t1: rr.t1 != null ? rr.t1 : 1,
             t2: rr.t2 != null ? rr.t2 : 1,
             r1: rr.r1 != null ? rr.r1 : 0,

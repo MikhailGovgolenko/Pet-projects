@@ -5,10 +5,10 @@ export const en = {
   "lens.panel": "Lens",
   "lens.mode3d": "3D view",
   "lens.useField": "Use equation field",
+  "lens.useReflections": "Consider reflections",
   "lens.refraction": "Refraction n",
   "lens.beamAngle": "Beam angle (°)",
   "lens.rayCount": "Ray count",
-  "lens.keepFailed": "Show non-refracted rays",
   "lens.polynomial": "Polynomial z(r)=z₀+a₂r²+a₄r⁴+a₆r⁶",
   "lens.scale": "Scale",
   "lens.resetView": "Reset view",
@@ -16,5 +16,4 @@ export const en = {
   "lens.noWebgl": "WebGL is unavailable in this browser",
   "lens.viewError": "Scene render error",
   "lens.retry": "Retry",
-  "lens.useReflections": "Consider reflections",
 };

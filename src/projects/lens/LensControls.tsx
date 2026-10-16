@@ -28,7 +28,6 @@ function LensControls({ params, setParams }) {
       a2: (v) => setParams((p) => ({ ...p, a2: v })),
       a4: (v) => setParams((p) => ({ ...p, a4: v })),
       a6: (v) => setParams((p) => ({ ...p, a6: v })),
-      keepFailed: (v) => setParams((p) => ({ ...p, keepFailed: v })),
       useReflections: (v) => setParams((p) => ({ ...p, useReflections: v })),
     }),
     [setParams],
@@ -74,15 +73,6 @@ function LensControls({ params, setParams }) {
           checked={!!params.useReflections}
           onChange={handlers.useReflections}
         />
-
-        <div className="section">
-          <ToggleSwitch
-            name="keepFailed"
-            label={t("lens.keepFailed")}
-            checked={params.keepFailed}
-            onChange={handlers.keepFailed}
-          />
-        </div>
       </div>
 
       <div className="section">
