@@ -1,0 +1,551 @@
+:root {
+  --notes-bg: #07070a;
+  --notes-text: #fff;
+  --notes-text-muted: rgba(255, 255, 255, 0.72);
+  --notes-text-soft: rgba(255, 255, 255, 0.62);
+  --notes-link: #00d4ff;
+  --notes-link-hover: #7ceaff;
+  --notes-surface: rgba(255, 255, 255, 0.035);
+  --notes-surface-strong: #15171e;
+  --notes-toc-bg: rgba(21, 23, 30, 0.84);
+  --notes-code-bg: rgba(0, 0, 0, 0.28);
+  --notes-border: rgba(255, 255, 255, 0.08);
+  --notes-border-strong: rgba(255, 255, 255, 0.12);
+  --notes-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.25),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.12);
+  --notes-toc-hover: rgba(0, 212, 255, 0.1);
+  --text-sec: rgba(255, 255, 255, 0.55);
+  --accent: var(--notes-link);
+  --glass-bg: rgba(255, 255, 255, 0.035);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-shadow: var(--notes-shadow);
+  --jp-content-font-color1: var(--notes-text);
+  --jp-content-font-color2: var(--notes-text-soft);
+  --jp-content-link-color: var(--notes-link);
+  --jp-layout-color0: var(--notes-bg);
+  --jp-layout-color1: var(--notes-surface-strong);
+  --jp-layout-color2: #20232c;
+  --jp-cell-editor-background: var(--notes-bg);
+  --jp-cell-editor-active-background: var(--notes-surface-strong);
+  --jp-code-font-color: #e8eaf0;
+  --jp-border-color1: var(--notes-border-strong);
+  --jp-border-color2: var(--notes-border);
+  --jp-mirror-editor-keyword-color: #7dd3fc;
+  --jp-mirror-editor-atom-color: #c4b5fd;
+  --jp-mirror-editor-number-color: #86efac;
+  --jp-mirror-editor-def-color: #93c5fd;
+  --jp-mirror-editor-variable-color: #e8eaf0;
+  --jp-mirror-editor-punctuation-color: #cbd5e1;
+  --jp-mirror-editor-property-color: #7dd3fc;
+  --jp-mirror-editor-operator-color: #c4b5fd;
+  --jp-mirror-editor-comment-color: #94a3b8;
+  --jp-mirror-editor-string-color: #fda4af;
+  --jp-mirror-editor-meta-color: #c4b5fd;
+  --jp-mirror-editor-qualifier-color: #cbd5e1;
+  --jp-mirror-editor-builtin-color: #67e8f9;
+  --jp-mirror-editor-bracket-color: #cbd5e1;
+  --jp-mirror-editor-tag-color: #86efac;
+  --jp-mirror-editor-attribute-color: #7dd3fc;
+  --jp-mirror-editor-header-color: #7dd3fc;
+  --jp-mirror-editor-quote-color: #86efac;
+  --jp-mirror-editor-link-color: #00d4ff;
+  --jp-mirror-editor-error-color: #ff5f6d;
+  --jp-mirror-editor-hr-color: #64748b;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --notes-bg: #f4f6fa;
+    --notes-text: #0b0b12;
+    --notes-text-muted: rgba(11, 11, 18, 0.78);
+    --notes-text-soft: rgba(11, 11, 18, 0.58);
+    --notes-link: #0077b6;
+    --notes-link-hover: #005b8c;
+    --notes-surface: rgba(255, 255, 255, 0.72);
+    --notes-surface-strong: #fff;
+    --notes-toc-bg: rgba(255, 255, 255, 0.84);
+    --notes-code-bg: rgba(0, 0, 0, 0.045);
+    --notes-border: rgba(23, 27, 42, 0.09);
+    --notes-border-strong: rgba(23, 27, 42, 0.14);
+    --notes-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.06),
+      inset 0 0.5px 0 rgba(255, 255, 255, 0.8);
+    --notes-toc-hover: rgba(0, 119, 182, 0.1);
+    --text-sec: rgba(0, 0, 0, 0.45);
+    --accent: var(--notes-link);
+    --glass-bg: rgba(255, 255, 255, 0.5);
+    --glass-border: rgba(23, 27, 42, 0.04);
+    --glass-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.06),
+      inset 0 0.5px 0 rgba(245, 255, 255, 0.6);
+    --jp-content-font-color1: var(--notes-text);
+    --jp-content-font-color2: var(--notes-text-soft);
+    --jp-content-link-color: var(--notes-link);
+    --jp-layout-color0: var(--notes-bg);
+    --jp-layout-color1: var(--notes-surface-strong);
+    --jp-layout-color2: #e9edf4;
+    --jp-cell-editor-background: var(--notes-bg);
+    --jp-cell-editor-active-background: var(--notes-surface-strong);
+    --jp-code-font-color: #263244;
+    --jp-border-color1: var(--notes-border-strong);
+    --jp-border-color2: var(--notes-border);
+    --jp-mirror-editor-keyword-color: #075985;
+    --jp-mirror-editor-atom-color: #6d28d9;
+    --jp-mirror-editor-number-color: #15803d;
+    --jp-mirror-editor-def-color: #1d4ed8;
+    --jp-mirror-editor-variable-color: #263244;
+    --jp-mirror-editor-punctuation-color: #475569;
+    --jp-mirror-editor-property-color: #0369a1;
+    --jp-mirror-editor-operator-color: #7e22ce;
+    --jp-mirror-editor-comment-color: #64748b;
+    --jp-mirror-editor-string-color: #be123c;
+    --jp-mirror-editor-meta-color: #7e22ce;
+    --jp-mirror-editor-qualifier-color: #475569;
+    --jp-mirror-editor-builtin-color: #0e7490;
+    --jp-mirror-editor-bracket-color: #475569;
+    --jp-mirror-editor-tag-color: #15803d;
+    --jp-mirror-editor-attribute-color: #0369a1;
+    --jp-mirror-editor-header-color: #0369a1;
+    --jp-mirror-editor-quote-color: #15803d;
+    --jp-mirror-editor-link-color: #0077b6;
+    --jp-mirror-editor-error-color: #dc2626;
+    --jp-mirror-editor-hr-color: #94a3b8;
+  }
+}
+
+html,
+body.jp-Notebook {
+  min-height: 100%;
+  height: auto;
+  background: var(--notes-bg) !important;
+  color: var(--notes-text);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI",
+    Roboto, sans-serif;
+}
+
+body.jp-Notebook {
+  --jp-content-font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
+    "Segoe UI", Roboto, sans-serif;
+  --jp-content-font-size1: 16px;
+  --jp-content-line-height: 1.75;
+  overflow-x: hidden;
+}
+
+body.jp-Notebook main {
+  width: calc(100% - 40px);
+  max-width: none;
+  margin: 0 auto;
+  padding: 84px 0 72px;
+}
+
+body.jp-Notebook .jp-Notebook-cell {
+  margin: 18px 0;
+  padding: 26px 30px;
+  overflow: hidden;
+  border: 1px solid var(--notes-border);
+  border-radius: 24px;
+  background: var(--notes-surface);
+  box-shadow: var(--notes-shadow);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+}
+
+body.jp-Notebook .notes-toc {
+  position: fixed;
+  top: calc(16px + env(safe-area-inset-top));
+  left: 16px;
+  z-index: 9999;
+  width: min(360px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px - env(safe-area-inset-top));
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  border: 1px solid var(--notes-border);
+  border-radius: 16px;
+  background: var(--notes-toc-bg) !important;
+  background-color: var(--notes-toc-bg) !important;
+  background-image: none !important;
+  box-shadow: var(--notes-shadow);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  isolation: isolate;
+  opacity: 1;
+}
+
+body.jp-Notebook .notes-toc:not([open]) {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+body.jp-Notebook .notes-toc summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  color: var(--notes-text) !important;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+body.jp-Notebook .notes-toc:not([open]) summary {
+  width: 46px;
+  height: 46px;
+  justify-content: center;
+  padding: 0;
+}
+
+body.jp-Notebook .notes-toc:not([open]) .notes-toc-label {
+  display: none;
+}
+
+body.jp-Notebook .notes-toc summary::-webkit-details-marker {
+  display: none;
+}
+
+body.jp-Notebook .notes-toc summary::after {
+  content: "+";
+  color: var(--notes-link);
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+body.jp-Notebook .notes-toc[open] summary::after {
+  content: "−";
+}
+
+body.jp-Notebook .notes-toc[open] summary {
+  gap: 20px;
+}
+
+body.jp-Notebook .notes-toc-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0 18px 16px;
+  list-style: none;
+}
+
+body.jp-Notebook .notes-toc-list a {
+  display: block;
+  padding: 6px 10px;
+  border-radius: 8px;
+  color: var(--notes-text-muted) !important;
+  font-size: 13px;
+  line-height: 1.45;
+  text-decoration: none;
+  transition: background 0.2s, color 0.2s;
+}
+
+body.jp-Notebook .notes-toc-list a:hover,
+body.jp-Notebook .notes-toc-list a:focus-visible {
+  background: var(--notes-toc-hover);
+  color: var(--notes-link);
+  outline: none;
+}
+
+body.jp-Notebook .notes-toc-list li[data-level="1"] a {
+  color: var(--notes-text) !important;
+  font-weight: 600;
+}
+
+body.jp-Notebook .notes-toc-list li[data-level="2"] {
+  padding-left: 14px;
+}
+
+body.jp-Notebook .notes-toc-list li[data-level="3"],
+body.jp-Notebook .notes-toc-list li[data-level="4"] {
+  padding-left: 28px;
+}
+
+body.jp-Notebook .jp-Cell-inputWrapper,
+body.jp-Notebook .jp-Cell-outputWrapper {
+  display: block;
+  overflow: visible;
+}
+
+body.jp-Notebook .jp-Collapser,
+body.jp-Notebook .jp-InputPrompt,
+body.jp-Notebook .jp-OutputPrompt {
+  display: none;
+}
+
+body.jp-Notebook .jp-InputArea,
+body.jp-Notebook .jp-Cell-inputArea,
+body.jp-Notebook .jp-Cell-outputArea,
+body.jp-Notebook .jp-OutputArea-child {
+  min-width: 0;
+  overflow-y: visible;
+}
+
+body.jp-Notebook .jp-MarkdownOutput {
+  display: block;
+  width: auto;
+  padding: 0;
+  overflow: visible !important;
+}
+
+body.jp-Notebook .jp-RenderedHTMLCommon {
+  overflow: visible !important;
+  padding: 0;
+  color: var(--notes-text-muted);
+  font-family: inherit;
+  font-size: 17px;
+  line-height: 1.8;
+}
+
+body.jp-Notebook .jp-RenderedHTMLCommon h1,
+body.jp-Notebook .jp-RenderedHTMLCommon h2,
+body.jp-Notebook .jp-RenderedHTMLCommon h3,
+body.jp-Notebook .jp-RenderedHTMLCommon h4 {
+  color: var(--notes-text);
+  font-family: inherit;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.2;
+  scroll-margin-top: 24px;
+}
+
+body.jp-Notebook .jp-RenderedHTMLCommon h1 {
+  margin: 0 0 20px;
+  font-size: clamp(30px, 5vw, 42px);
+}
+
+body.jp-Notebook .jp-RenderedHTMLCommon h2 {
+  margin: 0 0 16px;
+  font-size: clamp(23px, 3.5vw, 30px);
+}
+
+body.jp-Notebook .jp-RenderedHTMLCommon h3 {
+  margin: 24px 0 12px;
+  font-size: 21px;
+}
+
+body.jp-Notebook .jp-RenderedHTMLCommon p {
+  margin: 0 0 16px;
+}
+
+body.jp-Notebook .jp-RenderedHTMLCommon p:last-child,
+body.jp-Notebook .jp-RenderedHTMLCommon > :last-child {
+  margin-bottom: 0;
+}
+
+body.jp-Notebook .jp-RenderedHTMLCommon a,
+body.jp-Notebook .jp-RenderedHTMLCommon a:visited {
+  color: var(--notes-link);
+}
+
+body.jp-Notebook .jp-RenderedHTMLCommon a:hover {
+  color: var(--notes-link-hover);
+}
+
+body.jp-Notebook .jp-RenderedHTMLCommon blockquote {
+  margin: 20px 0;
+  padding: 4px 0 4px 18px;
+  border-left: 2px solid var(--notes-link);
+  color: var(--notes-text-soft);
+}
+
+body.jp-Notebook .jp-RenderedHTMLCommon code,
+body.jp-Notebook .jp-RenderedHTMLCommon :not(pre) > code {
+  border: 1px solid var(--notes-border);
+  border-radius: 6px;
+  background: var(--notes-code-bg);
+  color: var(--notes-link);
+  padding: 2px 6px;
+}
+
+body.jp-Notebook .jp-RenderedHTMLCommon pre,
+body.jp-Notebook .jp-RenderedText pre {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--notes-border);
+  border-radius: 14px;
+  background: var(--notes-code-bg);
+  color: var(--jp-code-font-color);
+}
+
+body.jp-Notebook .jp-CodeMirrorEditor {
+  padding: 16px 18px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 1px solid var(--notes-border);
+  border-radius: 14px;
+  background: var(--notes-code-bg);
+  color: var(--jp-code-font-color);
+  box-shadow: none;
+}
+
+body.jp-Notebook .jp-CodeMirrorEditor .cm-editor,
+body.jp-Notebook .jp-CodeMirrorEditor .highlight {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+body.jp-Notebook .jp-CodeMirrorEditor .highlight pre {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+body.jp-Notebook .jp-RenderedText pre {
+  padding: 16px 18px;
+  font-size: 14px;
+  line-height: 1.75;
+  white-space: pre;
+}
+
+body.jp-Notebook .jp-RenderedHTMLCommon img,
+body.jp-Notebook .jp-RenderedImage img,
+body.jp-Notebook .jp-RenderedHTMLCommon svg {
+  max-width: 100%;
+  height: auto;
+  border-radius: 14px;
+}
+
+body.jp-Notebook .jp-RenderedHTMLCommon img[src$="/image.png"] {
+  display: block;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+body.jp-Notebook .jp-RenderedImage {
+  overflow: auto;
+  text-align: center;
+}
+
+body.jp-Notebook .jp-RenderedHTMLCommon table {
+  max-width: 100%;
+  overflow: auto;
+  color: var(--notes-text-muted);
+}
+
+body.jp-Notebook .jp-RenderedHTMLCommon th {
+  color: var(--notes-text);
+}
+
+body.jp-Notebook .jp-RenderedHTMLCommon tbody tr:nth-child(odd),
+body.jp-Notebook .jp-RenderedHTMLCommon tbody tr:nth-child(even) {
+  background: var(--notes-surface);
+}
+
+body.jp-Notebook mjx-container[display="true"],
+body.jp-Notebook .MathJax_Display {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 8px 0;
+  color: var(--notes-text);
+}
+
+body.jp-Notebook .jp-Cell-outputWrapper {
+  margin-top: 16px;
+}
+
+body.jp-Notebook .jp-OutputArea-output {
+  color: var(--notes-text-muted);
+}
+
+body.jp-Notebook .jp-RenderedMermaid {
+  max-width: 100%;
+  overflow: auto;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.96);
+  padding: 12px;
+}
+
+body.jp-Notebook .notes-download {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 8px auto 24px;
+  padding: 11px 18px;
+  border: 1px solid var(--notes-border-strong);
+  border-radius: 12px;
+  background: var(--notes-surface);
+  box-shadow: var(--notes-shadow);
+  color: var(--notes-text) !important;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: border-color 0.2s, background 0.2s, color 0.2s;
+}
+
+body.jp-Notebook main > .notes-download {
+  display: flex;
+  width: fit-content;
+}
+
+body.jp-Notebook .notes-download:hover {
+  border-color: var(--notes-link);
+  background: var(--notes-toc-hover);
+  color: var(--notes-link) !important;
+}
+
+body.jp-Notebook * {
+  scrollbar-color: color-mix(in srgb, var(--notes-link) 55%, transparent) transparent;
+  scrollbar-width: thin;
+}
+
+body.jp-Notebook *::-webkit-scrollbar:horizontal {
+  height: 8px;
+}
+
+body.jp-Notebook *::-webkit-scrollbar-track:horizontal {
+  border-radius: 999px;
+  background: transparent;
+}
+
+body.jp-Notebook *::-webkit-scrollbar-thumb:horizontal {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--notes-link) 55%, transparent);
+  background-clip: padding-box;
+}
+
+body.jp-Notebook *::-webkit-scrollbar-thumb:horizontal:hover {
+  background: var(--notes-link);
+  background-clip: padding-box;
+}
+
+@media (max-width: 640px) {
+  body.jp-Notebook main {
+    width: calc(100% - 24px);
+    padding: 80px 0 40px;
+  }
+
+  body.jp-Notebook .jp-Notebook-cell {
+    margin: 12px 0;
+    padding: 20px 18px;
+    border-radius: 18px;
+  }
+
+  body.jp-Notebook .jp-RenderedHTMLCommon {
+    font-size: 16px;
+  }
+
+  body.jp-Notebook .notes-toc {
+    top: calc(12px + env(safe-area-inset-top));
+    left: 12px;
+    width: min(360px, calc(100vw - 24px));
+    max-height: calc(100dvh - 24px - env(safe-area-inset-top));
+  }
+
+  body.jp-Notebook .notes-toc:not([open]) {
+    width: 48px;
+  }
+}

@@ -86,33 +86,16 @@ export default function App() {
       }}
     >
       {tab !== "home" && (
-        <div
-          onClick={() => { setTab("home"); updateUrl("home"); }}
-          className="glass"
-          style={{
-            position: "fixed",
-            top: "calc(16px + env(safe-area-inset-top))",
-            left: "50%",
-            transform: "translateX(-50%)",
-            zIndex: 100,
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "8px 16px",
-            borderRadius: 100,
-            cursor: "pointer",
-            fontSize: 13,
-            fontWeight: 600,
-            color: "var(--text-sec)",
-            transition: "color 0.2s",
-            userSelect: "none",
+        <site-home-button
+          href="/"
+          label={t("app.home")}
+          aria-label={t("app.home")}
+          onClick={(event) => {
+            event.preventDefault();
+            setTab("home");
+            updateUrl("home");
           }}
-          onMouseEnter={(e) => e.currentTarget.style.color = "var(--accent)"}
-          onMouseLeave={(e) => e.currentTarget.style.color = "var(--text-sec)"}
-        >
-          <span style={{ fontSize: 16 }}>🏠</span>
-          <span>{t("app.home")}</span>
-        </div>
+        />
       )}
 
       <Suspense fallback={null}>

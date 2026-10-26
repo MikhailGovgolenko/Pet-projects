@@ -1,4 +1,5 @@
 export const en = {
+  "app.home": "Home",
   "card.lens.title": "Ray Tracing Simulator",
   "card.lens.desc":
     "Interactive visualization of light rays passing through a symmetric lens.",
@@ -11,7 +12,10 @@ export const en = {
   "lens.rayCount": "Ray count",
   "lens.polynomial": "Polynomial z(r)=z₀+a₂r²+a₄r⁴+a₆r⁶",
   "lens.scale": "Scale",
+  "lens.computeLens": "How to compute such a lens",
   "lens.resetView": "Reset view",
+  "lens.downloadNotes": "Download this notebook",
+  "lens.contents": "Contents",
   "lens.eqError": "Formula error",
   "lens.noWebgl": "WebGL is unavailable in this browser",
   "lens.viewError": "Scene render error",

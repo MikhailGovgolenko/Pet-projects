@@ -2,6 +2,8 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import fs from "fs";
 import path from "path";
+import { en } from "./src/projects/lens/i18n/en";
+import { ru } from "./src/projects/lens/i18n/ru";
 
 const SITE_URL = "https://pet-projects.govgolenko.ru";
 const PROJECTS_DIR = path.resolve(__dirname, "src", "projects");
@@ -88,6 +90,66 @@ function buildHeadTags(page: ProjectSeo, version: string): string {
         <title>${escapeHtml(title)}</title>`;
 }
 
+function rewriteNotesUrl(req: { url?: string }) {
+  const url = req.url;
+  const path = url?.split("?")[0];
+  if (path === "/lens/notes" || path === "/lens/notes/") {
+    req.url = `/lens/notes/index.html${url.slice(path.length)}`;
+  }
+}
+
+function notesRoutePlugin(): import("vite").Plugin {
+  return {
+    name: "notes-route",
+    configureServer(server) {
+      server.middlewares.use((req, _res, next) => {
+        rewriteNotesUrl(req);
+        next();
+      });
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use((req, _res, next) => {
+        rewriteNotesUrl(req);
+        next();
+      });
+    },
+  };
+}
+
+function notesTranslationsPlugin(): import("vite").Plugin {
+  const translations = {
+    home: { en: en["app.home"], ru: ru["app.home"] },
+    contents: { en: en["lens.contents"], ru: ru["lens.contents"] },
+    download: { en: en["lens.downloadNotes"], ru: ru["lens.downloadNotes"] },
+  };
+  const fileName = "lens/notes/translations.js";
+  const source = `export default ${JSON.stringify(translations)};\n`;
+
+  function serveTranslations(
+    req: { url?: string },
+    res: { statusCode: number; setHeader(name: string, value: string): void; end(body: string): void },
+    next: () => void
+  ) {
+    if (req.url?.split("?")[0] !== `/${fileName}`) return next();
+    res.statusCode = 200;
+    res.setHeader("Content-Type", "text/javascript; charset=utf-8");
+    res.end(source);
+  }
+
+  return {
+    name: "notes-translations",
+    configureServer(server) {
+      server.middlewares.use(serveTranslations);
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(serveTranslations);
+    },
+    generateBundle() {
+      this.emitFile({ type: "asset", fileName, source });
+    },
+  };
+}
+
 function ogPagesPlugin(): import("vite").Plugin {
   return {
     name: "og-pages",
@@ -148,7 +210,7 @@ function ogPagesPlugin(): import("vite").Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), ogPagesPlugin()],
+  plugins: [react(), notesRoutePlugin(), notesTranslationsPlugin(), ogPagesPlugin()],
   base: "/",
   server: { host: "127.0.0.1", port: 4321, open: true },
 });

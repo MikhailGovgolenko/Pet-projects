@@ -77,11 +77,11 @@ export default function LensPage() {
     n: 1.5,
     angle: 0,
     rayCount: 41,
-    z0: -0.5,
-    a2: 0.05170852666787464,
-    a4: -0.00030700944819219545,
-    a6: 1.942042195006421e-6,
-    useField: false,
+    z0: -0.25,
+    a2: 5.084377517e-2,
+    a4: -2.995721263e-4,
+    a6: 2.117804002e-6,
+    useField: true,
     useReflections: false,
     customEq: "-0.25+5.084377517e-02*r^2-2.995721263e-04*r^4+2.117804002e-06*r^6+1.510418374e-08*r^8-1.230188343e-09*r^10+3.006394090e-11*r^12-1.485492474e-13*r^14-2.027671851e-14*r^16+8.961515411e-16*r^18-1.118122378e-17*r^20-6.858274636e-19*r^22+4.138766553e-20*r^24-5.573760978e-22*r^26-4.462213858e-23*r^28+2.549223328e-24*r^30-8.936749756e-27*r^32-4.518738263e-27*r^34+1.585886700e-28*r^36+4.929142510e-30*r^38-4.836420490e-31*r^40-1.190930725e-34*r^42+1.217501736e-33*r^44-2.191268853e-35*r^46-3.154311782e-36*r^48+1.079202632e-37*r^50",
   });
@@ -143,6 +143,14 @@ export default function LensPage() {
               7.00
             </span>
           </label>
+          <a
+            href="/lens/notes"
+            target="_blank"
+            rel="noreferrer"
+            style={{ display: "block", margin: "0 0 8px", color: "var(--accent)", fontSize: 12, textDecoration: "none" }}
+          >
+            {t("lens.computeLens")}
+          </a>
           <button onClick={resetView}>{t("lens.resetView")}</button>
         </div>
       </GlassPanel>

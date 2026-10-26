@@ -12,7 +12,7 @@ const RAY_BASE = [0xff3c3c, 0xffb432, 0x32ff64, 0xff5cc8, 0xff5cc8].map((c) => n
 const REFLEN = 100000;
 
 const FOV = 50;
-const FILL = 0.5;
+const FILL = 0.4;
 
 function computeInit(params) {
   const w = typeof window !== "undefined" ? window.innerWidth : 1280;

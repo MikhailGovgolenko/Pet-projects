@@ -1,4 +1,5 @@
 export const ru = {
+  "app.home": "На главную",
   "card.lens.title": "Симулятор хода лучей",
   "card.lens.desc":
     "Интерактивная визуализация прохождения световых лучей через симметричную линзу.",
@@ -11,7 +12,10 @@ export const ru = {
   "lens.rayCount": "Кол-во лучей",
   "lens.polynomial": "Полином z(r)=z₀+a₂r²+a₄r⁴+a₆r⁶",
   "lens.scale": "Масштаб",
+  "lens.computeLens": "Как посчитать такую линзу",
   "lens.resetView": "Сбросить вид",
+  "lens.downloadNotes": "Скачать этот блокнот",
+  "lens.contents": "Содержание",
   "lens.eqError": "Ошибка формулы",
   "lens.noWebgl": "WebGL недоступен в этом браузере",
   "lens.viewError": "Ошибка отрисовки сцены",
