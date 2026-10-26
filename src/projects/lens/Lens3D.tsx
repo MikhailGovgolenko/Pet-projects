@@ -262,7 +262,10 @@ function Rays({ eq, eqR, aperture, angle, n, rayCount, box, useReflections }) {
           i: isFinite(Number(ex && ex.i)) ? Number(ex.i) : 1,
         };
       }) : [];
-      ray.tir = !!raw.tir;
+      ray.status = raw.status || (raw.ok ? "ok" : raw.tir ? "tir" : "miss");
+      ray.ok = ray.status === "ok";
+      ray.tir = ray.status === "tir";
+      ray.miss = ray.status === "miss";
       // diagnostics: log suspicious raw intensities (t1/t2 === 0 or non-finite)
       var bad = (!isFinite(raw.t1) || !isFinite(raw.t2) || raw.t1 === 0 || raw.t2 === 0);
       if (bad && !traceWarned.has(ck) && traceWarned.size < 200) {
@@ -286,48 +289,9 @@ function Rays({ eq, eqR, aperture, angle, n, rayCount, box, useReflections }) {
       return ray;
     }
 
-    var picks;
-    {
-      var okPts = [];
-      var seen = new Set();
-      var probeN = Math.max(count, 40);
-      for (const off of fibDisk(probeN, 0, 0, aperture, aperture).map(toOffset)) {
-        var k = off.u.toFixed(4) + "|" + off.w.toFixed(4);
-        seen.add(k);
-        var probeRay = traceAt(off);
-        if (probeRay.ok || probeRay.tir) okPts.push(off);
-      }
-      if (okPts.length === 0) {
-        for (var si = 0; si < 4; si++) {
-          updateSeg(si, [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], false);
-        }
-        return;
-      }
-      var rounds = 0;
-      while (okPts.length < count && rounds < 4) {
-        rounds++;
-        var cx = 0, cy = 0;
-        for (const p of okPts) { cx += p.u; cy += p.w; }
-        cx /= okPts.length;
-        cy /= okPts.length;
-        var rmax = 0.001;
-        for (const p of okPts) rmax = Math.max(rmax, Math.hypot(p.u - cx, p.w - cy));
-        rmax *= 1.4;
-        for (const off of fibDisk(Math.max(count * 8, 160), cx, cy, rmax, rmax).map(toOffset)) {
-          if (okPts.length >= count) break;
-          var k2 = off.u.toFixed(4) + "|" + off.w.toFixed(4);
-          if (seen.has(k2)) continue;
-          seen.add(k2);
-          var probeRay2 = traceAt(off);
-          if (probeRay2.ok || probeRay2.tir) okPts.push(off);
-        }
-      }
-      var stride = okPts.length / count;
-      picks = [];
-      for (var j = 0; j < count; j++) {
-        picks.push(okPts[Math.min(okPts.length - 1, Math.floor(j * stride))]);
-      }
-    }
+    // Match notebook usable aperture (0.995), no probe shrink
+    var apDraw = aperture * 0.995;
+    var picks = fibDisk(count, 0, 0, apDraw, apDraw).map(toOffset);
 
     var allSegs = [[], [], [], []];
     var allCols = [[], [], [], []];
@@ -337,22 +301,25 @@ function Rays({ eq, eqR, aperture, angle, n, rayCount, box, useReflections }) {
       // attach current ray cache key for push() diagnostics
       currentRayCK = rr && rr._ck ? rr._ck : null;
 
-      if (rr.h1 && rr.rdir) {
-        // draw reflection only if reflectivity is significant
-        if (isFinite(rr.r1) && rr.r1 > 0.001) {
-          push(allSegs, allCols, 3, rr.h1, {
-            x: rr.h1.x + REFLEN * rr.rdir.x,
-            y: rr.h1.y + REFLEN * rr.rdir.y,
-            z: rr.h1.z + REFLEN * rr.rdir.z,
-          }, rr.r1);
-        }
+      // Non-reflect: only ok. Reflect: ok + tir (bounce viz). Miss: skip entirely.
+      if (rr.miss || rr.status === "miss") continue;
+      if (!useReflections && !rr.ok) continue;
+      if (useReflections && !rr.ok && !rr.tir) continue;
+      if (!rr.h1) continue;
+
+      if (rr.rdir && isFinite(rr.r1) && rr.r1 > 0.001) {
+        push(allSegs, allCols, 3, rr.h1, {
+          x: rr.h1.x + REFLEN * rr.rdir.x,
+          y: rr.h1.y + REFLEN * rr.rdir.y,
+          z: rr.h1.z + REFLEN * rr.rdir.z,
+        }, rr.r1);
       }
-      if (rr.h2) {
-        for (var ki = 0; ki < rr.inner.length; ki++) {
+      if (useReflections && rr.h2) {
+        for (var ki = 0; ki < (rr.inner || []).length; ki++) {
           var seg = rr.inner[ki];
           push(allSegs, allCols, 1, seg.a, seg.b, seg.i);
         }
-        for (var ke = 0; ke < rr.esc.length; ke++) {
+        for (var ke = 0; ke < (rr.esc || []).length; ke++) {
           var ex = rr.esc[ke];
           push(allSegs, allCols, 2, ex.p, {
             x: ex.p.x + REFLEN * ex.dir.x,
@@ -361,20 +328,15 @@ function Rays({ eq, eqR, aperture, angle, n, rayCount, box, useReflections }) {
           }, ex.i);
         }
       }
-      if (!rr.ok && !rr.tir) continue;
-      // final: always handle missing h1/h2 safely
-      var Pstart = rr.h1 ? extendFrom(rr.P, rr.h1, EXT) : extendFrom(rr.P, rr.end, EXT);
-      if (!rr.h1) {
-        push(allSegs, allCols, 0, Pstart, rr.end, 1);
-      } else {
-        push(allSegs, allCols, 0, Pstart, rr.h1, 1);
-        if (rr.h2) {
-          if (isFinite(rr.t1) && rr.t1 > 1e-6) push(allSegs, allCols, 1, rr.h1, rr.h2, rr.t1);
-          if (!rr.tir && isFinite(rr.t2) && rr.t2 > 1e-6) push(allSegs, allCols, 2, rr.h2, rr.end, rr.t1 * rr.t2);
-        } else {
-          // single refraction: draw h1->end with t1 brightness
-          if (isFinite(rr.t1) && rr.t1 > 1e-6) push(allSegs, allCols, 1, rr.h1, rr.end, rr.t1);
-        }
+
+      var Pstart = extendFrom(rr.P, rr.h1, EXT);
+      push(allSegs, allCols, 0, Pstart, rr.h1, 1);
+      if (rr.h2 && isFinite(rr.t1) && rr.t1 > 1e-6) {
+        push(allSegs, allCols, 1, rr.h1, rr.h2, rr.t1);
+      }
+      // Transmitted exit only for ok (never for tir / miss / passthrough)
+      if (rr.ok && rr.h2 && isFinite(rr.t2) && rr.t2 > 1e-6) {
+        push(allSegs, allCols, 2, rr.h2, rr.end, rr.t1 * rr.t2);
       }
       // clear current ray marker to avoid stale references
       currentRayCK = null;

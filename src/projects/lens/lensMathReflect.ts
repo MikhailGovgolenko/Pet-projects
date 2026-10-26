@@ -4,29 +4,69 @@ export const DEG = Math.PI / 180;
 
 export function safeEval(expr, r) {
   try {
-    return evaluate(expr, r);
+    var v = evaluate(expr, r);
+    if (!isFinite(v)) return NaN;
+    return v;
   } catch {
     return NaN;
   }
 }
 
 export function deriv(expr, r, h?) {
-  h = h || 1e-4;
-  return (safeEval(expr, r + h) - safeEval(expr, r - h)) / (2 * h);
+  var hr = h;
+  if (hr === undefined || hr === null) hr = 1e-5;
+  var absR = Math.abs(r);
+  if (absR > 1e-12) {
+    hr = Math.min(hr, Math.max(1e-7, absR * 2e-5));
+  } else {
+    hr = Math.min(hr, 1e-6);
+  }
+  var f1 = safeEval(expr, r + hr);
+  var f2 = safeEval(expr, r - hr);
+  if (isFinite(f1) && isFinite(f2)) {
+    return (f1 - f2) / (2 * hr);
+  }
+  hr = Math.max(1e-8, hr * 0.1);
+  f1 = safeEval(expr, r + hr);
+  f2 = safeEval(expr, r - hr);
+  if (isFinite(f1) && isFinite(f2)) {
+    return (f1 - f2) / (2 * hr);
+  }
+  var f0 = safeEval(expr, r);
+  f1 = safeEval(expr, r + hr);
+  if (isFinite(f0) && isFinite(f1)) {
+    return (f1 - f0) / hr;
+  }
+  return 0;
 }
 
 export function normVec(v) {
   var L = Math.hypot(v.z, v.r);
+  if (L < 1e-18) return { z: -1, r: 0 };
   return { z: v.z / L, r: v.r / L };
 }
 
+function faceNormal2(N, I) {
+  if (N.z * I.z + N.r * I.r > 0) return { z: -N.z, r: -N.r };
+  return N;
+}
+
+/** Snell refraction. eta = n1/n2. Returns null on TIR (k < 0). */
 export function refract3d(I, N, eta) {
   var cosi = -(N.z * I.z + N.r * I.r);
+  if (cosi > 1.0) cosi = 1.0;
+  if (cosi < -1.0) cosi = -1.0;
   var k = 1 - eta * eta * (1 - cosi * cosi);
   if (k < 0) return null;
+  var cosT = Math.sqrt(k);
+  var f = eta * cosi - cosT;
+  var outZ = eta * I.z + f * N.z;
+  var outR = eta * I.r + f * N.r;
+  var Lout = Math.hypot(outZ, outR);
+  if (Lout < 1e-18) return null;
   return {
-    z: eta * I.z + (eta * cosi - Math.sqrt(k)) * N.z,
-    r: eta * I.r + (eta * cosi - Math.sqrt(k)) * N.r,
+    z: outZ / Lout,
+    r: outR / Lout,
   };
 }
 
@@ -87,9 +127,15 @@ export function sampleLens(eqL, eqR) {
 
 export function findIntersection(P, D, eq, box) {
   function f(t) {
-    return P.z + t * D.z - safeEval(eq, P.r + t * D.r);
+    var rr = P.r + t * D.r;
+    var zr = P.z + t * D.z;
+    var ze = safeEval(eq, rr);
+    if (!isFinite(ze)) return NaN;
+    return zr - ze;
   }
-  var t0 = 0.2;
+  // Allow t << 0.2 so thin-edge second-surface hits are not skipped
+  var EPS = 1e-8;
+  var t0 = EPS;
   var t1 = 1000;
   if (box) {
     var rLo = -box.r1;
@@ -112,31 +158,52 @@ export function findIntersection(P, D, eq, box) {
       t0 = Math.max(t0, Math.min(tC, tD));
       t1 = Math.min(t1, Math.max(tC, tD));
     }
-    if (t1 < 0.2) return null;
-    t0 = Math.max(0.2, t0);
+    t0 = Math.max(EPS, t0);
     t1 = Math.min(1000, t1);
-    if (t0 > t1) return null;
+    if (!(t0 < t1)) return null;
   }
-  var f0 = f(t0);
-  for (var t = t0 + 0.2; t <= t1; t += 0.2) {
-    var f1 = f(t);
-    if (isFinite(f0) && isFinite(f1) && f0 * f1 <= 0) {
-      var a = t - 0.2;
-      var b = t;
-      for (var i = 0; i < 20; i++) {
-        var m = 0.5 * (a + b);
-        if (f(a) * f(m) <= 0) b = m;
-        else a = m;
+
+  function refine(a, b) {
+    for (var i = 0; i < 48; i++) {
+      var m = 0.5 * (a + b);
+      var fm = f(m);
+      if (!isFinite(fm)) {
+        a = m;
+        continue;
       }
-      var th = 0.5 * (a + b);
-      var hr = P.r + th * D.r;
-      return { z: safeEval(eq, hr), r: hr };
+      var fa = f(a);
+      if (isFinite(fa) && fa * fm <= 0) b = m;
+      else a = m;
     }
-    f0 = f1;
+    var th = 0.5 * (a + b);
+    var hr = P.r + th * D.r;
+    if (!isFinite(hr)) return null;
+    var zh = safeEval(eq, hr);
+    if (!isFinite(zh)) return null;
+    return { z: zh, r: hr };
+  }
+
+  var tLo = t0;
+  var fLo = f(tLo);
+  var step = 1e-4;
+  while (tLo < t1) {
+    var tHi = Math.min(t1, tLo + step);
+    var fHi = f(tHi);
+    if (isFinite(fLo) && isFinite(fHi) && fLo * fHi <= 0) {
+      return refine(tLo, tHi);
+    }
+    tLo = tHi;
+    fLo = fHi;
+    step = Math.min(step * 1.6, 0.2);
   }
   return null;
 }
 
+/**
+ * Ray status: ok | tir | miss (same contract as lensMath).
+ * Reflect mode may keep tir rays for internal bounce visualization;
+ * primary transmitted exit exists only when status === "ok".
+ */
 export function traceRays(eq, eqR, aperture, angle, n, count, box) {
   var dir = { z: Math.cos(angle), r: Math.sin(angle) };
   var perp = { z: -dir.r, r: dir.z };
@@ -150,9 +217,7 @@ export function traceRays(eq, eqR, aperture, angle, n, count, box) {
     var D = normVec(dir);
     var h1 = findIntersection(P, D, eq, box);
     var h2 = null;
-    var ok = false;
-    var tir = false;
-    var end = { z: P.z + 3000 * D.z, r: P.r + 3000 * D.r };
+    var end = { z: P.z, r: P.r };
     var inner = [];
     var esc = [];
     var t1 = 0;
@@ -178,11 +243,9 @@ export function traceRays(eq, eqR, aperture, angle, n, count, box) {
       var surf = depth % 2 === 0 ? eq : eqR;
       var hp = findIntersection({ z: cp.z + 1e-6 * cdir.z, r: cp.r + 1e-6 * cdir.r }, cdir, surf, box);
       if (!hp) return;
-      var Np = normal2d(surf, hp);
-      if (Np.z * cdir.z + Np.r * cdir.r > 0) Np = { z: -Np.z, r: -Np.r };
+      var Np = faceNormal2(normal2d(surf, hp), cdir);
       var cosIp = -(Np.z * cdir.z + Np.r * cdir.r);
       var Rp = fresnelReflectance(cosIp, n, 1);
-      // push inner segment only if visible
       if (ci > THRESHOLD) inner.push({ a: cp, b: hp, i: ci });
       var Tdir = refract3d(cdir, Np, n);
       if (Tdir) {
@@ -194,79 +257,84 @@ export function traceRays(eq, eqR, aperture, angle, n, count, box) {
       bounce(hp, reflect2d(cdir, Np), ci * Rp, depth + 1);
     }
 
-    if (h1) {
-      var N = normal2d(eq, h1);
-      if (N.z * D.z + N.r * D.r > 0) N = { z: -N.z, r: -N.r };
-      var cosI1 = -(N.z * D.z + N.r * D.r);
-      r1 = fresnelReflectance(cosI1, 1, n);
-      t1 = fresnelTransmittance(cosI1, 1, n);
-      rdir = reflect2d(D, N);
-      var T1 = refract3d(D, N, 1 / n);
-      if (T1) {
-        var h2p = findIntersection(
-          { z: h1.z + 1e-6 * T1.z, r: h1.r + 1e-6 * T1.r },
-          T1, eqR, box
-        );
-        if (h2p) {
-          h2 = h2p;
-          var N2 = normal2d(eqR, h2);
-          if (N2.z * T1.z + N2.r * T1.r > 0) N2 = { z: -N2.z, r: -N2.r };
-          var cosI2 = -(N2.z * T1.z + N2.r * T1.r);
-          var R2 = fresnelReflectance(cosI2, n, 1);
-          t2 = fresnelTransmittance(cosI2, n, 1);
-          var rdir2 = reflect2d(T1, N2);
-          var T2 = refract3d(T1, N2, n);
-          if (T2) {
-            ok = true;
-            end = { z: h2.z + 3000 * T2.z, r: h2.r + 3000 * T2.r };
-          } else {
-            tir = true;
-            end = { z: h2.z + 3000 * rdir2.z, r: h2.r + 3000 * rdir2.r };
-          }
-          bounce(h2, rdir2, t1 * R2, 0);
-        } else {
-          end = { z: h1.z + 3000 * T1.z, r: h1.r + 3000 * T1.r };
-        }
-      }
+    if (!h1) {
+      return {
+        P, h1: null, h2: null, end,
+        ok: false, tir: false, miss: true, status: "miss",
+        t1: 0, t2: 0, r1: 0, rdir: null, inner, esc,
+      };
     }
-    return { P, h1, h2, end, ok, tir, t1, t2, r1, rdir, inner, esc };
+
+    var N = faceNormal2(normal2d(eq, h1), D);
+    var cosI1 = -(N.z * D.z + N.r * D.r);
+    r1 = fresnelReflectance(cosI1, 1, n);
+    t1 = fresnelTransmittance(cosI1, 1, n);
+    rdir = reflect2d(D, N);
+    var T1 = refract3d(D, N, 1 / n);
+    if (!T1) {
+      return {
+        P, h1, h2: null, end: h1,
+        ok: false, tir: false, miss: true, status: "miss",
+        t1: 0, t2: 0, r1, rdir, inner, esc,
+      };
+    }
+
+    var h2p = findIntersection(
+      { z: h1.z + 1e-6 * T1.z, r: h1.r + 1e-6 * T1.r },
+      T1, eqR, box
+    );
+    if (!h2p) {
+      return {
+        P, h1, h2: null, end: h1,
+        ok: false, tir: false, miss: true, status: "miss",
+        edgeExit: true, t1, t2: 0, r1, rdir, inner, esc,
+      };
+    }
+
+    h2 = h2p;
+    var N2 = faceNormal2(normal2d(eqR, h2), T1);
+    var cosI2 = -(N2.z * T1.z + N2.r * T1.r);
+    var R2 = fresnelReflectance(cosI2, n, 1);
+    t2 = fresnelTransmittance(cosI2, n, 1);
+    var rdir2 = reflect2d(T1, N2);
+    var T2 = refract3d(T1, N2, n);
+    if (T2) {
+      end = { z: h2.z + 3000 * T2.z, r: h2.r + 3000 * T2.r };
+      bounce(h2, rdir2, t1 * R2, 0);
+      return {
+        P, h1, h2, end,
+        ok: true, tir: false, miss: false, status: "ok",
+        t1, t2, r1, rdir, inner, esc,
+      };
+    }
+
+    // TIR on exit: no passthrough; reflect mode may still show bounce chain
+    end = { z: h2.z, r: h2.r };
+    bounce(h2, rdir2, t1 * Math.max(R2, 1), 0);
+    return {
+      P, h1, h2, end,
+      ok: false, tir: true, miss: false, status: "tir",
+      t1, t2: 0, r1, rdir, inner, esc,
+    };
   }
 
-  function uniform(n) {
+  function uniform(num) {
+    // Match notebook: sample to 0.995*aperture, not the zero-thickness tip
+    var ap = aperture * 0.995;
     var res = [];
-    for (var i = 0; i < n; i++) {
-      res.push(n > 1 ? (-aperture + (2 * aperture * i) / (n - 1)) * scale : 0);
+    for (var i = 0; i < num; i++) {
+      res.push(num > 1 ? (-ap + (2 * ap * i) / (num - 1)) * scale : 0);
     }
     return res;
   }
 
+  // Uniform over usable aperture — no probe shrink
   var offsets = uniform(count);
-  {
-    var probe = uniform(Math.max(count, 40));
-    var best = null;
-    var runStart = -1;
-    for (var i = 0; i < probe.length; i++) {
-      var pr = traceOne(probe[i]);
-      var okP = pr.ok || pr.tir;
-      if (okP && runStart === -1) runStart = i;
-      if ((!okP || i === probe.length - 1) && runStart !== -1) {
-        var runEnd = okP ? i : i - 1;
-        var w = probe[runEnd] - probe[runStart];
-        if (!best || w > best.w) best = { lo: probe[runStart], hi: probe[runEnd], w };
-        runStart = -1;
-      }
-    }
-    if (!best) return [];
-    var span = best.hi - best.lo;
-    for (var i = 0; i < count; i++) {
-      offsets[i] = count > 1 ? best.lo + (span * i) / (count - 1) : 0.5 * (best.lo + best.hi);
-    }
-  }
-
   var rays = [];
   for (var i = 0; i < count; i++) {
     var ray = traceOne(offsets[i]);
-    if (!ray.ok && !ray.tir) continue;
+    // Drop pure misses; keep ok + tir (tir for bounce viz in reflect mode)
+    if (ray.status === "miss") continue;
     rays.push(ray);
   }
   return rays;
@@ -290,12 +358,24 @@ export function fresnelTransmittance(cosI, n1, n2) {
   return 1 - fresnelReflectance(cosI, n1, n2);
 }
 
+function faceNormal3(N, I) {
+  if (N.x * I.x + N.y * I.y + N.z * I.z > 0) {
+    return { x: -N.x, y: -N.y, z: -N.z };
+  }
+  return N;
+}
+
 export function refract3(I, N, eta) {
   var cosi = -(N.x * I.x + N.y * I.y + N.z * I.z);
+  if (cosi > 1.0) cosi = 1.0;
+  if (cosi < -1.0) cosi = -1.0;
   var k = 1 - eta * eta * (1 - cosi * cosi);
   if (k < 0) return null;
   var f = eta * cosi - Math.sqrt(k);
-  return { x: eta * I.x + f * N.x, y: eta * I.y + f * N.y, z: eta * I.z + f * N.z };
+  var out = { x: eta * I.x + f * N.x, y: eta * I.y + f * N.y, z: eta * I.z + f * N.z };
+  var L = Math.hypot(out.x, out.y, out.z);
+  if (L < 1e-18) return null;
+  return { x: out.x / L, y: out.y / L, z: out.z / L };
 }
 
 export function findHit3(eq, P, D, box) {
@@ -305,7 +385,8 @@ export function findHit3(eq, P, D, box) {
   function f(t) {
     return P.z + t * D.z - safeEval(eq, r(t));
   }
-  var t0 = 0.2;
+  var EPS = 1e-8;
+  var t0 = EPS;
   var t1 = 1000;
   if (box) {
     var zLo = box.z0 - 2;
@@ -326,42 +407,53 @@ export function findHit3(eq, P, D, box) {
       t1 = Math.min(t1, (rs + box.r1) / rv);
       t0 = Math.max(t0, (rs - box.r1) / rv);
     }
-    if (t1 < 0.2) return null;
-    t0 = Math.max(0.2, t0);
+    t0 = Math.max(EPS, t0);
     t1 = Math.min(1000, t1);
-    if (t0 > t1) return null;
+    if (!(t0 < t1)) return null;
   }
-  var f0 = f(t0);
-  for (var t = t0 + 0.2; t <= t1; t += 0.2) {
-    var f1 = f(t);
-    if (isFinite(f0) && isFinite(f1) && f0 * f1 <= 0) {
-      var a = t - 0.2;
-      var b = t;
-      for (var i = 0; i < 20; i++) {
-        var m = 0.5 * (a + b);
-        if (f(a) * f(m) <= 0) b = m;
-        else a = m;
+
+  function refine(a, b) {
+    for (var i = 0; i < 48; i++) {
+      var m = 0.5 * (a + b);
+      var fa = f(a);
+      var fm = f(m);
+      if (!isFinite(fm) || !isFinite(fa)) {
+        a = m;
+        continue;
       }
-      var th = 0.5 * (a + b);
-      return { x: P.x + th * D.x, y: P.y + th * D.y, z: P.z + th * D.z };
+      if (fa * fm <= 0) b = m;
+      else a = m;
     }
-    f0 = f1;
+    var th = 0.5 * (a + b);
+    return { x: P.x + th * D.x, y: P.y + th * D.y, z: P.z + th * D.z };
+  }
+
+  var tLo = t0;
+  var fLo = f(tLo);
+  var step = 1e-4;
+  while (tLo < t1) {
+    var tHi = Math.min(t1, tLo + step);
+    var fHi = f(tHi);
+    if (isFinite(fLo) && isFinite(fHi) && fLo * fHi <= 0) {
+      return refine(tLo, tHi);
+    }
+    tLo = tHi;
+    fLo = fHi;
+    step = Math.min(step * 1.6, 0.2);
   }
   return null;
 }
 
 export function traceRay3D(eq, eqR, P, D, n, box, endDist) {
-  var end = { x: P.x + endDist * D.x, y: P.y + endDist * D.y, z: P.z + endDist * D.z };
+  var end = { x: P.x, y: P.y, z: P.z };
   var h1 = findHit3(eq, P, D, box);
   var h2 = null;
-  var ok = false;
-  var tir = false;
+  var inner = [];
+  var esc = [];
   var t1 = 0;
   var t2 = 0;
   var r1 = 0;
   var rdir = null;
-  var inner = [];
-  var esc = [];
   var MAX_DEPTH = 50;
   var THRESHOLD = 1e-6;
 
@@ -382,8 +474,7 @@ export function traceRay3D(eq, eqR, P, D, n, box, endDist) {
     var surf = depth % 2 === 0 ? eq : eqR;
     var hp = findHit3(surf, { x: cp.x + 1e-6 * cdir.x, y: cp.y + 1e-6 * cdir.y, z: cp.z + 1e-6 * cdir.z }, cdir, box);
     if (!hp) return;
-    var Np = normal(surf, hp);
-    if (Np.x * cdir.x + Np.y * cdir.y + Np.z * cdir.z > 0) Np = { x: -Np.x, y: -Np.y, z: -Np.z };
+    var Np = faceNormal3(normal(surf, hp), cdir);
     var cosIp = -(Np.x * cdir.x + Np.y * cdir.y + Np.z * cdir.z);
     var Rp = fresnelReflectance(cosIp, n, 1);
     inner.push({ a: cp, b: hp, i: ci });
@@ -394,37 +485,68 @@ export function traceRay3D(eq, eqR, P, D, n, box, endDist) {
     bounce(hp, reflect(cdir, Np), ci * Rp, depth + 1);
   }
 
-  if (h1) {
-    var N = normal(eq, h1);
-    if (N.x * D.x + N.y * D.y + N.z * D.z > 0) N = { x: -N.x, y: -N.y, z: -N.z };
-    var cosI1 = -(N.x * D.x + N.y * D.y + N.z * D.z);
-    r1 = fresnelReflectance(cosI1, 1, n);
-    t1 = fresnelTransmittance(cosI1, 1, n);
-    rdir = reflect(D, N);
-    var T1 = refract3(D, N, 1 / n);
-    if (T1) {
-      var h2p = findHit3(eqR, { x: h1.x + 1e-6 * T1.x, y: h1.y + 1e-6 * T1.y, z: h1.z + 1e-6 * T1.z }, T1, box);
-      if (h2p) {
-        h2 = h2p;
-        var N2 = normal(eqR, h2);
-        if (N2.x * T1.x + N2.y * T1.y + N2.z * T1.z > 0) N2 = { x: -N2.x, y: -N2.y, z: -N2.z };
-        var cosI2 = -(N2.x * T1.x + N2.y * T1.y + N2.z * T1.z);
-        var R2 = fresnelReflectance(cosI2, n, 1);
-        t2 = fresnelTransmittance(cosI2, n, 1);
-        var rdir2 = reflect(T1, N2);
-        var T2 = refract3(T1, N2, n);
-        if (T2) {
-          ok = true;
-          end = { x: h2.x + endDist * T2.x, y: h2.y + endDist * T2.y, z: h2.z + endDist * T2.z };
-        } else {
-          tir = true;
-          end = { x: h2.x + endDist * rdir2.x, y: h2.y + endDist * rdir2.y, z: h2.z + endDist * rdir2.z };
-        }
-        bounce(h2, rdir2, t1 * R2, 0);
-      } else {
-        end = { x: h1.x + endDist * T1.x, y: h1.y + endDist * T1.y, z: h1.z + endDist * T1.z };
-      }
-    }
+  if (!h1) {
+    return {
+      P, h1: null, h2: null, end,
+      ok: false, tir: false, miss: true, status: "miss",
+      t1: 0, t2: 0, r1: 0, rdir: null, inner, esc,
+    };
   }
-  return { P, h1, h2, end, ok, tir, t1, t2, r1, rdir, inner, esc };
+
+  var N = faceNormal3(normal(eq, h1), D);
+  var cosI1 = -(N.x * D.x + N.y * D.y + N.z * D.z);
+  r1 = fresnelReflectance(cosI1, 1, n);
+  t1 = fresnelTransmittance(cosI1, 1, n);
+  rdir = reflect(D, N);
+  var T1 = refract3(D, N, 1 / n);
+  if (!T1) {
+    return {
+      P, h1, h2: null, end: h1,
+      ok: false, tir: false, miss: true, status: "miss",
+      t1: 0, t2: 0, r1, rdir, inner, esc,
+    };
+  }
+
+  var h2p = findHit3(
+    eqR,
+    { x: h1.x + 1e-6 * T1.x, y: h1.y + 1e-6 * T1.y, z: h1.z + 1e-6 * T1.z },
+    T1,
+    box
+  );
+  if (!h2p) {
+    return {
+      P, h1, h2: null, end: h1,
+      ok: false, tir: false, miss: true, status: "miss",
+      edgeExit: true, t1, t2: 0, r1, rdir, inner, esc,
+    };
+  }
+
+  h2 = h2p;
+  var N2 = faceNormal3(normal(eqR, h2), T1);
+  var cosI2 = -(N2.x * T1.x + N2.y * T1.y + N2.z * T1.z);
+  var R2 = fresnelReflectance(cosI2, n, 1);
+  t2 = fresnelTransmittance(cosI2, n, 1);
+  var rdir2 = reflect(T1, N2);
+  var T2 = refract3(T1, N2, n);
+  if (T2) {
+    end = {
+      x: h2.x + endDist * T2.x,
+      y: h2.y + endDist * T2.y,
+      z: h2.z + endDist * T2.z,
+    };
+    bounce(h2, rdir2, t1 * R2, 0);
+    return {
+      P, h1, h2, end,
+      ok: true, tir: false, miss: false, status: "ok",
+      t1, t2, r1, rdir, inner, esc,
+    };
+  }
+
+  end = { x: h2.x, y: h2.y, z: h2.z };
+  bounce(h2, rdir2, t1 * Math.max(R2, 1), 0);
+  return {
+    P, h1, h2, end,
+    ok: false, tir: true, miss: false, status: "tir",
+    t1, t2: 0, r1, rdir, inner, esc,
+  };
 }

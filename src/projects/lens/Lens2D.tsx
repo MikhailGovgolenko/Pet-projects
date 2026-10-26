@@ -124,12 +124,38 @@ function drawRays(ctx, rays, wts, view) {
 
   for (var i = 0; i < rays.length; i++) {
     var r = rays[i];
-    var overallIntensity = r.tir ? (r.t1 || 1) : (r.t1 || 1) * (r.t2 || 1);
-
-    if (!r.h1) {
-      drawRay(ctx, wts, r.P, r.end, true, true, baseColor, 1, RAY_RADIUS, view);
+    // Non-reflect: only ok. Reflect may keep tir for bounce viz; miss never drawn.
+    if (r.status === "miss" || r.miss) continue;
+    if (!r.ok && !r.tir) continue;
+    if (!r.ok && r.tir) {
+      // Non-reflect: hide TIR entirely. Reflect: entrance + internal + bounces only.
+      var hasReflectViz =
+        (r.r1 > 0.001 && r.rdir) ||
+        (r.inner && r.inner.length > 0) ||
+        (r.esc && r.esc.length > 0);
+      if (!hasReflectViz || !r.h1) continue;
+      drawRay(ctx, wts, r.P, r.h1, true, false, baseColor, 1, RAY_RADIUS, view);
+      if (r.r1 > 0.001 && r.rdir) {
+        var tirReflEnd = { z: r.h1.z + r.rdir.z * REFLEN, r: r.h1.r + r.rdir.r * REFLEN };
+        drawRay(ctx, wts, r.h1, tirReflEnd, false, true, baseColor, r.r1, RAY_RADIUS, view);
+      }
+      if (r.h2) {
+        drawRay(ctx, wts, r.h1, r.h2, false, false, baseColor, r.t1 || 1, RAY_RADIUS, view);
+      }
+      for (var tk = 0; tk < (r.inner || []).length; tk++) {
+        var tseg = r.inner[tk];
+        drawRay(ctx, wts, tseg.a, tseg.b, false, false, baseColor, tseg.i || 0, RAY_RADIUS, view);
+      }
+      for (var te = 0; te < (r.esc || []).length; te++) {
+        var tex = r.esc[te];
+        var tEscEnd = { z: tex.p.z + tex.dir.z * REFLEN, r: tex.p.r + tex.dir.r * REFLEN };
+        drawRay(ctx, wts, tex.p, tEscEnd, false, true, baseColor, tex.i || 0, RAY_RADIUS, view);
+      }
       continue;
     }
+
+    var overallIntensity = (r.t1 || 1) * (r.t2 || 1);
+    if (!r.h1 || !r.h2) continue;
 
     drawRay(ctx, wts, r.P, r.h1, true, false, baseColor, 1, RAY_RADIUS, view);
 
@@ -138,36 +164,17 @@ function drawRays(ctx, rays, wts, view) {
       drawRay(ctx, wts, r.h1, reflEnd, false, true, baseColor, r.r1, RAY_RADIUS, view);
     }
 
-    if (r.edgeHit) {
-      drawRay(ctx, wts, r.h1, r.edgeHit, false, false, baseColor, r.t1 || 1, RAY_RADIUS, view);
-      if (!r.edgeTir) {
-        drawRay(ctx, wts, r.edgeHit, r.end, false, true, baseColor, r.edgeIntensity || 0, RAY_RADIUS, view);
-      }
-      for (var edgeInner of r.inner || []) {
-        drawRay(ctx, wts, edgeInner.a, edgeInner.b, false, false, baseColor, edgeInner.i || 0, RAY_RADIUS, view);
-      }
-      for (var edgeEsc of r.esc || []) {
-        var escEnd = { z: edgeEsc.p.z + edgeEsc.dir.z * REFLEN, r: edgeEsc.p.r + edgeEsc.dir.r * REFLEN };
-        drawRay(ctx, wts, edgeEsc.p, escEnd, false, true, baseColor, edgeEsc.i || 0, RAY_RADIUS, view);
-      }
-      continue;
+    drawRay(ctx, wts, r.h1, r.h2, false, false, baseColor, r.t1 || 1, RAY_RADIUS, view);
+    drawRay(ctx, wts, r.h2, r.end, false, true, baseColor, overallIntensity, RAY_RADIUS, view);
+
+    for (var k = 0; k < (r.inner || []).length; k++) {
+      var seg = r.inner[k];
+      drawRay(ctx, wts, seg.a, seg.b, false, false, baseColor, seg.i || 0, RAY_RADIUS, view);
     }
-
-    if (r.h2) {
-      drawRay(ctx, wts, r.h1, r.h2, false, false, baseColor, r.t1 || 1, RAY_RADIUS, view);
-      drawRay(ctx, wts, r.h2, r.end, false, true, baseColor, overallIntensity, RAY_RADIUS, view);
-
-      for (var k = 0; k < (r.inner || []).length; k++) {
-        var seg = r.inner[k];
-        drawRay(ctx, wts, seg.a, seg.b, false, false, baseColor, seg.i || 0, RAY_RADIUS, view);
-      }
-      for (var k2 = 0; k2 < r.esc.length; k2++) {
-        var ex = r.esc[k2];
-        var exEnd = { z: ex.p.z + ex.dir.z * REFLEN, r: ex.p.r + ex.dir.r * REFLEN };
-        drawRay(ctx, wts, ex.p, exEnd, false, true, baseColor, ex.i || 0, RAY_RADIUS, view);
-      }
-    } else {
-      drawRay(ctx, wts, r.h1, r.end, false, true, baseColor, r.t1 || 1, RAY_RADIUS, view);
+    for (var k2 = 0; k2 < (r.esc || []).length; k2++) {
+      var ex = r.esc[k2];
+      var exEnd = { z: ex.p.z + ex.dir.z * REFLEN, r: ex.p.r + ex.dir.r * REFLEN };
+      drawRay(ctx, wts, ex.p, exEnd, false, true, baseColor, ex.i || 0, RAY_RADIUS, view);
     }
   }
 
@@ -264,24 +271,27 @@ function Lens2D({ params, resetKey, scaleRef }) {
         const math = p.useReflections ? M : M_OLD;
         var rawRays = math.traceRays(p.eq, p.eqR, lens.aperture, p.angle * (p.useReflections ? M.DEG : M_OLD.DEG), p.n, p.rayCount, lensCacheRef.current.box);
         var rays = (rawRays || []).map(function(rr){
+          var status = rr.status || (rr.ok ? "ok" : rr.tir ? "tir" : "miss");
           return {
             P: rr.P,
             h1: rr.h1 || null,
             h2: rr.h2 || null,
-            end: rr.end || (rr.P ? { z: rr.P.z + 3000, r: rr.P.r } : null),
-            ok: !!rr.ok,
-            tir: !!rr.tir,
+            end: rr.end || (rr.P ? { z: rr.P.z, r: rr.P.r } : null),
+            status: status,
+            ok: status === "ok",
+            tir: status === "tir",
+            miss: status === "miss",
             edgeExit: !!rr.edgeExit,
-            edgeHit: rr.edgeHit || null,
-            edgeTir: !!rr.edgeTir,
-            edgeIntensity: rr.edgeIntensity || 0,
             t1: rr.t1 != null ? rr.t1 : 1,
             t2: rr.t2 != null ? rr.t2 : 1,
             r1: rr.r1 != null ? rr.r1 : 0,
-            rdir: rr.rdir || (rr.h1 && rr.h2 ? { z: rr.h2.z-rr.h1.z, r: rr.h2.r-rr.h1.r } : { z:0, r:0 }),
+            rdir: rr.rdir || null,
             inner: rr.inner || [],
             esc: rr.esc || [],
           };
+        }).filter(function(r) {
+          // Non-reflect traceRays already returns only ok; drop miss defensively
+          return r.ok || r.tir;
         });
         rayCacheRef.current = { key, rays, hits: collectSurfaceHits(rays, p.eq, p.eqR) };
       }

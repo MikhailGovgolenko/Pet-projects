@@ -290,41 +290,55 @@ export function collectRaySegments(
 
   for (let i = 0; i < rays.length; i++) {
     const r = rays[i];
-    const overallIntensity = r.tir ? (r.t1 || 1) : (r.t1 || 1) * (r.t2 || 1);
+    if (r.status === "miss" || r.miss) continue;
+    if (!r.ok && !r.tir) continue;
 
-    if (!r.h1) {
-      push(r.P, r.end, true, true, baseColor, 1, RAY_RADIUS);
+    if (!r.ok && r.tir) {
+      // Non-reflect: hide TIR entirely. Reflect: no transmitted exit / passthrough.
+      const hasReflectViz =
+        (r.r1 > 0.001 && r.rdir) ||
+        (r.inner && r.inner.length > 0) ||
+        (r.esc && r.esc.length > 0);
+      if (!hasReflectViz || !r.h1) continue;
+      push(r.P, r.h1, true, false, baseColor, 1, RAY_RADIUS);
+      if (r.r1 > 0.001 && r.rdir) {
+        push(
+          r.h1,
+          { z: r.h1.z + r.rdir.z * REFLEN, r: r.h1.r + r.rdir.r * REFLEN },
+          false,
+          true,
+          baseColor,
+          r.r1,
+          RAY_RADIUS
+        );
+      }
+      if (r.h2) push(r.h1, r.h2, false, false, baseColor, r.t1 || 1, RAY_RADIUS);
+      for (const seg of r.inner || []) push(seg.a, seg.b, false, false, baseColor, seg.i || 0, RAY_RADIUS);
+      for (const ex of r.esc || []) {
+        push(ex.p, { z: ex.p.z + ex.dir.z * REFLEN, r: ex.p.r + ex.dir.r * REFLEN }, false, true, baseColor, ex.i || 0, RAY_RADIUS);
+      }
       continue;
     }
 
+    if (!r.h1 || !r.h2) continue;
+    const overallIntensity = (r.t1 || 1) * (r.t2 || 1);
     push(r.P, r.h1, true, false, baseColor, 1, RAY_RADIUS);
-
     if (r.r1 > 0.001 && r.rdir) {
-      const reflEnd = { z: r.h1.z + r.rdir.z * REFLEN, r: r.h1.r + r.rdir.r * REFLEN };
-      push(r.h1, reflEnd, false, true, baseColor, r.r1, RAY_RADIUS);
+      push(
+        r.h1,
+        { z: r.h1.z + r.rdir.z * REFLEN, r: r.h1.r + r.rdir.r * REFLEN },
+        false,
+        true,
+        baseColor,
+        r.r1,
+        RAY_RADIUS
+      );
     }
-
-    if (r.edgeHit) {
-      push(r.h1, r.edgeHit, false, false, baseColor, r.t1 || 1, RAY_RADIUS);
-      if (!r.edgeTir) {
-        push(r.edgeHit, r.end, false, true, baseColor, r.edgeIntensity || 0, RAY_RADIUS);
-      }
-      for (const seg of r.inner || []) push(seg.a, seg.b, false, false, baseColor, seg.i || 0, RAY_RADIUS);
-      for (const ex of r.esc || []) {
-        push(ex.p, { z: ex.p.z + ex.dir.z * REFLEN, r: ex.p.r + ex.dir.r * REFLEN }, false, true, baseColor, ex.i || 0, RAY_RADIUS);
-      }
-      continue;
-    }
-
-    if (r.h2) {
-      push(r.h1, r.h2, false, false, baseColor, r.t1 || 1, RAY_RADIUS);
-      push(r.h2, r.end, false, true, baseColor, overallIntensity, RAY_RADIUS);
-      for (const seg of r.inner || []) push(seg.a, seg.b, false, false, baseColor, seg.i || 0, RAY_RADIUS);
-      for (const ex of r.esc || []) {
-        push(ex.p, { z: ex.p.z + ex.dir.z * REFLEN, r: ex.p.r + ex.dir.r * REFLEN }, false, true, baseColor, ex.i || 0, RAY_RADIUS);
-      }
-    } else {
-      push(r.h1, r.end, false, true, baseColor, r.t1 || 1, RAY_RADIUS);
+    push(r.h1, r.h2, false, false, baseColor, r.t1 || 1, RAY_RADIUS);
+    push(r.h2, r.end, false, true, baseColor, overallIntensity, RAY_RADIUS);
+    for (const seg of r.inner || []) push(seg.a, seg.b, false, false, baseColor, seg.i || 0, RAY_RADIUS);
+    for (const ex of r.esc || []) {
+      push(ex.p, { z: ex.p.z + ex.dir.z * REFLEN, r: ex.p.r + ex.dir.r * REFLEN }, false, true, baseColor, ex.i || 0, RAY_RADIUS);
     }
   }
 

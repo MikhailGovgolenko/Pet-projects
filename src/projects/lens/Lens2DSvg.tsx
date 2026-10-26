@@ -100,24 +100,26 @@ function Lens2DSvg({ params, resetKey, scaleRef }) {
           p.angle * (p.useReflections ? M.DEG : M_OLD.DEG),
           p.n, p.rayCount, lensCacheRef.current.box
         );
-        const rays = (rawRays || []).map((rr) => ({
+        const rays = (rawRays || []).map((rr) => {
+          const status = rr.status || (rr.ok ? "ok" : rr.tir ? "tir" : "miss");
+          return {
             P: rr.P,
             h1: rr.h1 || null,
             h2: rr.h2 || null,
-            end: rr.end || (rr.P ? { z: rr.P.z + 3000, r: rr.P.r } : null),
-            ok: !!rr.ok,
-            tir: !!rr.tir,
+            end: rr.end || (rr.P ? { z: rr.P.z, r: rr.P.r } : null),
+            status,
+            ok: status === "ok",
+            tir: status === "tir",
+            miss: status === "miss",
             edgeExit: !!rr.edgeExit,
-            edgeHit: rr.edgeHit || null,
-            edgeTir: !!rr.edgeTir,
-            edgeIntensity: rr.edgeIntensity || 0,
             t1: rr.t1 != null ? rr.t1 : 1,
             t2: rr.t2 != null ? rr.t2 : 1,
             r1: rr.r1 != null ? rr.r1 : 0,
-            rdir: rr.rdir || (rr.h1 && rr.h2 ? { z: rr.h2.z-rr.h1.z, r: rr.h2.r-rr.h1.r } : { z:0, r:0 }),
+            rdir: rr.rdir || null,
             inner: rr.inner || [],
             esc: rr.esc || [],
-          }));
+          };
+        }).filter((r) => r.ok || r.tir);
         rayCacheRef.current = { key, rays, hits: collectSurfaceHits(rays, p.eq, p.eqR) };
       }
       scheduleRender();
