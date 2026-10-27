@@ -26,10 +26,9 @@ function computeInit(params) {
     zc = 0.5 * (b.z0 + b.z1);
     r1 = Math.max(b.r1, 1e-6);
   } catch {}
-  // Дистанция камеры подбирается так, чтобы радиус апертуры
-  // занимал долю FILL от высоты экрана.
-  const d = r1 / (FILL * fovHalf);
-  const scale = h / (2 * d * fovHalf);
+  // Match the 2D fit scale, which is based on the smaller viewport dimension.
+  const scale = (Math.min(w, h) * FILL) / (2 * r1);
+  const d = h / (2 * scale * fovHalf);
   return {
     pos: new THREE.Vector3(-d, 0, zc),
     target: new THREE.Vector3(0, 0, zc),
