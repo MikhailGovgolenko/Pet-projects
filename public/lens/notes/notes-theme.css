@@ -177,8 +177,8 @@ body.jp-Notebook .notes-toc:not([open]) {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+  backdrop-filter: blur(10px) saturate(160%);
+  -webkit-backdrop-filter: blur(10px) saturate(160%);
 }
 
 body.jp-Notebook .notes-toc summary {
@@ -215,6 +215,15 @@ body.jp-Notebook .notes-toc summary::after {
   font-size: 20px;
   font-weight: 400;
   line-height: 1;
+}
+
+body.jp-Notebook .notes-toc:not([open]) summary::after {
+  content: "";
+  width: 16px;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+  box-shadow: 0 -5px 0 currentColor, 0 5px 0 currentColor;
 }
 
 body.jp-Notebook .notes-toc[open] summary::after {
@@ -465,6 +474,10 @@ body.jp-Notebook .jp-Cell-outputWrapper {
   margin-top: 16px;
 }
 
+body.jp-Notebook .jp-OutputArea-child + .jp-OutputArea-child {
+  margin-top: 12px;
+}
+
 body.jp-Notebook .jp-OutputArea-output {
   color: var(--notes-text-muted);
 }
@@ -542,16 +555,19 @@ body.jp-Notebook *::-webkit-scrollbar-thumb:hover {
 
 @media (max-width: 640px) {
   body.jp-Notebook main {
-    width: calc(100% - 24px);
+    width: calc(100% - 8px);
     padding: 80px 0 40px;
   }
 
   body.jp-Notebook .jp-Notebook-cell {
     margin: 12px 0;
-    padding: 20px 18px;
+    padding: 14px;
     overflow-x: auto;
     overflow-y: hidden;
     border-radius: 18px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 
   body.jp-Notebook .jp-CodeMirrorEditor {
