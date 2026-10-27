@@ -373,6 +373,11 @@ body.jp-Notebook .jp-RenderedText pre {
 }
 
 body.jp-Notebook .jp-CodeMirrorEditor {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
   padding: 16px 18px;
   overflow-x: auto;
   overflow-y: hidden;
@@ -443,12 +448,17 @@ body.jp-Notebook .jp-RenderedHTMLCommon tbody tr:nth-child(even) {
 }
 
 body.jp-Notebook mjx-container[display="true"],
-body.jp-Notebook .MathJax_Display {
+body.jp-Notebook .MathJax_Display,
+body.jp-Notebook .MJXc-display {
   max-width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
   padding: 8px 0;
   color: var(--notes-text);
+}
+
+body.jp-Notebook .MJXc-display .mjx-mtable .mjx-stack .mjx-block {
+  text-align: left !important;
 }
 
 body.jp-Notebook .jp-Cell-outputWrapper {
@@ -497,27 +507,35 @@ body.jp-Notebook .notes-download:hover {
 }
 
 body.jp-Notebook * {
-  scrollbar-color: color-mix(in srgb, var(--notes-link) 55%, transparent) transparent;
-  scrollbar-width: thin;
+  scrollbar-color: auto;
+  scrollbar-width: auto;
 }
 
-body.jp-Notebook *::-webkit-scrollbar:horizontal {
+@supports not (selector(::-webkit-scrollbar)) {
+  body.jp-Notebook * {
+    scrollbar-color: color-mix(in srgb, var(--notes-link) 55%, transparent) transparent;
+    scrollbar-width: thin;
+  }
+}
+
+body.jp-Notebook *::-webkit-scrollbar {
   height: 8px;
+  width: 8px;
 }
 
-body.jp-Notebook *::-webkit-scrollbar-track:horizontal {
+body.jp-Notebook *::-webkit-scrollbar-track {
   border-radius: 999px;
   background: transparent;
 }
 
-body.jp-Notebook *::-webkit-scrollbar-thumb:horizontal {
+body.jp-Notebook *::-webkit-scrollbar-thumb {
   border: 2px solid transparent;
   border-radius: 999px;
   background: color-mix(in srgb, var(--notes-link) 55%, transparent);
   background-clip: padding-box;
 }
 
-body.jp-Notebook *::-webkit-scrollbar-thumb:horizontal:hover {
+body.jp-Notebook *::-webkit-scrollbar-thumb:hover {
   background: var(--notes-link);
   background-clip: padding-box;
 }
@@ -531,7 +549,13 @@ body.jp-Notebook *::-webkit-scrollbar-thumb:horizontal:hover {
   body.jp-Notebook .jp-Notebook-cell {
     margin: 12px 0;
     padding: 20px 18px;
+    overflow-x: auto;
+    overflow-y: hidden;
     border-radius: 18px;
+  }
+
+  body.jp-Notebook .jp-CodeMirrorEditor {
+    margin-left: 0;
   }
 
   body.jp-Notebook .jp-RenderedHTMLCommon {
