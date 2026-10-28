@@ -439,11 +439,17 @@ body.jp-Notebook .jp-RenderedHTMLCommon svg {
   border-radius: 14px;
 }
 
-body.jp-Notebook .jp-RenderedHTMLCommon img[src$="/image.svg"] {
+body.jp-Notebook .jp-RenderedHTMLCommon .notes-lens-figure {
   display: block;
   width: min(100%, 834px);
   margin-right: auto;
   margin-left: auto;
+}
+
+body.jp-Notebook .jp-RenderedHTMLCommon .notes-lens-figure img {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
 body.jp-Notebook .notes-figure-caption {
