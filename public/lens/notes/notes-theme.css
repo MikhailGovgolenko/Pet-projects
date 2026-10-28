@@ -289,9 +289,18 @@ body.jp-Notebook .jp-OutputPrompt {
 body.jp-Notebook .jp-InputArea,
 body.jp-Notebook .jp-Cell-inputArea,
 body.jp-Notebook .jp-Cell-outputArea,
+body.jp-Notebook .jp-OutputArea,
 body.jp-Notebook .jp-OutputArea-child {
   min-width: 0;
-  overflow-y: visible;
+  width: 100%;
+  display: block;
+  height: auto;
+  max-height: none;
+  overflow: visible;
+}
+
+body.jp-Notebook .jp-Cell-outputArea {
+  resize: none;
 }
 
 body.jp-Notebook .jp-MarkdownOutput {
@@ -430,10 +439,18 @@ body.jp-Notebook .jp-RenderedHTMLCommon svg {
   border-radius: 14px;
 }
 
-body.jp-Notebook .jp-RenderedHTMLCommon img[src$="/image.png"] {
+body.jp-Notebook .jp-RenderedHTMLCommon img[src$="/image.svg"] {
   display: block;
+  width: min(100%, 834px);
   margin-right: auto;
   margin-left: auto;
+}
+
+body.jp-Notebook .notes-figure-caption {
+  margin: 8px 0 16px;
+  color: var(--notes-text-soft);
+  font-size: 14px;
+  text-align: center;
 }
 
 body.jp-Notebook .jp-RenderedImage {
@@ -479,6 +496,13 @@ body.jp-Notebook .jp-OutputArea-child + .jp-OutputArea-child {
 }
 
 body.jp-Notebook .jp-OutputArea-output {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
   color: var(--notes-text-muted);
 }
 
@@ -565,7 +589,7 @@ body.jp-Notebook *::-webkit-scrollbar-thumb:hover {
     overflow-x: auto;
     overflow-y: hidden;
     border-radius: 18px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+    box-shadow: var(--notes-shadow);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }

@@ -145,8 +145,6 @@ export default function LensPage() {
           </label>
           <a
             href="/lens/notes"
-            target="_blank"
-            rel="noreferrer"
             style={{ display: "block", margin: "0 0 8px", color: "var(--accent)", fontSize: 12, textDecoration: "none" }}
           >
             {t("lens.computeLens")}
