@@ -45,7 +45,7 @@ const homePage: ProjectSeo = {
   id: "",
   route: "/",
   title: "Pet projects",
-  description: "Interactive simulations and tools",
+  description: "Pet projects",
   ogImage: "og-image.png",
 };
 
@@ -67,7 +67,7 @@ function pageImageUrl(page: ProjectSeo): string {
 function buildHeadTags(page: ProjectSeo, version: string): string {
   const fullUrl = page.id ? `${SITE_URL}/${page.id}/` : `${SITE_URL}/`;
   const fullImage = `${pageImageUrl(page)}?v=${version}`;
-  const title = page.id ? `${page.title} | Pet projects` : page.title;
+  const title = page.id ? `${page.title} - Pet projects` : page.title;
   const desc = page.description;
 
   return `

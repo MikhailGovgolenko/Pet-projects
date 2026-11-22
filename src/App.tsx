@@ -28,7 +28,7 @@ function updateSeo(cardId: string | null) {
   var seo = getSeoForPage(cardId);
   var fullUrl = seo.id ? `${siteUrl}/${seo.id}/` : `${siteUrl}/`;
   var fullImage = ogImageUrl(seo);
-  var title = seo.id ? `${seo.title} | Pet projects` : seo.title;
+  var title = seo.id ? `${seo.title} - Pet projects` : seo.title;
 
   document.title = title;
   setMeta("og:title", title);

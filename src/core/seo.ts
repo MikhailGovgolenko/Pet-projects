@@ -13,7 +13,7 @@ export interface PageSeo {
 export const homePage: PageSeo = {
   id: "",
   title: "Pet projects",
-  description: "Interactive simulations and tools",
+  description: "Pet projects",
   ogImage: "og-image.png",
 };
 

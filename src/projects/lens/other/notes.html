@@ -3,13 +3,13 @@
 <html lang="en">
 <head><meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>notes</title>
+<title>Notes - Pet projects</title>
 <link rel="icon" type="image/png" href="/icon.png"/>
 <link rel="apple-touch-icon" href="/icon.png"/>
 <link rel="canonical" href="https://pet-projects.govgolenko.ru/lens/notes/"/>
 <meta property="og:type" content="website"/>
 <meta property="og:site_name" content="Pet projects"/>
-<meta property="og:title" content="Lens Notes | Pet projects"/>
+<meta property="og:title" content="Notes - Pet projects"/>
 <meta property="og:description" content="A symmetrical lens without aberrations."/>
 <meta property="og:url" content="https://pet-projects.govgolenko.ru/lens/notes/"/>
 <meta property="og:image" content="https://pet-projects.govgolenko.ru/projects/lens/assets/preview-notes.png?v=2"/>
@@ -19,10 +19,10 @@
 <meta property="og:image:height" content="630"/>
 <meta property="og:image:alt" content="Lens diagram from the design notes"/>
 <meta name="twitter:card" content="summary_large_image"/>
-<meta name="twitter:title" content="Lens Notes | Pet projects"/>
+<meta name="twitter:title" content="Notes - Pet projects"/>
 <meta name="twitter:description" content="A symmetrical lens without aberrations."/>
 <meta name="twitter:image" content="https://pet-projects.govgolenko.ru/projects/lens/assets/preview-notes.png?v=2"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
+
 <style type="text/css">
     pre { line-height: 125%; }
 td.linenos .normal { color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px; }
@@ -7310,40 +7310,405 @@ a.anchor-link {
   }
 }
 </style>
-<!-- Load mathjax -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS_CHTML-full,Safe"> </script>
-<!-- MathJax configuration -->
-<script type="text/x-mathjax-config">
-    init_mathjax = function() {
-        if (window.MathJax) {
-        // MathJax loaded
-            MathJax.Hub.Config({
-                TeX: {
-                    equationNumbers: {
-                    autoNumber: "AMS",
-                    useLabelIds: true
-                    }
-                },
-                tex2jax: {
-                    inlineMath: [ ['$','$'], ["\\(","\\)"] ],
-                    displayMath: [ ['$$','$$'], ["\\[","\\]"] ],
-                    processEscapes: true,
-                    processEnvironments: true
-                },
-                displayAlign: 'center',
-                messageStyle: 'none',
-                CommonHTML: {
-                    linebreaks: {
-                    automatic: false
-                    }
-                }
-            });
+<!-- Load MathJax (self-hosted, no CDN round-trip) -->
+<style>
+  /* Hide raw TeX until MathJax has finished typesetting. */
+  html:not(.mathjax-ready) .jp-RenderedHTMLCommon {
+    visibility: hidden;
+  }
 
-            MathJax.Hub.Queue(["Typeset", MathJax.Hub]);
-        }
+  /* Let the browser select text around formulas naturally; their SVG has no
+     text of its own, so the copy handler supplies the LaTeX from data-tex. */
+  mjx-container[data-tex] {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+
+  /* Mirror the browser's default selection colour. The browser paints text
+     selection using the full line height, so inline formulas need an overlay
+     that size instead of a background on the shorter container box. */
+  :root {
+    --notes-formula-selection: rgb(2, 54, 161);
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root {
+      --notes-formula-selection: rgb(199, 199, 200);
     }
-    init_mathjax();
-    </script>
+  }
+
+  body.jp-Notebook .jp-RenderedHTMLCommon mjx-container[data-tex][display="true"].formula-selected svg {
+    background-color: var(--notes-formula-selection);
+    border-radius: 0;
+  }
+
+  body.jp-Notebook .jp-RenderedHTMLCommon mjx-container[data-tex]:not([display="true"]).formula-selected {
+    position: relative;
+    isolation: isolate;
+  }
+
+  body.jp-Notebook .jp-RenderedHTMLCommon mjx-container[data-tex]:not([display="true"]).formula-selected::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: calc(1lh + 1px);
+    transform: translateY(-50%);
+    background-color: var(--notes-formula-selection);
+    border-radius: 0;
+    z-index: -1;
+    pointer-events: none;
+  }
+</style>
+<noscript>
+  <style>
+    /* Without JavaScript there is nothing to typeset the math, so show the source. */
+    html:not(.mathjax-ready) .jp-RenderedHTMLCommon {
+      visibility: visible;
+    }
+  </style>
+</noscript>
+<script>
+  var mathContainers = [];
+
+  window.MathJax = {
+    tex: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      displayMath: [ ['$$','$$'], ["\\[","\\]"] ],
+      processEscapes: true,
+      processEnvironments: true,
+      tags: 'ams'
+    },
+    svg: {
+      fontCache: 'local',
+      displayAlign: 'center'
+    },
+    options: {
+      enableMenu: false
+    },
+    startup: {
+      typeset: true,
+      ready: function () {
+        MathJax.startup.defaultReady();
+        MathJax.startup.promise.then(function () {
+          // Keep the original TeX source on every rendered formula so that
+          // copying a formula can put its LaTeX on the clipboard.
+          try {
+            var list = MathJax.startup.document.math;
+            var items = list && list.toArray ? list.toArray() : Array.from(list || []);
+            for (var i = 0; i < items.length; i++) {
+              var item = items[i];
+              if (item && item.typesetRoot && item.math != null) {
+                item.typesetRoot.setAttribute('data-tex', item.math);
+              }
+            }
+          } catch (error) {
+            // Copying will fall back to the browser's default plain text.
+          }
+          mathContainers = Array.prototype.slice.call(
+            document.querySelectorAll('mjx-container[data-tex]')
+          );
+          document.documentElement.classList.add('mathjax-ready');
+          window.dispatchEvent(new Event('mathjax-ready'));
+        });
+      }
+    }
+  };
+
+  // Return every formula touched by the current selection.
+  function mathNodesInRange(range) {
+    var found = [];
+    var add = function (node) {
+      if (node && node.matches && node.matches('mjx-container[data-tex]') &&
+          range.intersectsNode(node) && found.indexOf(node) < 0) {
+        found.push(node);
+      }
+    };
+
+    var start = range.startContainer.nodeType === 1
+      ? range.startContainer
+      : range.startContainer.parentElement;
+    var end = range.endContainer.nodeType === 1
+      ? range.endContainer
+      : range.endContainer.parentElement;
+    add(start && start.closest ? start.closest('mjx-container[data-tex]') : null);
+    add(end && end.closest ? end.closest('mjx-container[data-tex]') : null);
+
+    var root = range.commonAncestorContainer;
+    if (root.nodeType !== 1) root = root.parentNode;
+    if (!root || !root.querySelectorAll) return found;
+
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
+      acceptNode: function (node) {
+        return node.matches && node.matches('mjx-container[data-tex]')
+          ? NodeFilter.FILTER_ACCEPT
+          : NodeFilter.FILTER_SKIP;
+      }
+    });
+    var node;
+    while ((node = walker.nextNode())) add(node);
+    return found;
+  }
+
+  // Serialize the selection as plain text, replacing each rendered formula
+  // with the original TeX stored on its container.
+  function serializeRange(range) {
+    var paragraphBlocks = {
+      ADDRESS: 1, ARTICLE: 1, ASIDE: 1, BLOCKQUOTE: 1, DIV: 1,
+      FIELDSET: 1, FIGCAPTION: 1, FIGURE: 1, FOOTER: 1, FORM: 1,
+      H1: 1, H2: 1, H3: 1, H4: 1, H5: 1, H6: 1, HEADER: 1,
+      HR: 1, MAIN: 1, NAV: 1, OL: 1, P: 1, PRE: 1, SECTION: 1,
+      TABLE: 1, UL: 1
+    };
+    var lineBlocks = { BR: 1, DD: 1, DT: 1, LI: 1, TR: 1 };
+    var blockTags = {};
+    Object.keys(paragraphBlocks).forEach(function (tag) { blockTags[tag] = 2; });
+    Object.keys(lineBlocks).forEach(function (tag) { blockTags[tag] = 1; });
+
+    var text = '';
+    var newline = function (count) {
+      var trailing = (text.match(/\n*$/) || [''])[0].length;
+      if (trailing < count) {
+        text += new Array(count - trailing + 1).join('\n');
+      }
+    };
+
+    var root = range.commonAncestorContainer;
+    if (root.nodeType !== 1) root = root.parentNode;
+    if (!root || !root.childNodes) return '';
+
+    // A selection contained entirely in one formula has no selectable text;
+    // use its stored TeX directly.
+    var mathRoot = root.closest ? root.closest('mjx-container[data-tex]') : null;
+    if (mathRoot) {
+      return (mathRoot.getAttribute('data-tex') || '').replace(/^\s+|\s+$/g, '');
+    }
+
+    var walker = document.createTreeWalker(
+      root,
+      NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT,
+      {
+        acceptNode: function (node) {
+          if (node.nodeType === 3) {
+            return range.intersectsNode(node)
+              ? NodeFilter.FILTER_ACCEPT
+              : NodeFilter.FILTER_REJECT;
+          }
+          if (node.matches && node.matches('mjx-container[data-tex]')) {
+            return range.intersectsNode(node)
+              ? NodeFilter.FILTER_ACCEPT
+              : NodeFilter.FILTER_REJECT;
+          }
+          if (node.matches && node.matches('mjx-container[data-tex] *')) {
+            return NodeFilter.FILTER_REJECT;
+          }
+          if (node.nodeType === 1 && blockTags[node.tagName]) {
+            return range.intersectsNode(node)
+              ? NodeFilter.FILTER_ACCEPT
+              : NodeFilter.FILTER_SKIP;
+          }
+          return NodeFilter.FILTER_SKIP;
+        }
+      }
+    );
+
+    var node;
+    while ((node = walker.nextNode())) {
+      if (node.nodeType === 3) {
+        var value = node.nodeValue;
+        if (node === range.startContainer) value = value.slice(range.startOffset);
+        if (node === range.endContainer) value = value.slice(0, range.endOffset);
+        text += value;
+      } else if (node.matches('mjx-container[data-tex]')) {
+        text += (node.getAttribute('data-tex') || '').replace(/^\s+|\s+$/g, '');
+      } else if (blockTags[node.tagName]) {
+        newline(blockTags[node.tagName]);
+      }
+    }
+
+    return text.replace(/\n{3,}/g, '\n\n').replace(/^\n+|\n+$/g, '');
+  }
+
+  // A selection that contains formulas is copied as plain text with the
+  // original LaTeX in place of every rendered formula.
+  document.addEventListener('copy', function (event) {
+    if (!event.clipboardData) return;
+    var selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
+
+    var range = selection.getRangeAt(0);
+    if (!mathNodesInRange(range).length) return;
+
+    event.clipboardData.setData('text/plain', serializeRange(range));
+    event.preventDefault();
+  });
+
+  // Mirror the browser's blue selection highlight on SVG formulas.
+  function updateFormulaHighlight() {
+    var selection = window.getSelection();
+    var range = selection && selection.rangeCount && !selection.isCollapsed
+      ? selection.getRangeAt(0)
+      : null;
+    for (var i = 0; i < mathContainers.length; i++) {
+      var selected = !!(range && range.intersectsNode(mathContainers[i]));
+      mathContainers[i].classList.toggle('formula-selected', selected);
+    }
+  }
+  document.addEventListener('selectionchange', updateFormulaHighlight);
+
+  var displayDragStart = null;
+  var dragAnchor = null;
+  var dragActive = false;
+  var dragStartX = 0;
+  var dragStartY = 0;
+
+  // Full-width display SVGs make Chromium collapse or freeze a backward drag.
+  // Track the drag ourselves and build the range from the caret under the
+  // mouse, so selection works in both directions.
+  function caretRangeAtPoint(x, y) {
+    if (document.caretRangeFromPoint) {
+      return document.caretRangeFromPoint(x, y);
+    }
+    if (document.caretPositionFromPoint) {
+      var caret = document.caretPositionFromPoint(x, y);
+      if (!caret) return null;
+      var range = document.createRange();
+      range.setStart(caret.offsetNode, caret.offset);
+      range.collapse(true);
+      return range;
+    }
+    return null;
+  }
+
+  function pointFromRange(range) {
+    return range && range.startContainer
+      ? { container: range.startContainer, offset: range.startOffset }
+      : null;
+  }
+
+  function formulaFromPoint(point) {
+    if (!point) return null;
+    var node = point.container;
+    var element = node.nodeType === 1 ? node : node.parentElement;
+    return element && element.closest
+      ? element.closest('mjx-container[data-tex]')
+      : null;
+  }
+
+  function comparePoints(a, b) {
+    var range = document.createRange();
+    range.setStart(a.container, a.offset);
+    range.collapse(true);
+    return range.comparePoint(b.container, b.offset);
+  }
+
+  function positionBefore(node) {
+    return {
+      container: node.parentNode,
+      offset: Array.prototype.indexOf.call(node.parentNode.childNodes, node)
+    };
+  }
+
+  function positionAfter(node) {
+    return {
+      container: node.parentNode,
+      offset: Array.prototype.indexOf.call(node.parentNode.childNodes, node) + 1
+    };
+  }
+
+  // When a point is inside a display formula, use the formula edge that keeps
+  // it inside the range between the anchor and the other end.
+  function boundaryForPoint(point, otherPoint, math) {
+    math = math || formulaFromPoint(point);
+    if (!math || math.getAttribute('display') !== 'true') return point;
+    var before = positionBefore(math);
+    return comparePoints(otherPoint, before) >= 0 ? positionAfter(math) : before;
+  }
+
+  function anchorForDrag(anchor, boundary, math) {
+    math = math || formulaFromPoint(anchor);
+    if (!math || math.getAttribute('display') !== 'true') return anchor;
+    var before = positionBefore(math);
+    return comparePoints(boundary, before) < 0 ? before : positionAfter(math);
+  }
+
+  function setSelectionBetween(a, b) {
+    if (!a || !b) return;
+    var start = a;
+    var end = b;
+    if (comparePoints(a, b) < 0) {
+      start = b;
+      end = a;
+    }
+    var selection = window.getSelection();
+    if (!selection) return;
+    if (comparePoints(start, end) === 0) {
+      selection.collapse(start.container, start.offset);
+      updateFormulaHighlight();
+      return;
+    }
+    var range = document.createRange();
+    range.setStart(start.container, start.offset);
+    range.setEnd(end.container, end.offset);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    updateFormulaHighlight();
+  }
+
+  function updateSelectionToPointer(x, y, endMath, startMath) {
+    if (!dragAnchor) return;
+    var caret = pointFromRange(caretRangeAtPoint(x, y));
+    if (!caret) return;
+    var boundary = boundaryForPoint(caret, dragAnchor, endMath);
+    setSelectionBetween(anchorForDrag(dragAnchor, boundary, startMath), boundary);
+  }
+
+  document.addEventListener('mousedown', function (event) {
+    dragActive = false;
+    dragAnchor = null;
+    displayDragStart = null;
+    if (event.button !== 0) return;
+    if (!event.target || !event.target.closest ||
+        !event.target.closest('.jp-RenderedHTMLCommon')) return;
+
+    dragActive = true;
+    dragStartX = event.clientX;
+    dragStartY = event.clientY;
+    dragAnchor = pointFromRange(caretRangeAtPoint(event.clientX, event.clientY));
+
+    var math = event.target.closest('mjx-container[data-tex][display="true"]');
+    displayDragStart = math
+      ? { math: math, x: event.clientX, y: event.clientY }
+      : null;
+  }, true);
+
+  // Do not touch the selection while the mouse is moving: replacing it during
+  // a native drag makes Chromium cancel the drag. Correct it once on release.
+  document.addEventListener('mouseup', function (event) {
+    if (!dragActive) return;
+    var dx = event.clientX - dragStartX;
+    var dy = event.clientY - dragStartY;
+    dragActive = false;
+    if (Math.sqrt(dx * dx + dy * dy) > 2) {
+      var endMath = event.target && event.target.closest &&
+        event.target.closest('mjx-container[data-tex][display="true"]');
+      var startMath = displayDragStart && displayDragStart.math;
+      updateSelectionToPointer(event.clientX, event.clientY, endMath, startMath);
+    }
+  }, true);
+
+  // Safety net: never leave content hidden if MathJax fails to load.
+  window.addEventListener('load', function () {
+    window.setTimeout(function () {
+      if (!document.documentElement.classList.contains('mathjax-ready')) {
+        document.documentElement.classList.add('mathjax-ready');
+        window.dispatchEvent(new Event('mathjax-ready'));
+      }
+    }, 4000);
+  });
+</script>
+<script defer src="/lens/notes/mathjax/tex-svg-full.js"></script>
 <!-- End of mathjax configuration --><script type="module">
   document.addEventListener("DOMContentLoaded", async () => {
     const diagrams = document.querySelectorAll(".jp-Mermaid > pre.mermaid");
@@ -7951,8 +8316,12 @@ $$</p>
 <p>Пользуясь принципом Ферма (для любого $r$ выполняется $S(0) = S(r)$) и возводя (4) в квадрат, получаем:</p>
 <p>$$ (r+qw)^2 + (z_f - z(r)-w)^2 = S^2(0) + z^2(r) + n^2 (1+q^2)w^2 - 2S(0)z(r) - 2S(0)n\sqrt{1+q^2}w + 2z(r)n\sqrt{1+q^2}w. $$</p>
 <p>Получили квадратное уравнение на $w$. Приведём подобные.</p>
-<p>$$ r^2 + 2rqw + q^2w^2 + z^2_f + z^2(r) + w^2 - 2z_f z(r) - 2z_f w + 2z(r)w = \\
-= S^2(0) + z^2(r) + n^2 (1 + q^2)w^2 - 2S(0)z(r) - 2S(0)n\sqrt{1+q^2}w + 2z(r)n\sqrt{1+q^2}w $$</p>
+<p>$$
+\begin{gathered}
+r^2 + 2rqw + q^2w^2 + z^2_f + z^2(r) + w^2 - 2z_f z(r) - 2z_f w + 2z(r)w = \\
+= S^2(0) + z^2(r) + n^2 (1 + q^2)w^2 - 2S(0)z(r) - 2S(0)n\sqrt{1+q^2}w + 2z(r)n\sqrt{1+q^2}w
+\end{gathered}
+$$</p>
 <p>$$ \left(1+q^2\right)\left(1-n^2\right)w^2 + 2\left(rq-\left(z_f - z(r)\right) + \left(S(0) - z(r)\right)n\sqrt{1+q^2}\right)w + \left( r^2 + (z_f - z(r))^2 - (S(0)-z(r))^2\right)=0$$</p>
 <p>В итоге:</p>
 <p>$$a_w w^2 + b_w w + c_w = 0, $$</p>
@@ -8935,17 +9304,19 @@ $$</p>
 <script type="module">
   import translations from "/lens/notes/translations.js";
 
-  (() => {
+  const isRussian = navigator.language?.toLowerCase().startsWith("ru");
+  const language = isRussian ? "ru" : "en";
+  const home = document.querySelector("site-home-button");
+  home.setAttribute("label", translations.home[language]);
+  home.setAttribute("aria-label", translations.home[language]);
+  document.getElementById("notes-download-label").textContent =
+    translations.download[language];
+
+  // Build the table of contents only after MathJax has typeset the headings,
+  // so it contains rendered symbols instead of raw TeX.
+  const initNotesToc = () => {
     const main = document.querySelector("body.jp-Notebook main");
     if (!main) return;
-
-    const isRussian = navigator.language?.toLowerCase().startsWith("ru");
-    const language = isRussian ? "ru" : "en";
-    const home = document.querySelector("site-home-button");
-    home.setAttribute("label", translations.home[language]);
-    home.setAttribute("aria-label", translations.home[language]);
-    document.getElementById("notes-download-label").textContent =
-      translations.download[language];
 
     const headings = [...main.querySelectorAll(".jp-RenderedHTMLCommon h1, .jp-RenderedHTMLCommon h2, .jp-RenderedHTMLCommon h3, .jp-RenderedHTMLCommon h4")]
       .filter((heading) => heading.id);
@@ -9007,7 +9378,15 @@ $$</p>
     document.addEventListener("click", (event) => {
       if (toc.open && !toc.contains(event.target)) toc.open = false;
     });
-  })();
+  };
+
+  if (document.documentElement.classList.contains("mathjax-ready")) {
+    initNotesToc();
+  } else {
+    window.addEventListener("mathjax-ready", initNotesToc, { once: true });
+  }
 </script>
 </body>
+</html>
+
 </html>
