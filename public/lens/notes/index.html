@@ -7337,9 +7337,16 @@ a.anchor-link {
     }
   }
 
+  /* iOS Safari clips SVG glyphs to the rounded frame inherited from the
+     theme, so MathJax formulas must stay square even when not selected. */
+  body.jp-Notebook .jp-RenderedHTMLCommon mjx-container[data-tex],
+  body.jp-Notebook .jp-RenderedHTMLCommon mjx-container[data-tex] svg {
+    border-radius: 0;
+    -webkit-border-radius: 0;
+  }
+
   body.jp-Notebook .jp-RenderedHTMLCommon mjx-container[data-tex][display="true"].formula-selected svg {
     background-color: var(--notes-formula-selection);
-    border-radius: 0;
   }
 
   body.jp-Notebook .jp-RenderedHTMLCommon mjx-container[data-tex]:not([display="true"]).formula-selected {
