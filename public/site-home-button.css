@@ -1,12 +1,12 @@
 :root {
-  --site-home-button-surface: rgba(21, 23, 30, 0.84);
+  --site-home-button-surface: #15171e;
   --site-home-button-text: #fff;
   --site-home-button-border: rgba(255, 255, 255, 0.12);
 }
 
 @media (prefers-color-scheme: light) {
   :root {
-    --site-home-button-surface: rgba(255, 255, 255, 0.84);
+    --site-home-button-surface: #fff;
     --site-home-button-text: var(--text-sec, rgba(0, 0, 0, 0.45));
     --site-home-button-border: rgba(23, 27, 42, 0.08);
   }
@@ -36,8 +36,10 @@
 
 .site-home-button.glass {
   background: var(--site-home-button-surface);
-  backdrop-filter: blur(10px) saturate(160%);
-  -webkit-backdrop-filter: blur(10px) saturate(160%);
+  /* Без backdrop-filter: размытие фиксированного полупрозрачного слоя
+     перерисовывается при hover и даёт артефакт-свечение над контентом
+     (заметно на странице заметок). Непрозрачный фон выглядит так же,
+     но не задействует композитный слой. */
   border: 1px solid var(--site-home-button-border);
   border-radius: 100px;
   box-shadow: var(--glass-shadow, 0 8px 32px rgba(0, 0, 0, 0.25));
