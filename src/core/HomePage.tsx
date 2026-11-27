@@ -41,6 +41,12 @@ export default function HomePage({ onNavigate }) {
           animation: fadeInUp 0.7s ease both;
           border-radius: 28px;
           isolation: isolate;
+          /* Подъём и увеличение делаем на обёртке: тогда картинка, градиент и
+             1px обводка внутри не перерастрируются при наведении и край не
+             мерцает. will-change заранее держит слой готовым, поэтому scale
+             просто масштабирует готовую текстуру, а не рисует заново. */
+          transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+          will-change: transform;
           /* Контейнер для cqw: все внутренние размеры карточки заданы в
              процентах от её ширины (база — 306.7px, колонка на ПК). Благодаря
              этому карточка на мобильном (362px) — это ровно тот же макет,
@@ -72,7 +78,6 @@ export default function HomePage({ onNavigate }) {
              самого скругления, а линию рисует ::after ниже. */
           border-width: 0;
           transition:
-            transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
             box-shadow 0.35s ease,
             background 0.35s ease;
           /* backdrop-filter на соседних карточках + transform = глитч в Chrome;
@@ -82,21 +87,26 @@ export default function HomePage({ onNavigate }) {
         }
         /* Обводка рисуется поверх фото, а не под ним: ::after лежит над
            картинкой (z-index 2) и кладёт 1px прямо на её пиксели, поэтому
-           зазора между фото и линией нет. Цвет — токен темы, в тёмной теме
-           это светлая линия: граница карточки должна быть видна, иначе на
-           почти чёрном фото карточка сливается со страницей. */
+           зазора между фото и линией нет. Обычный border, а не inset
+           box-shadow, даёт ровные углы при дробном border-radius. Цвет —
+           токен темы, в тёмной теме это светлая линия: граница карточки
+           должна быть видна, иначе на почти чёрном фото карточка сливается
+           со страницей. */
         .home-card::after {
           content: "";
           position: absolute;
           inset: 0;
+          box-sizing: border-box;
+          border: 1px solid var(--glass-border);
           border-radius: inherit;
-          box-shadow: inset 0 0 0 1px var(--glass-border);
           pointer-events: none;
           z-index: 2;
         }
         @media (hover: hover) {
-          .card-wrap:hover .home-card {
+          .card-wrap:hover {
             transform: translateY(-4px) scale(1.01);
+          }
+          .card-wrap:hover .home-card {
             box-shadow: 0 20px 60px rgba(0,0,0,0.15), var(--glass-shadow);
           }
           .card-wrap:hover .card-action { color: var(--accent); }
@@ -220,10 +230,13 @@ export default function HomePage({ onNavigate }) {
           display: block;
         }
         /* Градиент цвета темы от низа: нижние 36% высоты плотные, дальше к
-           верху уходит в прозрачность. */
+           верху уходит в прозрачность. inset: -1px — на 1px шире картинки:
+           при дробной высоте карточки между градиентом и краем фото мог
+           остаться субпиксельный зазор, заметный в тёмной теме. Лишнее
+           обрезается overflow: hidden карточки. */
         .card-hero-fade {
           position: absolute;
-          inset: 0;
+          inset: -1px;
           height: auto;
           pointer-events: none;
           background: linear-gradient(
@@ -233,14 +246,17 @@ export default function HomePage({ onNavigate }) {
             rgba(0, 0, 0, 0) 100%
           );
         }
-        /* в светлой теме --card-fade почти белый: прозрачный стоп должен быть
-           того же оттенка, иначе фейд уходит в серый через rgba(0,0,0,0) */
+        /* В светлой теме --card-fade почти белый. Такой фейд заметно сильнее
+           тёмного на средних по яркости обложках, поэтому у него нет плотной
+           нижней площадки: прозрачность растёт сразу от низа к верху. Иначе
+           градиент выглядит интенсивнее, чем в тёмной теме. Прозрачный стоп
+           белый, а не чёрный через rgba(0,0,0,0), чтобы не появлялся серый
+           оттенок. */
         @media (prefers-color-scheme: light) {
           .card-hero-fade {
             background: linear-gradient(
               to top,
               var(--card-fade) 0%,
-              var(--card-fade) 26%,
               rgba(255, 255, 255, 0) 100%
             );
           }
